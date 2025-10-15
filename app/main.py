@@ -8,10 +8,26 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="Fantasy Darts")
 
+
+@app.on_event("startup")
+def startup_event():
+    # Tabellen erstellen
+    Base.metadata.create_all(bind=engine)
+
+    # Benutzer / Spieler initialisieren
+    from add_players import add_players_from_csv
+    from create_users import create_user
+
+    # User nur erstellen, wenn sie noch nicht existieren (idempotent)
+    create_user("olli", "bla123")
+    create_user("maria", "passwort123")
+    add_players_from_csv()
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "*"
+        "https://fantasy-darts-aacvkbwfzujffxuzjes7bd.streamlit.app"
     ],  # oder später gezielt: ["https://fantasy-darts-frontend.streamlit.app"]
     allow_credentials=True,
     allow_methods=["*"],
@@ -30,6 +46,3 @@ app.include_router(players.router)
 app.include_router(teams.router)
 app.include_router(matches.router)
 app.include_router(leaderboard.router)
-
-if __name__ == "__main__":
-    Base.metadata.create_all(bind=engine)
