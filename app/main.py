@@ -15,8 +15,8 @@ def startup_event():
     Base.metadata.create_all(bind=engine)
 
     # Benutzer / Spieler initialisieren
-    from add_players import add_players_from_csv
-    from create_users import create_user
+    from .add_players import add_players_from_csv
+    from .create_users import create_user
 
     # User nur erstellen, wenn sie noch nicht existieren (idempotent)
     create_user("olli", "bla123")
