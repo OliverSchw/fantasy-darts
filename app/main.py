@@ -27,7 +27,7 @@ def startup_event():
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://fantasy-darts-aacvkbwfzujffxuzjes7bd.streamlit.app"
+        "*"
     ],  # oder später gezielt: ["https://fantasy-darts-frontend.streamlit.app"]
     allow_credentials=True,
     allow_methods=["*"],
