@@ -16,3 +16,4 @@ streamlit
 pandas
 requests
 passlib
+bcrypt
