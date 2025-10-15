@@ -1,0 +1,18 @@
+# Backend
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+python-dotenv
+
+# Datenbank-Treiber
+# Wenn du SQLite nutzt, brauchst du nur:
+# (ist bereits in Python Standardbibliothek enthalten)
+# psycopg2-binary nur für PostgreSQL
+# psycopg2-binary
+
+# Frontend
+streamlit
+pandas
+requests
+passlib
