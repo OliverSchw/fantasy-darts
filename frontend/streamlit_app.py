@@ -8,7 +8,7 @@ import os
 
 # Wenn auf Streamlit Cloud: nimm BASE_URL aus den Secrets
 # Wenn lokal: fallback auf localhost
-BASE_URL = os.getenv("BASE_URL", "https://fantasy-darts.onrender.com")
+BASE_URL = os.getenv("BASE_URL", "https://fantasy-darts-1.onrender.com")
 
 COUNTRY_CODE_MAP = {
     "England": "gb-eng",
