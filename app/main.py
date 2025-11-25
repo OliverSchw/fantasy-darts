@@ -21,6 +21,7 @@ def startup_event():
     # User nur erstellen, wenn sie noch nicht existieren (idempotent)
     create_user("olli", "bla123")
     create_user("maria", "passwort123")
+    create_user("Dagey", "Hund123")
     add_players_from_csv()
 
 
