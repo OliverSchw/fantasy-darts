@@ -102,7 +102,7 @@ def add_points_player(player_id: int, stats: dict, db: Session = Depends(get_db)
     }
 
 
-@router.put("/points/{player_id}")
+@router.put("/points/recompute")
 def recompute_points(db: Session = Depends(get_db)):
     """
     Berechnet die Punkte aller Spieler basierend auf allen gespeicherten Matches.
