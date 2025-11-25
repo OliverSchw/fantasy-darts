@@ -7,6 +7,8 @@ class TeamCreate(BaseModel):
     user_id: int
     team_name: str
     player_ids: List[int]
+    captain_id: int
+    underdog_id: int
 
 
 from typing import Optional

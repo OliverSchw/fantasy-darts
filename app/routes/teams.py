@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from .. import database, models
 from ..schemas import TeamCreate
+
 
 router = APIRouter(prefix="/teams", tags=["teams"])
 
@@ -14,15 +15,57 @@ def get_db():
         db.close()
 
 
+# @router.post("/")
+# def create_team(team: TeamCreate, db: Session = Depends(get_db)):
+#     new_team = models.Team(name=team.team_name, user_id=team.user_id)
+#     db.add(new_team)
+#     db.commit()
+#     db.refresh(new_team)
+
+#     for pid in team.player_ids:
+#         db.add(models.TeamPlayer(team_id=new_team.id, player_id=pid))
+#     db.commit()
+
+#     return {"team_id": new_team.id, "team_name": new_team.name}
+
+
 @router.post("/")
 def create_team(team: TeamCreate, db: Session = Depends(get_db)):
+    if (
+        team.captain_id not in team.player_ids
+        or team.underdog_id not in team.player_ids
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Captain and Underdog must be in the selected player list.",
+        )
+
+    underdog_player = (
+        db.query(models.Player).filter(models.Player.id == team.underdog_id).first()
+    )
+    if not underdog_player or underdog_player.price >= 800.0:
+        raise HTTPException(
+            status_code=400, detail="Underdog must have a price less than 800.0."
+        )
+
     new_team = models.Team(name=team.team_name, user_id=team.user_id)
     db.add(new_team)
     db.commit()
     db.refresh(new_team)
 
     for pid in team.player_ids:
-        db.add(models.TeamPlayer(team_id=new_team.id, player_id=pid))
+        # Setze is_captain/is_underdog basierend auf den übergebenen IDs
+        is_captain = pid == team.captain_id
+        is_underdog = pid == team.underdog_id
+
+        db.add(
+            models.TeamPlayer(
+                team_id=new_team.id,
+                player_id=pid,
+                is_captain=is_captain,  # NEU
+                is_underdog=is_underdog,  # NEU
+            )
+        )
     db.commit()
 
     return {"team_id": new_team.id, "team_name": new_team.name}
@@ -49,13 +92,14 @@ def update_team(team_id: int, payload: dict, db: Session = Depends(get_db)):
 
 @router.get("/{team_id}/players")
 def get_team_players(team_id: int, db: Session = Depends(get_db)):
-    # Alle Spieler-IDs des Teams holen
     team_player_links = (
         db.query(models.TeamPlayer).filter(models.TeamPlayer.team_id == team_id).all()
     )
-    player_ids = [link.player_id for link in team_player_links]
+    if not team_player_links:
+        return []
 
-    # Spieler-Daten abrufen
+    link_map = {link.player_id: link for link in team_player_links}
+    player_ids = list(link_map.keys())
     players = db.query(models.Player).filter(models.Player.id.in_(player_ids)).all()
 
     return [
@@ -67,6 +111,8 @@ def get_team_players(team_id: int, db: Session = Depends(get_db)):
             "id": p.id,
             "points": p.points,
             "eliminated": p.eliminated,
+            "is_captain": link_map[p.id].is_captain,
+            "is_underdog": link_map[p.id].is_underdog,
         }
         for p in players
     ]

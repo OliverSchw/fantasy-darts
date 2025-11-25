@@ -32,8 +32,13 @@ def add_players_from_csv():
                     print(f"Player '{row['name']}' already exists, skipping")
                     continue
 
+                seed_str = row.get("seed", "").strip()  # holt den Wert aus der CSV
+                if seed_str and seed_str.lower() != "none":
+                    seed = int(seed_str)
+                else:
+                    seed = 0
                 player = models.Player(
-                    seed=int(row.get("seed", 0)),
+                    seed=seed,
                     name=row["name"],
                     price=float(row["price"]),
                     nation=row.get("nation", ""),

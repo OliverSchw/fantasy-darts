@@ -9,7 +9,7 @@ class Player(Base):
     name = Column(String)
     price = Column(Float)
     nation = Column(String)
-    seed = Column(Integer)
+    seed = Column(Integer, nullable=True)
     points = Column(Float, default=0)
     eliminated = Column(Boolean, default=False)
 
@@ -38,6 +38,8 @@ class TeamPlayer(Base):
     __tablename__ = "team_players"
     team_id = Column(Integer, ForeignKey("teams.id"), primary_key=True)
     player_id = Column(Integer, ForeignKey("players.id"), primary_key=True)
+    is_captain = Column(Boolean, default=False)
+    is_underdog = Column(Boolean, default=False)
 
     team = relationship("Team", back_populates="team_players")
     player = relationship("Player", back_populates="team_players")
