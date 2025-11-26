@@ -31,8 +31,8 @@ class MatchResult(BaseModel):
     checkout_pct_p2: Optional[float] = 0.0
     high_checkout_p1: Optional[int] = 0
     high_checkout_p2: Optional[int] = 0
-    _180s_p1: Optional[int] = 0
-    _180s_p2: Optional[int] = 0
+    d180s_p1: Optional[int] = 0
+    d180s_p2: Optional[int] = 0
 
     class Config:
         from_attributes = True

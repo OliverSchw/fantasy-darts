@@ -11,7 +11,7 @@ import os
 # Wenn lokal: fallback auf localhost
 BASE_URL = os.getenv(
     "BASE_URL", "https://fantasy-darts-1.onrender.com"
-)  #  #"http://127.0.0.1:8000"
+)  # "http://127.0.0.1:8000"  #
 
 COUNTRY_CODE_MAP = {
     "England": "gb-eng",
@@ -298,119 +298,6 @@ if page == "🏠 Overview":
                     args=(row["team_id"], row["team_name"]),
                 )
 
-
-# # -----------------------------------
-# elif page == "⚔️ Tournament Bracket":
-
-#     st.title("⚔️ Tournament Bracket")
-#     players = requests.get(f"{BASE_URL}/players/").json()
-#     df_players = pd.DataFrame(players)
-#     df_players = df_players.sort_values("seed").head(64).reset_index(drop=True)
-
-#     num_players = 64
-#     num_rounds = int(math.log2(num_players))
-#     rows = num_players * 2 - 1
-
-#     # --- Seed-Reihenfolge generieren ---
-#     def generate_bracket(n):
-#         if n == 1:
-#             return [1]
-#         prev = generate_bracket(n // 2)
-#         result = []
-#         for p in prev:
-#             result.append(p)
-#             result.append(n + 1 - p)
-#         return result
-
-#     bracket = generate_bracket(num_players)
-
-#     # --- Session-State initialisieren ---
-
-#     if "winners" not in st.session_state:
-#         st.session_state["winners"] = {}
-
-#     results = requests.get(f"{BASE_URL}/matches/results/").json()
-#     for match in results:
-#         match_id = match["match_id"]
-#         winner_id = match["winner_id"]
-#         winner = f"{df_players.loc[df_players['id'] == winner_id, 'name'].values[0]} ({df_players.loc[df_players['id'] == winner_id, 'seed'].values[0]})"
-#         st.session_state["winners"][match_id] = winner
-
-#     if "match_data" not in st.session_state:
-#         st.session_state["match_data"] = {}
-#     if "current_match" not in st.session_state:
-#         st.session_state["current_match"] = None
-
-#     # --- Tabelle aufbauen ---
-#     table = pd.DataFrame(
-#         "",
-#         index=range(rows),
-#         columns=[f"Round {i+1}" for i in range(num_rounds + 1)],
-#     )
-
-#     # Runde 1
-#     for i, seed in enumerate(bracket):
-#         row = i * 2
-#         player = f"{df_players.loc[seed-1, 'name']} ({seed})"
-#         table.iloc[row, 0] = player
-
-#     # Weitere Runden: Platzhalter setzen
-#     for r in range(1, num_rounds + 1):
-#         step = 2**r
-#         for i in range(0, rows, step * 2):
-#             row_winner = i + step - 1
-#             match_id = f"match_{row_winner}_{r}"
-#             table.iloc[row_winner, r] = st.session_state["winners"].get(match_id, "?")
-
-#     # --- Dynamische Breite ---
-#     max_name_len = max(len(str(name)) for name in df_players["name"])
-#     button_width = int(max_name_len * 8.5 + 25)
-
-#     # st.write("## 🗓 Match Schedule")
-
-#     # --- CSS ---
-#     st.markdown(
-#         f"""
-#     <style>
-#     .bracket-box {{
-#         border: 2px solid black;
-#         border-radius: 6px;
-#         padding: 6px;
-#         text-align: center;
-#         background-color: #FFFFFF;
-#         width: {button_width}px;
-#         min-height: 30px;
-#         display: flex;
-#         align-items: center;
-#         justify-content: center;
-#     }}
-#     .empty-cell {{
-#         min-width: {button_width}px;
-#         min-height: 30px;
-#     }}
-#     .bracket-btn > button {{
-#         min-width: {button_width}px !important;
-#         min-height: 30px !important;
-#     }}
-#     </style>
-#     """,
-#         unsafe_allow_html=True,
-#     )
-
-#     # st.write("## 🏆 Tournament Bracket")
-
-#     # --- Anzeige der Tabelle ---
-#     for row_idx, row in enumerate(table.itertuples(index=False)):
-#         cols = st.columns(len(table.columns) * 2 + 1)
-#         for col_idx, val in enumerate(row):
-#             col = cols[col_idx * 2]
-#             if val != "":
-#                 col.markdown(
-#                     f"<div class='bracket-box'>{val}</div>",
-#                     unsafe_allow_html=True,
-#                 )
-#             else:
-#                 col.markdown(f"<div class='empty-cell'></div>", unsafe_allow_html=True)
 elif page == "🎯 Players":
     st.title("🎯 All Players")
 
@@ -597,9 +484,12 @@ elif page == "📅 Tournament Schedule":
         "Patrik Kovacs",
     ]
 
-    NUM_ROUNDS = 6
+    NUM_ROUNDS = 7  # Gesamtzahl der Runden (für Match-IDs und Logik)
+    NUM_ROUNDS_T1 = 5  # Runden für Tabelle 1 (R1 bis R5)
+    NUM_ROUNDS_T2 = NUM_ROUNDS - NUM_ROUNDS_T1  # Runden für Tabelle 2 (R6 und R7)
     NUM_MATCHES_ROUND_1 = 64
     ROWS = NUM_MATCHES_ROUND_1 * 2
+    ROWS_T2 = 7  # Genug Platz, u
 
     # --- INITIALISIERUNG DES SESSION STATE ---
     if "current_page" not in st.session_state:
@@ -700,6 +590,9 @@ elif page == "📅 Tournament Schedule":
                     results_resp = requests.get(f"{BASE_URL}/matches/results/")
                     results_resp.raise_for_status()
                     results = results_resp.json()
+                    st.session_state["results_map"] = {
+                        match["match_id"]: match for match in results
+                    }
                     break
                 except Exception as e:
                     if attempt < 2:
@@ -707,8 +600,7 @@ elif page == "📅 Tournament Schedule":
                     else:
                         st.error(f"Error loading match results after 3 attempts: {e}")
                         raise e
-
-            # Verarbeite die geladenen Ergebnisse
+            # Verarbeite die geladenen Ergebnisse (Füllt den 'winners' State)
             for match in results:
                 match_id = match["match_id"]
                 winner_id = match["winner_id"]
@@ -736,19 +628,26 @@ elif page == "📅 Tournament Schedule":
             )
             st.session_state["winners"] = {}
 
-        # --- Tabelle aufbauen (für die visuelle Bracket-Darstellung) ---
-        column_names = [f"Round {i+1}" for i in range(NUM_ROUNDS)]
-        table = pd.DataFrame(
+        # Temporäre Match-Daten, um alle möglichen Matches zu speichern (R1 bis R7)
+        all_possible_match_data = {}
+
+        # --- Tabelle 1 aufbauen (Runden 1 bis 5) ---
+        column_names_t1 = [f"Round {i+1}" for i in range(NUM_ROUNDS_T1 - 1)] + [
+            "Quarter-Finals"
+        ]
+        table_1 = pd.DataFrame(
             "",
             index=range(ROWS),
-            columns=column_names,
+            columns=column_names_t1,
         )
-
-        # Temporäre Match-Daten, um alle möglichen Matches zu speichern
-        all_possible_match_data = {}
 
         # --- RUNDE 1: Spieler setzen und IDs speichern ---
         for i in range(NUM_MATCHES_ROUND_1):
+            # ... (Logik zum Bestimmen von p1_display, p2_display, p1_id, p2_id) ...
+            # (Dieser Abschnitt aus Ihrem Original-Code bleibt fast unverändert)
+
+            # Annahme: Der Teil zur Bestimmung der Player-Infos ist hier vorhanden
+
             p1_name = FIRST_ROUND_PAIRS[i * 2]
             p2_name = FIRST_ROUND_PAIRS[i * 2 + 1]
 
@@ -764,21 +663,19 @@ elif page == "📅 Tournament Schedule":
             p1_id = p1_info.get("id")
             p2_id = p2_info.get("id")
 
-            if p1_seed <= 32 and p1_seed > 0:
-                p1_display = f"{p1_name} ({p1_seed})"
-            else:
-                p1_display = f"{p1_name}"
-            if p2_seed <= 32 and p2_seed > 0:
-                p2_display = f"{p2_name} ({p2_seed})"
-            else:
-                p2_display = f"{p2_name}"
+            p1_display = (
+                f"{p1_name} ({p1_seed})" if p1_seed and p1_seed <= 32 else p1_name
+            )
+            p2_display = (
+                f"{p2_name} ({p2_seed})" if p2_seed and p2_seed <= 32 else p2_name
+            )
 
             row_p1 = i * 2
             row_p2 = i * 2 + 1
 
             match_id_r1 = f"match_{row_p1}_{1}"
 
-            # 1. Speichere Basis-Match-Daten
+            # 1. Speichere Basis-Match-Daten in der zentralen Map
             current_match_data_r1 = {
                 "p1_id": p1_id,
                 "p2_id": p2_id,
@@ -787,37 +684,35 @@ elif page == "📅 Tournament Schedule":
             }
             all_possible_match_data[match_id_r1] = current_match_data_r1
 
-            # 2. Fülle die Tabelle
+            # 2. Fülle die Tabelle 1
             winner_display = st.session_state["winners"].get(match_id_r1)
 
             if winner_display:
                 if winner_display == p1_display:
-                    table.iloc[row_p1, 0] = p1_display
-                    table.iloc[row_p2, 0] = f"~{p2_display}~"
+                    table_1.iloc[row_p1, 0] = p1_display
+                    table_1.iloc[row_p2, 0] = f"~{p2_display}~"
                 elif winner_display == p2_display:
-                    table.iloc[row_p1, 0] = f"~{p1_display}~"
-                    table.iloc[row_p2, 0] = p2_display
+                    table_1.iloc[row_p1, 0] = f"~{p1_display}~"
+                    table_1.iloc[row_p2, 0] = p2_display
                 else:
-                    table.iloc[row_p1, 0] = winner_display
-                    table.iloc[row_p2, 0] = f"~{p2_display}~"
+                    table_1.iloc[row_p1, 0] = winner_display
+                    table_1.iloc[row_p2, 0] = f"~{p2_display}~"  # Annahme
             else:
                 # Match ist offen, zeige beide Namen unverändert
-                table.iloc[row_p1, 0] = p1_display
-                table.iloc[row_p2, 0] = p2_display
+                table_1.iloc[row_p1, 0] = p1_display
+                table_1.iloc[row_p2, 0] = p2_display
 
                 # --- FIX: Übernehme alte, ungespeicherte Stats, falls vorhanden ---
                 if match_id_r1 in old_match_data:
-                    # Kopiere die alten, ungespeicherten Stats in den neuen State
                     st.session_state.match_data[match_id_r1] = {
                         **current_match_data_r1,
                         **old_match_data[match_id_r1],
                     }
                 else:
-                    # Füge das Match neu zu den offenen Matches hinzu (nur Basisdaten)
                     st.session_state.match_data[match_id_r1] = current_match_data_r1
 
-        # --- Weitere Runden: Gewinner weiterleiten oder Platzhalter setzen ---
-        for r in range(1, NUM_ROUNDS):
+        # --- Weitere Runden: Gewinner weiterleiten oder Platzhalter setzen (Tabelle 1) ---
+        for r in range(1, NUM_ROUNDS_T1):  # Läuft von r=1 (R2) bis r=4 (R5)
             step = 2**r
             step_prev = 2 ** (r - 1)
 
@@ -827,63 +722,87 @@ elif page == "📅 Tournament Schedule":
                 match_id_p1_predecessor = f"match_{i}_{r}"
                 match_id_p2_predecessor = f"match_{i + step}_{r}"
 
-                p1_predecessor_won = (
-                    match_id_p1_predecessor in st.session_state["winners"]
-                )
-                p2_predecessor_won = (
-                    match_id_p2_predecessor in st.session_state["winners"]
-                )
-
                 row_p1_current = i + step_prev - 1
                 row_p2_current = i + step + step_prev - 1
 
-                if p1_predecessor_won and p2_predecessor_won:
+                p1_winner_name = st.session_state["winners"].get(
+                    match_id_p1_predecessor
+                )
+                p2_winner_name = st.session_state["winners"].get(
+                    match_id_p2_predecessor
+                )
 
-                    p1_full_name = st.session_state["winners"][match_id_p1_predecessor]
-                    p2_full_name = st.session_state["winners"][match_id_p2_predecessor]
+                p1_id_r = None
+                p2_id_r = None
 
-                    p1_base_name = extract_base_name(p1_full_name)
-                    p2_base_name = extract_base_name(p2_full_name)
-
+                # --- Spieler 1 bestimmen ---
+                if p1_winner_name:
+                    table_1.iloc[row_p1_current, r] = p1_winner_name
+                    p1_base_name = extract_base_name(p1_winner_name)
                     try:
                         p1_id_r = df_players_all.loc[p1_base_name, "id"]
+                    except KeyError:
+                        pass
+                else:
+                    table_1.iloc[row_p1_current, r] = "TBD"
+
+                # --- Spieler 2 bestimmen ---
+                if p2_winner_name:
+                    table_1.iloc[row_p2_current, r] = p2_winner_name
+                    p2_base_name = extract_base_name(p2_winner_name)
+                    try:
                         p2_id_r = df_players_all.loc[p2_base_name, "id"]
                     except KeyError:
-                        table.iloc[row_p1_current, r] = "ID-Error!"
-                        table.iloc[row_p2_current, r] = "ID-Error!"
-                        continue
+                        pass
+                else:
+                    table_1.iloc[row_p2_current, r] = "TBD"
 
-                    # Basis-Match-Daten für die aktuelle Runde
-                    current_match_data = {
-                        "p1_id": p1_id_r,
-                        "p2_id": p2_id_r,
-                        "p1_name_display": p1_full_name,
-                        "p2_name_display": p2_full_name,
-                    }
-                    all_possible_match_data[match_id] = current_match_data
+                display_p1 = table_1.iloc[row_p1_current, r]
+                display_p2 = table_1.iloc[row_p2_current, r]
+
+                # Wir müssen sicherstellen, dass wir keine ~TBD~ übergeben, also nur den reinen Namen
+                if display_p1.startswith("~"):
+                    display_p1 = extract_base_name(display_p1)
+                if display_p2.startswith("~"):
+                    display_p2 = extract_base_name(display_p2)
+
+                current_match_data = {
+                    "p1_id": p1_id_r,
+                    "p2_id": p2_id_r,
+                    "p1_name_display": display_p1,
+                    "p2_name_display": display_p2,
+                }
+
+                # NEU: Das Match IMMER zur Liste der möglichen Matches hinzufügen (unbedingt)
+                all_possible_match_data[match_id] = current_match_data
+
+                # *************************************************************************
+                # AB HIER STARTET DIE LOGIK FÜR SPIELBEREITE UND ABGESCHLOSSENE MATCHES
+                # *************************************************************************
+
+                # 2. Prüfen, ob das Match spielbereit ist (beide Spieler + IDs bekannt)
+                if (
+                    p1_winner_name
+                    and p2_winner_name
+                    and p1_id_r is not None
+                    and p2_id_r is not None
+                ):
 
                     winner_display = st.session_state["winners"].get(match_id)
 
                     if winner_display:
-                        # Match ist abgeschlossen
-                        if winner_display == p1_full_name:
-                            table.iloc[row_p1_current, r] = p1_full_name
-                            table.iloc[row_p2_current, r] = f"~{p2_full_name}~"
-                        elif winner_display == p2_full_name:
-                            table.iloc[row_p1_current, r] = f"~{p1_full_name}~"
-                            table.iloc[row_p2_current, r] = p2_full_name
-                        else:
-                            table.iloc[row_p1_current, r] = winner_display
-                            table.iloc[row_p2_current, r] = f"~{p2_full_name}~"
+                        # MATCH ABGESCHLOSSEN (visuelle Darstellung in table_1)
+                        if winner_display == p1_winner_name:
+                            table_1.iloc[row_p1_current, r] = p1_winner_name
+                            table_1.iloc[row_p2_current, r] = f"~{p2_winner_name}~"
+                        elif winner_display == p2_winner_name:
+                            table_1.iloc[row_p1_current, r] = f"~{p1_winner_name}~"
+                            table_1.iloc[row_p2_current, r] = p2_winner_name
+                        # ... (Restliche Logik für Abgeschlossene Matches, z.B. Linien zeichnen)
 
                     else:
-                        # Match ist offen und spielbereit
-                        table.iloc[row_p1_current, r] = p1_full_name
-                        table.iloc[row_p2_current, r] = p2_full_name
-
-                        # --- FIX: Übernehme alte, ungespeicherte Stats, falls vorhanden ---
+                        # MATCH SPIELBEREIT (noch kein Gewinner): Zu st.session_state.match_data hinzufügen
                         if match_id in old_match_data:
-                            # Merge Basisdaten mit alten, ungespeicherten Stats
                             st.session_state.match_data[match_id] = {
                                 **current_match_data,
                                 **old_match_data[match_id],
@@ -891,49 +810,146 @@ elif page == "📅 Tournament Schedule":
                         else:
                             st.session_state.match_data[match_id] = current_match_data
 
-                else:
-                    # Setze die Platzhalter, da die Vormatches noch nicht entschieden sind
-                    table.iloc[row_p1_current, r] = "TBD"
-                    table.iloc[row_p2_current, r] = "TBD"
-
-        # --- Visuelle Darstellung der Tabelle (Bracket) ---
+        # --- Visuelle Darstellung der Tabelle 1 (Runden 1-5) ---
+        st.write("### 🟨 Round 1 to 5 ")
         st.dataframe(
-            table,
+            table_1,
             hide_index=True,
-            use_container_width=True,
+            width="stretch",
         )
 
-        # --- NEUE KORRIGIERTE AUSGABE: LISTE DER MATCHES ---
+        st.markdown("---")
+        column_names_t2 = [
+            f"Semi-Finals",
+            f"Final",
+            "🏆 Champion",
+        ]
+        table_2 = pd.DataFrame(
+            "",
+            index=range(ROWS_T2),
+            columns=column_names_t2,
+        )
+
+        for r in range(NUM_ROUNDS_T2):  # r läuft von 0 (R6) bis 1 (R7)
+            r_abs = r + NUM_ROUNDS_T1  # r_abs läuft von 6 bis 7
+
+            step = 2**r_abs
+            num_matches_in_round = NUM_MATCHES_ROUND_1 // step
+
+            if r == 0:
+                index_step = 4
+            elif r == 1:
+                index_step = 0
+
+            for i in range(num_matches_in_round):
+                start_row_r1 = i * step * 2
+                match_id = f"match_{start_row_r1}_{r_abs + 1}"
+
+                match_id_p1_predecessor = f"match_{start_row_r1}_{r_abs}"
+                match_id_p2_predecessor = f"match_{start_row_r1 + step}_{r_abs}"
+
+                p1_winner_name = st.session_state["winners"].get(
+                    match_id_p1_predecessor
+                )
+                p2_winner_name = st.session_state["winners"].get(
+                    match_id_p2_predecessor
+                )
+
+                p1_id_r = None
+                p2_id_r = None
+
+                # --- Bestimmung der Zeilen-Indizes in table_2 ---
+                if r == 0:  # Runde 6 (nutzt den index_step)
+                    row_p1_current_t2 = i * index_step
+                    row_p2_current_t2 = row_p1_current_t2 + 2
+                elif r == 1:  # Runde 7 (Finale, zentral in der Mitte)
+                    row_p1_current_t2 = 1  # Zeile 5
+                    row_p2_current_t2 = 5  # Zeile 6
+
+                if p1_winner_name:
+                    table_2.iloc[row_p1_current_t2, r] = p1_winner_name
+                    p1_base_name = extract_base_name(p1_winner_name)
+                    try:
+                        p1_id_r = df_players_all.loc[p1_base_name, "id"]
+                    except KeyError:
+                        pass
+                else:
+                    table_2.iloc[row_p1_current_t2, r] = "TBD"
+
+                # --- Spieler 2 bestimmen ---
+                if p2_winner_name:
+                    table_2.iloc[row_p2_current_t2, r] = p2_winner_name
+                    p2_base_name = extract_base_name(p2_winner_name)
+                    try:
+                        p2_id_r = df_players_all.loc[p2_base_name, "id"]
+                    except KeyError:
+                        pass
+                else:
+                    table_2.iloc[row_p2_current_t2, r] = "TBD"
+
+                display_p1 = p1_winner_name if p1_winner_name else "TBD"
+                display_p2 = p2_winner_name if p2_winner_name else "TBD"
+
+                current_match_data = {
+                    "p1_id": p1_id_r,
+                    "p2_id": p2_id_r,
+                    "p1_name_display": display_p1,  # Wichtig: Setzt "TBD" wenn nötig
+                    "p2_name_display": display_p2,
+                }
+
+                # NEU: Das Match IMMER zur Liste der möglichen Matches hinzufügen
+                # Dadurch werden auch TBD vs. TBD Matches angezeigt.
+                all_possible_match_data[match_id] = current_match_data
+                if (
+                    p1_winner_name
+                    and p2_winner_name
+                    and p1_id_r is not None
+                    and p2_id_r is not None
+                ):
+
+                    winner_display = st.session_state["winners"].get(match_id)
+
+                    if winner_display:
+                        # MATCH ABGESCHLOSSEN: Ergebnisse in table_2 anzeigen (durchgestrichen)
+                        if winner_display == p1_winner_name:
+                            table_2.iloc[row_p1_current_t2, r] = p1_winner_name
+                            table_2.iloc[row_p2_current_t2, r] = f"~{p2_winner_name}~"
+                        elif winner_display == p2_winner_name:
+                            table_2.iloc[row_p1_current_t2, r] = f"~{p1_winner_name}~"
+                            table_2.iloc[row_p2_current_t2, r] = p2_winner_name
+
+                        if r_abs == NUM_ROUNDS:
+                            middle_row = 3
+                            table_2.iloc[middle_row, 2] = winner_display
+
+                    else:
+                        # MATCH SPIELBEREIT (noch kein Gewinner): Zu st.session_state.match_data hinzufügen
+                        if match_id in old_match_data:
+                            st.session_state.match_data[match_id] = {
+                                **current_match_data,
+                                **old_match_data[match_id],
+                            }
+                        else:
+                            st.session_state.match_data[match_id] = current_match_data
+
+        final_match_id = f"match_{0}_{NUM_ROUNDS}"
+        if final_match_id not in st.session_state["winners"]:
+            table_2.iloc[3, 2] = "TBD"
+        else:
+            champion_display = st.session_state["winners"][final_match_id]
+            table_2.iloc[3, 2] = champion_display
+
+        st.session_state["all_possible_match_data"] = all_possible_match_data
+
+        st.write("### 🥇 Semi-Finals and Final")
+        st.dataframe(
+            table_2,
+            hide_index=True,
+            width="stretch",
+        )
+
         st.markdown("---")
 
-        # 1. Sammle alle offenen Matches (nur jene, die in st.session_state.match_data sind)
-        all_open_matches = [
-            (match_id, data)
-            for match_id, data in st.session_state.match_data.items()
-            if match_id not in st.session_state["winners"]
-        ]
-
-        # 2. Finde die niedrigste Runden-Nummer mit offenen Matches
-        min_open_round = min(
-            [get_round_num(match_id) for match_id, _ in all_open_matches],
-            default=NUM_ROUNDS + 1,
-        )
-
-        # 3. Filtere die Liste, um NUR Matches dieser niedrigsten offenen Runde anzuzeigen
-        open_matches = [
-            (match_id, data)
-            for match_id, data in all_open_matches
-            if get_round_num(match_id) == min_open_round
-        ]
-
-        # ABGESCHLOSSENE MATCHES:
-        closed_matches = [
-            (match_id, data)
-            for match_id, data in all_possible_match_data.items()
-            if match_id in st.session_state["winners"]
-        ]
-
-        # --- Helferfunktion zur Sortierung ---
         def sort_key(item):
             match_id = item[0]
             try:
@@ -944,82 +960,164 @@ elif page == "📅 Tournament Schedule":
             except:
                 return 999, 0
 
-        open_matches.sort(key=sort_key)
-        closed_matches.sort(key=sort_key)
+        all_matches_by_round = {}
 
-        # --- 2. Anzeige der offenen Matches ---
-        st.write("### 🎯 Open Matches (Round {})".format(min_open_round))
-        if not open_matches:
-            st.info(
-                "No open matches available. The tournament might be concluded or you must enter preliminary round results."
-            )
-        else:
-            for match_id, match_data in open_matches:
-                p1_display = match_data["p1_name_display"]
-                p2_display = match_data["p2_name_display"]
+        # Iteriere über alle möglichen Match-Daten (Runde 1 bis 7)
+        for match_id, match_data in all_possible_match_data.items():
+            try:
+                round_num = get_round_num(match_id)
+            except:
+                # Matches, die nicht unseren ID-Format entsprechen (sollte nicht passieren)
+                round_num = "?"
 
-                try:
-                    round_num = get_round_num(match_id)
-                except:
-                    round_num = "?"
+            if round_num not in all_matches_by_round:
+                all_matches_by_round[round_num] = []
 
-                col1, col2 = st.columns([0.7, 0.3])
+            all_matches_by_round[round_num].append((match_id, match_data))
 
-                col1.markdown(
-                    f"**Round {round_num}:** **{p1_display}** vs. **{p2_display}**"
-                )
+        # Die Rundennummern sortieren, um sie in der richtigen Reihenfolge anzuzeigen (1, 2, 3...)
+        sorted_round_nums = sorted(
+            [r for r in all_matches_by_round.keys() if isinstance(r, int)]
+        )
 
-                # Button, um zur Detailseite zu wechseln
-                if col2.button("Capture Result 📝", key=f"enter_score_{match_id}"):
-                    st.session_state.current_match = match_id
-                    st.session_state.current_page = "match_detail"
-                    st.rerun()
+        st.write("### 📜 **Tournament Matches (Round 1 to Final)**")
 
-                st.markdown("---")
+        for round_num in sorted_round_nums:
 
-        # --- 3. Anzeige der abgeschlossenen Matches ---
-        st.write("### ✅ Completed Matches")
-        if not closed_matches:
-            st.info("No results have been recorded yet.")
-        else:
-            for match_id, match_data in closed_matches:
-                p1_display = match_data["p1_name_display"]
-                p2_display = match_data["p2_name_display"]
-                winner_text = st.session_state["winners"].get(match_id)
+            # --- Rundenüberschrift erstellen ---
+            if round_num == 7:
+                round_title = "Final"
+            elif round_num == 6:
+                round_title = "Semi-Finals"
+            elif round_num == 5:
+                round_title = "Quarter-Finals"
+            else:
+                round_title = f"Round {round_num}"
 
-                try:
-                    round_num = get_round_num(match_id)
-                except:
-                    round_num = "?"
+            # --- Expander-Logik ---
 
-                col1, col2 = st.columns([0.2, 0.8])
-
-                col1.markdown(f"Round {round_num}:")
-
-                p1_base = extract_base_name(p1_display)
-                p2_base = extract_base_name(p2_display)
-                winner_base = extract_base_name(winner_text)
-
-                if winner_text == p1_display:
-                    display_string = f"**{p1_base}** defeats ~~{p2_base}~~"
-                elif winner_text == p2_display:
-                    display_string = f"**{p2_base}** defeats ~~{p1_base}~~"
+            # Das Finale (Runde 7) soll standardmäßig offen sein
+            if round_num == 7:
+                title_text = f"🏅 **{round_title}**"
+                # Kein Expander hier
+                display_container = st.expander(title_text, expanded=False)
+            else:
+                # Alle anderen Runden kommen in einen Expander
+                if round_num == 6:
+                    title_text = f"🏅 {round_title} ({len(all_matches_by_round[round_num])} Matches)"
                 else:
-                    display_string = (
-                        f"{p1_base} vs. {p2_base}. Winner: **{winner_base}**"
-                    )
+                    title_text = f"🟨 {round_title} ({len(all_matches_by_round[round_num])} Matches)"
+                is_expanded = False
 
-                col2.markdown(display_string, unsafe_allow_html=True)
-                st.markdown("---")
+                display_container = st.expander(title_text, expanded=is_expanded)
 
-    # --- MATCH DETAIL SEITE (Jetzt mit eindeutigen Keys und korrekter Speicherung) ---
+            # Die Matches innerhalb der Runde sortieren (nach Start-Zeile)
+            current_round_matches = sorted(
+                all_matches_by_round[round_num], key=sort_key
+            )
+
+            # Wir verwenden den Container/Expander, um den Match-Code einzuschließen
+            with display_container:
+
+                # Jedes Match in dieser Runde anzeigen
+                for match_id, match_data in current_round_matches:
+                    p1_display = match_data.get("p1_name_display", "TBD")
+                    p2_display = match_data.get("p2_name_display", "TBD")
+
+                    # Prüfen, ob das Match bereits gespielt wurde
+                    winner_text = st.session_state["winners"].get(match_id)
+
+                    # Prüfen, ob das Match spielbereit ist (Offenes Match im State)
+                    is_open_match = match_id in st.session_state.match_data
+
+                    # Die Spalten-Anordnung muss INNERHALB des expanders/containers sein
+                    col1, col2 = st.columns([0.7, 0.3])
+
+                    # --- Match-Status bestimmen und anzeigen ---
+                    if winner_text:
+                        # FALL 1: MATCH ABGESCHLOSSEN
+                        scores = st.session_state["results_map"].get(match_id, {})
+                        score_string = ""
+                        if scores:
+                            score_p1 = scores.get("sets_p1", "?")
+                            score_p2 = scores.get("sets_p2", "?")
+                            score_string = f" ({score_p1}:{score_p2})"
+
+                        if winner_text == p1_display:
+                            display_string = (
+                                f"**{p1_display}** {score_string} ~~{p2_display}~~"
+                            )
+                        else:  # winner_text == p2_display:
+                            display_string = (
+                                f"~~{p1_display}~~ {score_string} **{p2_display}**"
+                            )
+
+                        col1.markdown(
+                            f"✅ {display_string}",
+                            unsafe_allow_html=True,
+                        )
+                        col2_status, col2_button = col2.columns(
+                            [0.4, 0.6]
+                        )  # Neue Spaltenstruktur in col2
+
+                        col2_status.success("Completed")  # Grüner Badge
+
+                        if col2_button.button(
+                            "Edit Result ✏️", key=f"edit_score_{match_id}"
+                        ):
+                            # Hier ändern wir den Seiten-Status, um zur Detailseite zu springen
+                            st.session_state.current_match = match_id
+                            st.session_state.current_page = "match_detail"
+                            st.rerun()
+
+                    elif is_open_match:
+                        # FALL 2: MATCH SPIELBEREIT (Spieler stehen fest)
+                        col1.markdown(f"🎯 **{p1_display}** vs. **{p2_display}**")
+
+                        # Button, um zur Detailseite zu wechseln
+                        if col2.button(
+                            "Capture Result 📝", key=f"enter_score_{match_id}"
+                        ):
+                            st.session_state.current_match = match_id
+                            st.session_state.current_page = "match_detail"
+                            st.rerun()
+
+                    else:
+                        # FALL 3: MATCH NOCH NICHT SPIELBEREIT (TBD)
+                        if p1_display == "TBD" and p2_display == "TBD":
+                            col1.markdown(f"⏳ **TBD** vs. **TBD**")
+                        else:
+                            col1.markdown(f"⏳ **{p1_display}** vs. **{p2_display}**")
+
+                        col2.info("Waiting for Predecessor")  # Blauer Badge
+
+                    # Trennlinie nach jedem Match
+                    st.markdown("---")
+
     elif st.session_state.current_page == "match_detail":
         match_id = st.session_state.current_match
+        all_possible_match_data_s = st.session_state.get("all_possible_match_data", {})
 
-        # NEU: Daten werden direkt aus der Session geholt.
-        # Wenn die Seite lädt, werden die Keys im Session State mit Werten gefüllt,
-        # die aus match_data als 'value' in number_input übergeben werden.
-        match_info = st.session_state.match_data.get(match_id, {})
+        if match_id in st.session_state.match_data:
+            match_info = st.session_state.match_data[match_id]
+
+        # Prüfe zweitens, ob es ein abgeschlossenes Match zur Bearbeitung ist
+        elif match_id in st.session_state.get("results_map", {}):
+
+            base_data = all_possible_match_data_s.get(match_id, {})
+
+            match_info = {
+                **base_data,
+                **st.session_state["results_map"][match_id],
+            }
+            st.session_state.match_data[match_id] = base_data
+
+        else:
+            st.error(
+                f"Error: Match ID {match_id} not found in open or completed matches."
+            )
+            st.session_state.current_page = "overview"
+            st.rerun()
 
         p1_id = match_info.get("p1_id", -1)
         p2_id = match_info.get("p2_id", -1)
@@ -1028,33 +1126,31 @@ elif page == "📅 Tournament Schedule":
 
         try:
             round_num = int(match_id.split("_")[-1])
-            max_sets = {1: 5, 2: 5, 3: 7, 4: 7, 5: 9, 6: 11}.get(round_num, 7)
+            sets_to_win = {1: 3, 2: 3, 3: 4, 4: 4, 5: 5, 6: 6, 7: 7}.get(round_num, 7)
         except:
-            max_sets = 7
+            sets_to_win = 5
             round_num = "?"
 
-        sets_to_win = (max_sets // 2) + 1
-
         st.write(f"### 🏹 Match Details – Round {round_num}")
+        st.markdown(f"**{p1_name_display}** vs. **{p2_name_display}**")
         st.markdown(
-            f"**{p1_name_display}** (ID: {p1_id}) vs. **{p2_name_display}** (ID: {p2_id})"
+            f"Best-of {sets_to_win*2+1} Sets. Needed to win: {sets_to_win} Sets."
         )
-        st.markdown(f"Best-of {max_sets} Sets. Needed to win: {sets_to_win} Sets.")
         st.markdown("---")
 
         col1, col2 = st.columns(2)
 
         # Definition der eindeutigen Keys
-        KEY_SETS_P1 = f"sets_{match_id}"
-        KEY_LEGS_P1 = f"legs_{match_id}"
-        KEY_180S_P1 = f"180s_{match_id}"
-        KEY_HIGH_CHECKOUT_P1 = f"high_checkout_{match_id}"
-        KEY_AVERAGE_P1 = f"average_{match_id}"
-        KEY_CHECKOUT_PCT_P1 = f"checkout_pct_{match_id}"
+        KEY_SETS_P1 = f"sets_p1_{match_id}"
+        KEY_LEGS_P1 = f"legs_p1_{match_id}"
+        KEY_180S_P1 = f"d180s_p1_{match_id}"
+        KEY_HIGH_CHECKOUT_P1 = f"high_checkout_p1_{match_id}"
+        KEY_AVERAGE_P1 = f"average_p1_{match_id}"
+        KEY_CHECKOUT_PCT_P1 = f"checkout_pct_p1_{match_id}"
 
         KEY_SETS_P2 = f"sets_p2_{match_id}"
         KEY_LEGS_P2 = f"legs_p2_{match_id}"
-        KEY_180S_P2 = f"180s_p2_{match_id}"
+        KEY_180S_P2 = f"d180s_p2_{match_id}"
         KEY_HIGH_CHECKOUT_P2 = f"high_checkout_p2_{match_id}"
         KEY_AVERAGE_P2 = f"average_p2_{match_id}"
         KEY_CHECKOUT_PCT_P2 = f"checkout_pct_p2_{match_id}"
@@ -1071,23 +1167,23 @@ elif page == "📅 Tournament Schedule":
             "Sets won",
             key=KEY_SETS_P1,  # NEU: Eindeutiger Key
             min_value=0,
-            max_value=max_sets,
+            max_value=sets_to_win,
             step=1,
-            value=get_initial_value("sets", 0),
+            value=get_initial_value("sets_p1", 0),
         )
         col1.number_input(
             "Legs won",
             key=KEY_LEGS_P1,  # NEU: Eindeutiger Key
             min_value=0,
             step=1,
-            value=get_initial_value("legs", 0),
+            value=get_initial_value("legs_p1", 0),
         )
         col1.number_input(
             "180s",
             key=KEY_180S_P1,  # NEU: Eindeutiger Key
             min_value=0,
             step=1,
-            value=get_initial_value("180s", 0),
+            value=get_initial_value("d180s_p1", 0),
         )
         col1.number_input(
             "Highest Checkout",
@@ -1095,7 +1191,7 @@ elif page == "📅 Tournament Schedule":
             min_value=0,
             max_value=170,
             step=1,
-            value=get_initial_value("high_checkout", 0),
+            value=get_initial_value("high_checkout_p1", 0),
         )
         col1.number_input(
             "Average",
@@ -1103,7 +1199,7 @@ elif page == "📅 Tournament Schedule":
             min_value=0.0,
             step=0.01,
             format="%.2f",
-            value=get_initial_value("average", 0.0),
+            value=get_initial_value("average_p1", 0.0),
         )
         col1.number_input(
             "Checkout %",
@@ -1112,7 +1208,7 @@ elif page == "📅 Tournament Schedule":
             max_value=100.0,
             step=0.01,
             format="%.2f",
-            value=get_initial_value("checkout_pct", 0.0),
+            value=get_initial_value("checkout_pct_p1", 0.0),
         )
 
         # Input-Felder für Spieler 2
@@ -1122,7 +1218,7 @@ elif page == "📅 Tournament Schedule":
             "Sets won",
             key=KEY_SETS_P2,  # NEU: Eindeutiger Key
             min_value=0,
-            max_value=max_sets,
+            max_value=sets_to_win,
             step=1,
             value=get_initial_value("sets_p2", 0),
         )
@@ -1138,7 +1234,7 @@ elif page == "📅 Tournament Schedule":
             key=KEY_180S_P2,  # NEU: Eindeutiger Key
             min_value=0,
             step=1,
-            value=get_initial_value("180s_p2", 0),
+            value=get_initial_value("d180s_p2", 0),
         )
         col2.number_input(
             "Highest Checkout",
@@ -1165,45 +1261,85 @@ elif page == "📅 Tournament Schedule":
             format="%.2f",
             value=get_initial_value("checkout_pct_p2", 0.0),
         )
+        st.session_state["results_map"][match_id] = {
+            "sets_p1": st.session_state[KEY_SETS_P1],
+            "legs_p1": st.session_state[KEY_LEGS_P1],
+            "d180s_p1": st.session_state[KEY_180S_P1],
+            "high_checkout_p1": st.session_state[KEY_HIGH_CHECKOUT_P1],
+            "average_p1": st.session_state[KEY_AVERAGE_P1],
+            "checkout_pct_p1": st.session_state[KEY_CHECKOUT_PCT_P1],
+            "sets_p2": st.session_state[KEY_SETS_P2],
+            "legs_p2": st.session_state[KEY_LEGS_P2],
+            "d180s_p2": st.session_state[KEY_180S_P2],
+            "high_checkout_p2": st.session_state[KEY_HIGH_CHECKOUT_P2],
+            "average_p2": st.session_state[KEY_AVERAGE_P2],
+            "checkout_pct_p2": st.session_state[KEY_CHECKOUT_PCT_P2],
+        }
 
-        # --- Aktualisiere Session State (Dies muss manuell erfolgen, da number_input
-        # --- die Werte unter den eindeutigen Keys speichert, aber match_data die Basisdaten braucht) ---
-        st.session_state.match_data[match_id]["sets"] = st.session_state[KEY_SETS_P1]
-        st.session_state.match_data[match_id]["legs"] = st.session_state[KEY_LEGS_P1]
-        st.session_state.match_data[match_id]["180s"] = st.session_state[KEY_180S_P1]
-        st.session_state.match_data[match_id]["high_checkout"] = st.session_state[
-            KEY_HIGH_CHECKOUT_P1
-        ]
-        st.session_state.match_data[match_id]["average"] = st.session_state[
-            KEY_AVERAGE_P1
-        ]
-        st.session_state.match_data[match_id]["checkout_pct"] = st.session_state[
-            KEY_CHECKOUT_PCT_P1
-        ]
-
-        st.session_state.match_data[match_id]["sets_p2"] = st.session_state[KEY_SETS_P2]
-        st.session_state.match_data[match_id]["legs_p2"] = st.session_state[KEY_LEGS_P2]
-        st.session_state.match_data[match_id]["180s_p2"] = st.session_state[KEY_180S_P2]
-        st.session_state.match_data[match_id]["high_checkout_p2"] = st.session_state[
-            KEY_HIGH_CHECKOUT_P2
-        ]
-        st.session_state.match_data[match_id]["average_p2"] = st.session_state[
-            KEY_AVERAGE_P2
-        ]
-        st.session_state.match_data[match_id]["checkout_pct_p2"] = st.session_state[
-            KEY_CHECKOUT_PCT_P2
-        ]
+        # --- DIESE ZEILE AM ENDE DES BLOCKS IST WICHTIG FÜR DIE KORREKTE BEENDIGUNG ---
+        # NEU: Entferne das Match aus match_data, wenn es abgeschlossen wird/wurde
+        if match_id in st.session_state.match_data:
+            del st.session_state.match_data[match_id]
 
         # NEU: Verwende die Werte direkt aus dem Session State, die durch number_input gesetzt wurden
         p1_sets_final = st.session_state[KEY_SETS_P1]
         p2_sets_final = st.session_state[KEY_SETS_P2]
 
         st.markdown("---")
-        col_buttons = st.columns(2)
+        col_buttons = st.columns(3)
 
         if col_buttons[0].button("Back to Overview"):
+            st.session_state["confirm_delete"] = False
+            st.session_state["current_match"] = None
             st.session_state.current_page = "overview"
             st.rerun()
+
+        # NEU: Lösch-Button mit Bestätigung
+        if col_buttons[1].button("Delete Match", type="secondary"):
+
+            # 🎯 BESTÄTIGUNG ERFORDERLICH
+            if (
+                st.session_state.get("confirm_delete", False)
+                and st.session_state.current_match == match_id
+            ):
+
+                try:
+                    resp = requests.delete(f"{BASE_URL}/matches/{match_id}")
+                    resp.raise_for_status()
+
+                    # Entferne das Match aus dem Frontend-Session State
+                    if match_id in st.session_state.match_data:
+                        del st.session_state.match_data[match_id]
+                    if match_id in st.session_state.get("results_map", {}):
+                        del st.session_state["results_map"][match_id]
+                    if match_id in st.session_state.get("winners", {}):
+                        del st.session_state["winners"][match_id]
+
+                    st.success(
+                        f"Match {match_id} successfully deleted and data cleared."
+                    )
+
+                    # Punkte nach Löschung neu berechnen (optional, falls Backend es nicht macht)
+                    requests.put(f"{BASE_URL}/players/points/recompute")
+
+                    # Zur Übersicht zurückkehren
+                    st.session_state.current_page = "overview"
+                    st.session_state["confirm_delete"] = False  # Reset Bestätigung
+                    st.rerun()
+
+                except requests.exceptions.RequestException as e:
+                    st.error(f"Error deleting the match: {e}")
+                    st.session_state["confirm_delete"] = False  # Reset Bestätigung
+            else:
+                # Zeige Bestätigungs-Nachricht an
+                st.session_state["confirm_delete"] = True
+                st.session_state["current_match"] = (
+                    match_id  # Speichere Match-ID für Bestätigung
+                )
+                st.warning(
+                    f"⚠️ **CONFIRM DELETION:** Press the 'Delete Match' button again to permanently delete Match {match_id} from the database."
+                )
+                st.stop()  # Stoppe Rerun, um die Warnung zu zeigen
 
         # Überprüfe die Siegesbedingung
         is_p1_winner = p1_sets_final >= sets_to_win and p1_sets_final > p2_sets_final
@@ -1212,10 +1348,10 @@ elif page == "📅 Tournament Schedule":
 
         if not is_valid_match and (p1_sets_final > 0 or p2_sets_final > 0):
             st.warning(
-                f"The match is not yet completed. {sets_to_win} sets required to win."
+                f"The match is not yet completed. One player requires {sets_to_win} sets to win."
             )
 
-        if col_buttons[1].button(
+        if col_buttons[2].button(
             "Save and Conclude Match",
             disabled=not is_valid_match,
             type="primary",
@@ -1248,8 +1384,8 @@ elif page == "📅 Tournament Schedule":
                 "checkout_pct_p2": st.session_state[KEY_CHECKOUT_PCT_P2],
                 "high_checkout_p1": st.session_state[KEY_HIGH_CHECKOUT_P1],
                 "high_checkout_p2": st.session_state[KEY_HIGH_CHECKOUT_P2],
-                "180s_p1": st.session_state[KEY_180S_P1],
-                "180s_p2": st.session_state[KEY_180S_P2],
+                "d180s_p1": st.session_state[KEY_180S_P1],
+                "d180s_p2": st.session_state[KEY_180S_P2],
             }
 
             # --- Speichere Daten im Backend (Mocked) ---
@@ -1283,6 +1419,8 @@ elif page == "📅 Tournament Schedule":
                 st.success(
                     f"Result for {p1_name_display} vs. {p2_name_display} successfully saved! Winner: {winner_display}"
                 )
+                st.session_state["confirm_delete"] = False
+                st.session_state["current_match"] = None
                 st.session_state.current_page = "overview"
                 st.rerun()
 
@@ -1291,244 +1429,7 @@ elif page == "📅 Tournament Schedule":
                 if "resp" in locals():
                     error_message += f"\nResponse: {resp.text}"
                 st.error(error_message)
-    # if st.session_state.current_page != "match_detail":
-    #     st.write("## 🗓 Match Schedule")
-    #     players = requests.get(f"{BASE_URL}/players/").json()
-    #     df_players = pd.DataFrame(players)
-    #     df_players = df_players.sort_values("seed").head(64).reset_index(drop=True)
 
-    #     num_players = 64
-    #     num_rounds = int(math.log2(num_players))
-    #     rows = num_players * 2 - 1
-
-    #     # --- Seed-Reihenfolge generieren ---
-    #     def generate_bracket(n):
-    #         if n == 1:
-    #             return [1]
-    #         prev = generate_bracket(n // 2)
-    #         result = []
-    #         for p in prev:
-    #             result.append(p)
-    #             result.append(n + 1 - p)
-    #         return result
-
-    #     bracket = generate_bracket(num_players)
-
-    #     # --- Session-State initialisieren ---
-
-    #     if "winners" not in st.session_state:
-    #         st.session_state["winners"] = {}
-
-    #     results = requests.get(f"{BASE_URL}/matches/results/").json()
-    #     for match in results:
-    #         match_id = match["match_id"]
-    #         winner_id = match["winner_id"]
-    #         winner = f"{df_players.loc[df_players['id'] == winner_id, 'name'].values[0]} ({df_players.loc[df_players['id'] == winner_id, 'seed'].values[0]})"
-    #         st.session_state["winners"][match_id] = winner
-
-    #     if "match_data" not in st.session_state:
-    #         st.session_state["match_data"] = {}
-    #     if "current_match" not in st.session_state:
-    #         st.session_state["current_match"] = None
-
-    #     # --- Tabelle aufbauen ---
-    #     table = pd.DataFrame(
-    #         "",
-    #         index=range(rows),
-    #         columns=[f"Round {i+1}" for i in range(num_rounds)],
-    #     )
-
-    #     # Runde 1
-    #     for i, seed in enumerate(bracket):
-    #         row = i * 2
-    #         player = f"{df_players.loc[seed-1, 'name']} ({seed})"
-    #         table.iloc[row, 0] = player
-
-    #     # Weitere Runden: Platzhalter setzen
-    #     for r in range(1, num_rounds):
-    #         step = 2**r
-    #         for i in range(0, rows, step * 2):
-    #             row_winner = i + step - 1
-    #             match_id = f"match_{row_winner}_{r}"
-    #             table.iloc[row_winner, r] = st.session_state["winners"].get(
-    #                 match_id, "?"
-    #             )
-
-    #     # --- Dynamische Breite ---
-    #     max_name_len = max(len(str(name)) for name in df_players["name"])
-    #     button_width = int(max_name_len * 8.5 + 60)
-
-    #     for r in range(1, num_rounds):
-    #         step = 2**r
-    #         for i in range(0, rows, step * 2):
-    #             row_winner = i + step - 1
-    #             match_id = f"match_{row_winner}_{r}"
-    #             p1_row = i
-    #             p2_row = i + step
-    #             p1_name = table.iloc[p1_row, r - 1]
-    #             p2_name = table.iloc[p2_row, r - 1]
-
-    #             # Nur echte Spieler anzeigen (nicht leere Zellen)
-    #             if p1_name != "" and p2_name != "":
-    #                 cols = st.columns([2, 2, 1])
-    #                 cols[0].markdown(f"**{p1_name}**")
-    #                 cols[1].markdown(f"**{p2_name}**")
-    #                 if cols[2].button("Edit", key=match_id):
-    #                     st.session_state.current_match = match_id
-    #                     st.session_state.current_page = "match_detail"
-    #                     st.session_state.match_data[match_id] = {
-    #                         "p1_name": p1_name,
-    #                         "p2_name": p2_name,
-    #                         "legs": None,
-    #                         "180s": None,
-    #                         "sets": None,
-    #                         "high_checkout": None,
-    #                         "average": None,
-    #                         "checkout_pct": None,
-    #                     }
-    #                     st.rerun()
-
-    # elif st.session_state.current_page == "match_detail":
-    #     match_id = st.session_state.current_match
-    #     match_info = st.session_state.match_data[match_id]
-    #     players = requests.get(f"{BASE_URL}/players/").json()
-    #     df_players = pd.DataFrame(players)
-    #     player_base_name1 = re.match(r"^(.*?) \(\d+\)$", match_info["p1_name"])
-    #     if player_base_name1:
-    #         player_base_name1 = player_base_name1.group(1)
-    #     else:
-    #         player_base_name1 = match_info["p1_name"]
-
-    #     player_base_name2 = re.match(r"^(.*?) \(\d+\)$", match_info["p2_name"])
-    #     if player_base_name2:
-    #         player_base_name2 = player_base_name2.group(1)
-    #     else:
-    #         player_base_name2 = match_info["p2_name"]
-
-    #     p1_id = df_players.loc[df_players["name"] == player_base_name1, "id"].values[0]
-    #     p2_id = df_players.loc[df_players["name"] == player_base_name2, "id"].values[0]
-    #     st.write(f"### 🏹 Match Details – {match_id}")
-    #     st.write(f"**Player 1:** {match_info["p1_name"]}")
-    #     st.write(f"**Player 2:** {match_info["p2_name"]}")
-
-    #     # Stats-Eingabe
-    #     match_info["sets"] = st.number_input(
-    #         f"Sets {match_info["p1_name"]}",
-    #         min_value=0,
-    #         max_value=50,
-    #         key=f"{match_id}_sets_p1",
-    #     )
-    #     match_info["legs"] = st.number_input(
-    #         f"Legs {match_info["p1_name"]}",
-    #         min_value=0,
-    #         max_value=50,
-    #         key=f"{match_id}_legs_p1",
-    #     )
-    #     match_info["180s"] = st.number_input(
-    #         f"180s {match_info["p1_name"]}",
-    #         min_value=0,
-    #         max_value=50,
-    #         key=f"{match_id}_180s_p1",
-    #     )
-    #     match_info["high_checkout"] = st.number_input(
-    #         f"High Checkout {match_info["p1_name"]}",
-    #         min_value=0,
-    #         max_value=180,
-    #         key=f"{match_id}_high_p1",
-    #     )
-    #     match_info["average"] = st.number_input(
-    #         f"Average {match_info["p1_name"]}",
-    #         min_value=0.0,
-    #         max_value=200.0,
-    #         key=f"{match_id}_avg_p1",
-    #     )
-    #     match_info["checkout_pct"] = st.number_input(
-    #         f"Checkout % {match_info["p1_name"]}",
-    #         min_value=0.0,
-    #         max_value=100.0,
-    #         key=f"{match_id}_co_p1",
-    #     )
-
-    #     match_info["sets_p2"] = st.number_input(
-    #         f"Sets {match_info["p2_name"]}",
-    #         min_value=0,
-    #         max_value=50,
-    #         key=f"{match_id}_sets_p2",
-    #     )
-    #     match_info["legs_p2"] = st.number_input(
-    #         f"Legs {match_info["p2_name"]}",
-    #         min_value=0,
-    #         max_value=50,
-    #         key=f"{match_id}_legs_p2",
-    #     )
-    #     match_info["180s_p2"] = st.number_input(
-    #         f"180s {match_info["p2_name"]}",
-    #         min_value=0,
-    #         max_value=50,
-    #         key=f"{match_id}_180s_p2",
-    #     )
-    #     match_info["high_checkout_p2"] = st.number_input(
-    #         f"High Checkout {match_info["p2_name"]}",
-    #         min_value=0,
-    #         max_value=180,
-    #         key=f"{match_id}_high_p2",
-    #     )
-    #     match_info["average_p2"] = st.number_input(
-    #         f"Average {match_info["p2_name"]}",
-    #         min_value=0.0,
-    #         max_value=200.0,
-    #         key=f"{match_id}_avg_p2",
-    #     )
-    #     match_info["checkout_pct_p2"] = st.number_input(
-    #         f"Checkout % {match_info["p2_name"]}",
-    #         min_value=0.0,
-    #         max_value=100.0,
-    #         key=f"{match_id}_co_p2",
-    #     )
-    #     if st.button("Back"):
-    #         st.session_state.current_page = "overview"
-    #         st.rerun()
-    #     if st.button("Save Match"):
-    #         players = requests.get(f"{BASE_URL}/players/").json()
-    #         df_players = pd.DataFrame(players)
-    #         df_players = df_players.sort_values("seed").head(64).reset_index(drop=True)
-    #         # Gewinner bestimmen
-    #         winner_id = p1_id if match_info["sets"] > match_info["sets_p2"] else p2_id
-    #         winner_name = (
-    #             match_info["p2_name"]
-    #             if match_info["sets"] > match_info["sets_p2"]
-    #             else match_info["p2_name"]
-    #         )
-    #         payload = {
-    #             "match_id": match_id,
-    #             "p1_id": int(p1_id),
-    #             "p2_id": int(p2_id),
-    #             "winner_id": int(winner_id),
-    #             "sets_p1": match_info["sets"],
-    #             "sets_p2": match_info["sets_p2"],
-    #             "legs_p1": match_info["legs"],
-    #             "legs_p2": match_info["legs_p2"],
-    #             # optional weitere stats
-    #             "average_p1": match_info["average"],
-    #             "average_p2": match_info["average_p2"],
-    #             "checkout_pct_p1": match_info["checkout_pct"],
-    #             "checkout_pct_p2": match_info["checkout_pct_p2"],
-    #             "high_checkout_p1": match_info["high_checkout"],
-    #             "high_checkout_p2": match_info["high_checkout_p2"],
-    #             "180s_p1": match_info["180s"],
-    #             "180s_p2": match_info["180s_p2"],
-    #         }
-
-    #         resp = requests.put(f"{BASE_URL}/matches/save_match/", json=payload)
-    #         try:
-    #             msg = resp.json().get("msg", "No message returned")
-    #         except ValueError:
-    #             # Kein JSON erhalten
-    #             msg = f"Error: server returned status {resp.status_code}, body: {resp.text}"
-    #         requests.put(f"{BASE_URL}/players/points/recompute", json=payload)
-    #         st.session_state.current_match = None
-    #         st.session_state.current_page = "overview"
-    #         st.rerun()
 # -----------------------------------
 # 🔹 Team erstellen
 # -----------------------------------
@@ -1674,7 +1575,7 @@ if "current_page" in st.session_state:
                 "id",
                 "points",
                 "eliminated",
-            ],  # id, points, eliminated hinzugefügt
+            ],
             key="edit_team_editor",
         )
 
@@ -1994,288 +1895,3 @@ if "current_page" in st.session_state:
             st.warning(
                 "⚠️ Select exactly 15 players, stay within budget, and choose both roles."
             )
-
-
-# elif page == "🧩 Teams":
-#     if "user_id" not in st.session_state:
-#         st.warning("⚠️ Please log in to create a team!")
-#         st.stop()
-
-#     st.title("🧩 Your Teams")
-
-#     # --- 1. Load user's teams ---
-#     try:
-#         user_teams = requests.get(
-#             f"{BASE_URL}/teams/user/{st.session_state.user_id}"
-#         ).json()
-#         df_teams = pd.DataFrame(user_teams)
-#         if not df_teams.empty:
-#             st.subheader("📝 Your Existing Teams")
-#             df_teams = df_teams.sort_values(
-#                 by="total_points", ascending=False
-#             ).reset_index(drop=True)
-#             df_teams.insert(0, "Rank", df_teams.index + 1)
-
-#             for i, row in df_teams.iterrows():
-#                 cols = st.columns([1, 4, 2, 2, 2])
-#                 cols[0].write(row["Rank"])
-#                 cols[1].write(row["team_name"])
-#                 cols[2].write(row["total_points"])
-#                 if cols[3].button("✏️ Edit", key=f"edit_{row['team_id']}"):
-#                     # Speichere Team für Edit
-#                     st.session_state.edit_team_id = row["team_id"]
-#                     st.session_state.edit_team_name = row["team_name"]
-#                     st.session_state.current_page = "edit_team"
-#                     st.rerun()
-
-#                 if cols[4].button("🗑 Delete", key=f"delete_{row['team_id']}"):
-#                     try:
-#                         response = requests.delete(f"{BASE_URL}/teams/{row['team_id']}")
-#                         if response.status_code == 200:
-#                             st.success(
-#                                 f"Team '{row['team_name']}' deleted successfully!"
-#                             )
-#                             st.session_state.current_page = "overview"
-#                             st.rerun()  # Seite neu laden, damit gelöschtes Team verschwindet
-#                         else:
-#                             st.error(f"Error deleting team: {response.text}")
-#                     except Exception as e:
-#                         st.error(f"Error deleting team: {e}")
-#         else:
-#             st.info("You have not created any teams yet.")
-#     except Exception as e:
-#         st.warning(f"Could not load your teams: {e}")
-
-#     st.markdown("---")
-
-#     if st.session_state.get("current_page", "") not in ["edit_team", "create_new_team"]:
-#         if st.button("➕ Create New Team"):
-#             # Bereite Session State für Team Creation vor
-#             st.session_state.selected_ids = []
-#             st.session_state.current_page = "create_new_team"
-#             st.rerun()
-
-
-# # --- 3. Edit Team oder Create New Team Seiten ---
-# if "current_page" in st.session_state:
-
-#     # 🟦 --- EDIT EXISTING TEAM ---
-#     if st.session_state.current_page == "edit_team":
-#         if st.button("⬅️ Back to Teams"):
-#             st.session_state.current_page = (
-#                 "overview"  # oder "teams_overview" je nach deinem Setup
-#             )
-#             st.rerun()
-#         team_id = st.session_state.edit_team_id
-#         team_name = st.session_state.edit_team_name
-#         st.title(f"✏️ Edit Team: {team_name}")
-
-#         TOTAL_BUDGET = 20000
-
-#         # --- Lade Team-Spieler ---
-#         try:
-#             team_players = requests.get(f"{BASE_URL}/teams/{team_id}/players").json()
-#         except Exception as e:
-#             st.error(f"Fehler beim Laden der Teamspieler: {e}")
-#             st.stop()
-
-#         # IDs der aktuellen Teamspieler
-#         current_player_ids = (
-#             [p["id"] for p in team_players] if isinstance(team_players, list) else []
-#         )
-
-#         # --- Lade alle Spieler ---
-#         try:
-#             players = requests.get(f"{BASE_URL}/players/").json()
-#         except Exception as e:
-#             st.error(f"Fehler beim Laden der Spielerliste: {e}")
-#             players = []
-
-#         if not isinstance(players, list) or len(players) == 0:
-#             st.error("❌ Keine Spieler gefunden!")
-#             st.stop()
-
-#         # --- DataFrame vorbereiten ---
-#         df = pd.DataFrame(players)
-#         df["selected"] = df["id"].isin(current_player_ids)
-
-#         def get_flag_url(nation):
-#             code = COUNTRY_CODE_MAP.get(nation.strip())
-#             return f"{BASE_FLAG_URL}{code}.svg" if code else ""
-
-#         df["flag_url"] = df["nation"].apply(get_flag_url)
-
-#         # --- Tabelle anzeigen ---
-#         edited_df = st.data_editor(
-#             df,
-#             column_config={
-#                 "seed": st.column_config.Column("Seed", width="small"),
-#                 "name": st.column_config.Column("Name"),
-#                 "price": st.column_config.Column("Price"),
-#                 "flag_url": st.column_config.ImageColumn("Nation", width="small"),
-#                 "selected": st.column_config.CheckboxColumn("Select"),
-#             },
-#             column_order=["seed", "name", "price", "flag_url", "selected"],
-#             hide_index=True,
-#             width="stretch",
-#             disabled=["seed", "name", "price", "nation", "id"],
-#             key="edit_team_editor",
-#         )
-
-#         # --- Auswahl aktualisieren ---
-#         selected_df = edited_df[edited_df["selected"]]
-#         selected_ids = selected_df["id"].tolist()
-#         total_spent = selected_df["price"].sum()
-#         remaining_budget = TOTAL_BUDGET - total_spent
-#         selected_count = len(selected_ids)
-
-#         # --- Budgetanzeige ---
-#         st.markdown(
-#             f"""
-#             ### 💰 Budget
-#             - **Total:** {TOTAL_BUDGET:,.2f}
-#             - **Used:** {total_spent:,.2f}
-#             - **Remaining:** <span style="color:{'red' if remaining_budget < 0 else 'green'}">{remaining_budget:,.2f}</span>
-#             """,
-#             unsafe_allow_html=True,
-#         )
-#         st.markdown(f"### 🧍 Selected Players: {selected_count} / 15")
-
-#         # --- Aktuelles Team anzeigen ---
-#         if not selected_df.empty:
-#             st.subheader("✅ Your Current Team")
-#             st.dataframe(
-#                 selected_df[["seed", "name", "price", "flag_url"]],
-#                 column_config={
-#                     "seed": st.column_config.Column("Seed", width="tiny"),
-#                     "name": st.column_config.Column("Player Name"),
-#                     "price": st.column_config.Column("Price"),
-#                     "flag_url": st.column_config.ImageColumn("Flag", width="tiny"),
-#                 },
-#                 hide_index=True,
-#                 width="stretch",
-#             )
-#         else:
-#             st.info("No players selected yet.")
-
-#         # --- Update / Save Button ---
-#         can_save = (selected_count == 15) and (remaining_budget >= 0)
-#         if can_save:
-#             if st.button("💾 Save Team Changes"):
-#                 payload = {"player_ids": selected_ids}
-#                 response = requests.put(f"{BASE_URL}/teams/{team_id}", json=payload)
-#                 if response.status_code == 200:
-#                     st.success("Team updated successfully!")
-#                     # st.session_state.current_page = "teams_overview"
-#                     st.session_state.current_page = "overview"
-#                     st.rerun()
-#                 else:
-#                     st.error(f"Error updating team: {response.text}")
-#         else:
-#             st.warning("Team not valid (check player count or budget).")
-
-#     # 🟩 --- CREATE NEW TEAM ---
-#     elif st.session_state.current_page == "create_new_team":
-#         if st.button("⬅️ Back to Teams"):
-#             st.session_state.current_page = (
-#                 "overview"  # oder "teams_overview" je nach deinem Setup
-#             )
-#             st.rerun()
-#         st.title("🎯 Fantasy Darts – Create Your Team")
-#         TOTAL_BUDGET = 20000
-
-#         # --- Lade Spieler ---
-#         try:
-#             players = requests.get(f"{BASE_URL}/players/").json()
-#         except Exception as e:
-#             st.error(f"Fehler beim Laden der Spieler: {e}")
-#             st.stop()
-
-#         if not isinstance(players, list) or len(players) == 0:
-#             st.error("❌ Keine Spieler gefunden!")
-#             st.stop()
-
-#         df = pd.DataFrame(players)
-#         df["selected"] = False
-
-#         def get_flag_url(nation):
-#             code = COUNTRY_CODE_MAP.get(nation.strip())
-#             return f"{BASE_FLAG_URL}{code}.svg" if code else ""
-
-#         df["flag_url"] = df["nation"].apply(get_flag_url)
-
-#         # --- Tabelle ---
-#         edited_df = st.data_editor(
-#             df,
-#             column_config={
-#                 "seed": st.column_config.Column("Seed", width="small"),
-#                 "name": st.column_config.Column("Name"),
-#                 "price": st.column_config.Column("Price"),
-#                 "flag_url": st.column_config.ImageColumn("Nation", width="small"),
-#                 "selected": st.column_config.CheckboxColumn("Select"),
-#             },
-#             column_order=["seed", "name", "price", "flag_url", "selected"],
-#             hide_index=True,
-#             width="stretch",
-#             disabled=["seed", "name", "price", "nation", "id"],
-#             key="create_team_editor",
-#         )
-
-#         # --- Auswahl & Budget ---
-#         selected_df = edited_df[edited_df["selected"]]
-#         selected_ids = selected_df["id"].tolist()
-#         total_spent = selected_df["price"].sum()
-#         remaining_budget = TOTAL_BUDGET - total_spent
-#         selected_count = len(selected_ids)
-
-#         # --- Budgetanzeige ---
-#         st.markdown(
-#             f"""
-#             ### 💰 Budget
-#             - **Total:** {TOTAL_BUDGET:,.2f}
-#             - **Used:** {total_spent:,.2f}
-#             - **Remaining:** <span style="color:{'red' if remaining_budget < 0 else 'green'}">{remaining_budget:,.2f}</span>
-#             """,
-#             unsafe_allow_html=True,
-#         )
-#         st.markdown(f"### 🧍 Selected Players: {selected_count} / 15")
-
-#         # --- Teamübersicht ---
-#         if not selected_df.empty:
-#             st.subheader("✅ Your Current Team")
-#             st.dataframe(
-#                 selected_df[["seed", "name", "price", "flag_url"]],
-#                 column_config={
-#                     "seed": st.column_config.Column("Seed", width="tiny"),
-#                     "name": st.column_config.Column("Player Name"),
-#                     "price": st.column_config.Column("Price"),
-#                     "flag_url": st.column_config.ImageColumn("Flag", width="tiny"),
-#                 },
-#                 hide_index=True,
-#                 width="stretch",
-#             )
-#         else:
-#             st.info("No players selected yet.")
-
-#         # --- Team speichern ---
-#         can_create = (selected_count == 15) and (remaining_budget >= 0)
-#         team_name = st.text_input("Team name", "My Dream Team")
-
-#         if can_create:
-#             if st.button("✅ Create Team"):
-#                 payload = {
-#                     "user_id": st.session_state.user_id,
-#                     "team_name": team_name,
-#                     "player_ids": selected_ids,
-#                 }
-#                 response = requests.post(f"{BASE_URL}/teams/", json=payload)
-#                 if response.status_code == 200:
-#                     st.success("✅ Team successfully created!")
-#                     # Zurück zur Übersicht
-#                     # st.session_state.current_page = "teams_overview"
-#                     st.session_state.current_page = "overview"
-#                     st.rerun()
-#                 else:
-#                     st.error(f"Error creating team: {response.text}")
-#         else:
-#             st.warning("⚠️ Select exactly 15 players and stay within budget.")

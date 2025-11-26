@@ -67,5 +67,5 @@ class Match(Base):
     checkout_pct_p2 = Column(Float, default=0.0)
     high_checkout_p1 = Column(Integer, default=0)
     high_checkout_p2 = Column(Integer, default=0)
-    _180s_p1 = Column(Integer, default=0)
-    _180s_p2 = Column(Integer, default=0)
+    d180s_p1 = Column(Integer, default=0)
+    d180s_p2 = Column(Integer, default=0)

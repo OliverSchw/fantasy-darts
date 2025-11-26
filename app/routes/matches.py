@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.orm import Session
 from typing import List
 from .. import models, database, schemas
@@ -40,3 +40,24 @@ def save_match(match: schemas.MatchResult, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(new_match)
         return {"msg": "Match saved"}
+
+
+@router.delete("/{match_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_match(match_id: str, db: Session = Depends(get_db)):
+    """
+    Löscht ein Match und seine Ergebnisse basierend auf der Match-ID.
+    Setzt anschließend die Punkte aller Spieler neu.
+    """
+
+    # 1. Match in der Datenbank suchen
+    db_match = db.query(models.Match).filter(models.Match.match_id == match_id).first()
+
+    if db_match is None:
+        raise HTTPException(
+            status_code=404, detail=f"Match with ID '{match_id}' not found."
+        )
+
+    db.delete(db_match)
+    db.commit()
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
