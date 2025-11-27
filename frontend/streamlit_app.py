@@ -336,11 +336,13 @@ if page == "🏠 Overview":
                 ].style.apply(highlight_row, axis=1),
                 column_config={
                     "seed": st.column_config.Column("Seed", width="tiny"),
-                    "name": st.column_config.Column("Player Name"),
-                    "price": st.column_config.NumberColumn("Price", format="compact"),
+                    "name": st.column_config.Column("Player Name", width="medium"),
+                    "price": st.column_config.NumberColumn(
+                        "Price", format="compact", width="small"
+                    ),
                     "flag_url": st.column_config.ImageColumn("Nation", width="tiny"),
                     "points": None,  # WICHTIG: Blende die redundante 'points' Spalte aus
-                    "Display_Points": st.column_config.Column("Points"),
+                    "Display_Points": st.column_config.Column("Points", width="tiny"),
                     "Role": st.column_config.Column("Role", width="medium"),
                     "eliminated": None,
                 },
@@ -420,9 +422,9 @@ if page == "🏠 Overview":
                     ].style.apply(highlight_champion_row, axis=1),
                     column_config={
                         "seed": st.column_config.Column("Seed", width="tiny"),
-                        "name": st.column_config.Column("Player Name"),
+                        "name": st.column_config.Column("Player Name", width="medium"),
                         "price": st.column_config.NumberColumn(
-                            "Price", format="compact"
+                            "Price", format="compact", width="small"
                         ),
                         "flag_url": st.column_config.ImageColumn(
                             "Nation", width="tiny"
@@ -431,7 +433,7 @@ if page == "🏠 Overview":
                         "is_champion": None,  # Ausblenden
                         "eliminated": None,  # Ausblenden
                         "Display_Points": st.column_config.Column(
-                            "Champion Bonus Points"
+                            "Champion Bonus Points", width="tiny"
                         ),
                         "Role": st.column_config.Column("Role", width="medium"),
                     },
@@ -582,11 +584,15 @@ elif page == "🎯 Players":
             ["seed", "name", "price", "flag_url", "points", "eliminated"]
         ].style.apply(highlight_row, axis=1),
         column_config={
-            "seed": st.column_config.Column("Seed"),
-            "name": st.column_config.Column("Player Name"),
-            "price": st.column_config.NumberColumn("Price", format="compact"),
-            "flag_url": st.column_config.ImageColumn("Nation"),
-            "points": st.column_config.NumberColumn("Points", format="compact"),
+            "seed": st.column_config.Column("Seed", width="tiny"),
+            "name": st.column_config.Column("Player Name", width="small"),
+            "price": st.column_config.NumberColumn(
+                "Price", format="compact", width="small"
+            ),
+            "flag_url": st.column_config.ImageColumn("Nation", width="tiny"),
+            "points": st.column_config.NumberColumn(
+                "Points", format="compact", width="small"
+            ),
             "eliminated": None,
         },
         width="stretch",
@@ -1870,9 +1876,11 @@ elif page == "🧩 Teams":
             edited_df = st.data_editor(
                 df,
                 column_config={
-                    "seed": st.column_config.Column("Seed", width="small"),
-                    "name": st.column_config.Column("Name"),
-                    "price": st.column_config.Column("Price"),
+                    "seed": st.column_config.Column("Seed", width="tiny"),
+                    "name": st.column_config.Column("Name", width="small"),
+                    "price": st.column_config.Column(
+                        "Price", format="compact", width="small"
+                    ),
                     "flag_url": st.column_config.ImageColumn("Nation", width="small"),
                     "selected": st.column_config.CheckboxColumn("Select"),
                 },
@@ -1945,8 +1953,10 @@ elif page == "🧩 Teams":
                     selected_df[["seed", "name", "price", "flag_url", "Role"]],
                     column_config={
                         "seed": st.column_config.Column("Seed", width="tiny"),
-                        "name": st.column_config.Column("Player Name"),
-                        "price": st.column_config.Column("Price"),
+                        "name": st.column_config.Column("Player Name", width="small"),
+                        "price": st.column_config.Column(
+                            "Price", format="compact", width="small"
+                        ),
                         "flag_url": st.column_config.ImageColumn("Flag", width="tiny"),
                         "Role": st.column_config.Column("Role", width="medium"),
                     },
@@ -2217,8 +2227,10 @@ elif page == "🧩 Teams":
                     selected_df[["seed", "name", "price", "flag_url", "Role"]],
                     column_config={
                         "seed": st.column_config.Column("Seed", width="tiny"),
-                        "name": st.column_config.Column("Player Name"),
-                        "price": st.column_config.Column("Price"),
+                        "name": st.column_config.Column("Player Name", width="small"),
+                        "price": st.column_config.Column(
+                            "Price", format="compact", width="small"
+                        ),
                         "flag_url": st.column_config.ImageColumn("Flag", width="tiny"),
                         "Role": st.column_config.Column("Role", width="medium"),
                     },
