@@ -10,8 +10,8 @@ import os
 # Wenn auf Streamlit Cloud: nimm BASE_URL aus den Secrets
 # Wenn lokal: fallback auf localhost
 BASE_URL = os.getenv(
-    "BASE_URL", "http://127.0.0.1:8000"
-)  #   #"https://fantasy-darts-1.onrender.com"
+    "BASE_URL", "https://fantasy-darts-1.onrender.com"
+)  # "http://127.0.0.1:8000"  #
 
 CHAMPION_POINTS = 1000
 
