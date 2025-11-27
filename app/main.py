@@ -19,9 +19,7 @@ def startup_event():
     from .create_users import create_user
 
     # User nur erstellen, wenn sie noch nicht existieren (idempotent)
-    create_user("olli", "bla123")
-    create_user("maria", "passwort123")
-    create_user("Dagey", "Hund123")
+    create_user("Admin", "bla123", is_admin=True)
     add_players_from_csv()
 
 

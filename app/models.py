@@ -12,6 +12,7 @@ class Player(Base):
     seed = Column(Integer, nullable=True)
     points = Column(Float, default=0)
     eliminated = Column(Boolean, default=False)
+    champion = Column(Boolean, default=False)
 
     team_players = relationship("TeamPlayer", back_populates="player")
 
@@ -21,6 +22,7 @@ class User(Base):
     id = Column(Integer, primary_key=True)
     username = Column(String, unique=True)
     password_hash = Column(String)
+    is_admin = Column(Boolean, default=False)
     teams = relationship("Team", back_populates="user")
 
 
@@ -28,10 +30,21 @@ class Team(Base):
     __tablename__ = "teams"
     id = Column(Integer, primary_key=True)
     name = Column(String)
-    user_id = Column(Integer, ForeignKey("users.id"))
+    # user_id = Column(Integer, ForeignKey("users.id"))
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
 
     user = relationship("User", back_populates="teams")
-    team_players = relationship("TeamPlayer", back_populates="team")
+    # team_players = relationship("TeamPlayer", back_populates="team")
+    team_players = relationship(
+        "TeamPlayer",
+        back_populates="team",
+        # NEU: Kaskadiert die Löschung an die TeamPlayer-Einträge
+        cascade="all, delete-orphan",
+    )
+    champion_id = Column(Integer, ForeignKey("players.id"))
+    team_champion_guess = relationship(
+        "Player", foreign_keys=[champion_id], uselist=False
+    )
 
 
 class TeamPlayer(Base):
@@ -40,6 +53,7 @@ class TeamPlayer(Base):
     player_id = Column(Integer, ForeignKey("players.id"), primary_key=True)
     is_captain = Column(Boolean, default=False)
     is_underdog = Column(Boolean, default=False)
+    champion = Column(Boolean, default=False)
 
     team = relationship("Team", back_populates="team_players")
     player = relationship("Player", back_populates="team_players")

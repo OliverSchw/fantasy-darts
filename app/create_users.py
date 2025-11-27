@@ -18,7 +18,7 @@ def hash_password(password: str) -> str:
 #     db.close()
 
 
-def create_user(username: str, password: str):
+def create_user(username: str, password: str, is_admin=False):
     db = database.SessionLocal()
     try:
         # Check if the user already exists
@@ -30,7 +30,7 @@ def create_user(username: str, password: str):
             return
 
         hashed = hash_password(password)
-        user = models.User(username=username, password_hash=hashed)
+        user = models.User(username=username, password_hash=hashed, is_admin=is_admin)
         db.add(user)
         db.commit()
         print(f"User '{username}' created successfully")
@@ -38,7 +38,7 @@ def create_user(username: str, password: str):
         db.close()
 
 
-if __name__ == "__main__":
-    create_user("olli", "geheimespasswort")
-    create_user("maria", "passwort123")
-    print("Users created successfully!")
+# if __name__ == "__main__":
+#     # create_user("olli", "geheimespasswort")
+#     # create_user("maria", "passwort123")
+#     # print("Users created successfully!")

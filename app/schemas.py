@@ -9,6 +9,7 @@ class TeamCreate(BaseModel):
     player_ids: List[int]
     captain_id: int
     underdog_id: int
+    champion_id: int
 
 
 from typing import Optional

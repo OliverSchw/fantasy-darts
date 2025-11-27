@@ -10,8 +10,10 @@ import os
 # Wenn auf Streamlit Cloud: nimm BASE_URL aus den Secrets
 # Wenn lokal: fallback auf localhost
 BASE_URL = os.getenv(
-    "BASE_URL", "https://fantasy-darts-1.onrender.com"
-)  # "http://127.0.0.1:8000"  #
+    "BASE_URL", "http://127.0.0.1:8000"
+)  #   #"https://fantasy-darts-1.onrender.com"
+
+CHAMPION_POINTS = 1000
 
 COUNTRY_CODE_MAP = {
     "England": "gb-eng",
@@ -85,8 +87,10 @@ if "user_id" not in st.session_state:
                 data = response.json()
                 st.session_state.user_id = data["user_id"]
                 st.session_state.username = data["username"]
+                st.session_state.is_admin = data.get("is_admin", False)
+                st.session_state.access_token = data.get("access_token")
                 st.success(f"Welcome {data['username']}!")
-                st.rerun()  # sofort neu rendern
+                st.rerun()
             else:
                 st.error("Invalid username or password")
         except Exception as e:
@@ -97,10 +101,16 @@ else:
     if st.sidebar.button("Logout"):
         del st.session_state.user_id
         del st.session_state.username
+        # NEU: Token beim Logout ebenfalls entfernen
+        if "is_admin" in st.session_state:
+            del st.session_state.is_admin
+        if "access_token" in st.session_state:
+            del st.session_state.access_token
+        # Ende NEU
         st.success("Logged out successfully!")
         st.rerun()  # sofort neu rendern
-
 # Seiten-Navigation
+
 page = st.sidebar.radio(
     "Navigation",
     [
@@ -109,8 +119,96 @@ page = st.sidebar.radio(
         "🧩 Teams",
         # "⚔️ Tournament Bracket"
         "📅 Tournament Schedule",
+        "📝 Manage Accounts",
     ],
 )
+
+
+def get_auth_headers():
+    """Creates the Authorization header with the JWT for protected requests."""
+    token = st.session_state.get("access_token")
+    if not token:
+        return {}
+    return {"Authorization": f"Bearer {token}"}
+
+
+def fetch_users():
+    """Retrieves the list of all users from the FastAPI backend (Admin-protected)."""
+    try:
+        response = requests.get(f"{BASE_URL}/auth/users", headers=get_auth_headers())
+
+        if response.status_code == 200:
+            return response.json()
+        elif response.status_code == 403:
+            st.error("Access denied. Invalid token or you are not an admin.")
+        else:
+            st.error(f"Error loading users: Status Code {response.status_code}")
+        return []
+    except Exception as e:
+        st.error(f"Connection error: {e}")
+        return []
+
+
+def update_user_admin_status(user_id, new_status):
+    """Updates a user's admin status (Admin-protected)."""
+    try:
+        response = requests.put(
+            f"{BASE_URL}/auth/users/{user_id}",
+            json={"is_admin": new_status},
+            headers=get_auth_headers(),
+        )
+        if response.status_code == 200:
+            st.success(
+                f"Admin status for User ID {user_id} successfully changed to {new_status}."
+            )
+            st.rerun()
+        else:
+            st.error(
+                f"Error updating admin status: Status Code {response.status_code} - {response.text}"
+            )
+    except Exception as e:
+        st.error(f"Connection error during update: {e}")
+
+
+def create_new_user(username, password, is_admin):
+    """Creates a new user via the FastAPI backend endpoint."""
+    try:
+        # Sends the Admin token, as only Admins should be able to set is_admin=True
+        response = requests.post(
+            f"{BASE_URL}/auth/register",  # Prerequisite: This endpoint must exist
+            json={"username": username, "password": password, "is_admin": is_admin},
+            headers=get_auth_headers(),
+        )
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.HTTPError as err:
+        try:
+            error_msg = err.response.json().get("detail", str(err))
+        except:
+            error_msg = str(err)
+        raise Exception(f"User creation failed: {error_msg}") from err
+    except Exception as e:
+        raise Exception(f"Connection error during creation: {e}")
+
+
+def delete_user_by_id(user_id):
+    """Sendet die DELETE-Anfrage an den FastAPI-Endpunkt."""
+    try:
+        response = requests.delete(
+            f"{BASE_URL}/auth/users/{user_id}", headers=get_auth_headers()
+        )
+        if response.status_code == 204:
+            st.success(f"User ID {user_id} successfully deleted.")
+            st.rerun()
+        elif response.status_code == 403:
+            st.error("Operation not allowed: You cannot delete your own account.")
+        else:
+            st.error(
+                f"Error deleting user: Status Code {response.status_code} - {response.text}"
+            )
+    except Exception as e:
+        st.error(f"Connection error during deletion: {e}")
+
 
 # -----------------------------------
 # 🔹 Overview (Dashboard)
@@ -137,23 +235,24 @@ if page == "🏠 Overview":
         team_name = st.session_state.selected_team_name
 
         st.title(f"🎯 Team: {team_name}")
-        st.subheader("👥 Your Players")
+        st.subheader("👥 Players")
 
         # Spieler laden (enthält jetzt is_captain/is_underdog)
         try:
             players = requests.get(f"{BASE_URL}/teams/{team_id}/players").json()
+            champion_details = requests.get(
+                f"{BASE_URL}/teams/{team_id}/champion_tip"
+            ).json()
 
         except Exception as e:
-            st.error(f"Fehler beim Laden der Teamspieler: {e}")
+            st.error(
+                f"❌ Failed to load team data from the server. Please check the connection or API endpoint. Error details: {e}"
+            )
             st.stop()
 
         if players and isinstance(players, list):
             df_players = pd.DataFrame(players)
-            # ... (Logik zur Erstellung von Role, format_points, Display_Points, Calculated_Total_Points)
 
-            # Ich übernehme hier die funktionale Struktur aus deiner letzten Eingabe:
-
-            # --- Rollen-Berechnung ---
             def get_player_role(row):
                 role = ""
                 is_captain = row.get("is_captain")
@@ -258,26 +357,142 @@ if page == "🏠 Overview":
                 hide_index=True,
             )
 
-            # Anzeige der Gesamtpunkte
-            total_points = df_players["Calculated_Total_Points"].sum()
+            st.markdown("---")
+            st.subheader("🏆 Champion Pick")
+
+            champion_name_raw = "N/A"
+            champion_points = 0
+
+            def highlight_champion_row(row):
+                # Prüfe, ob eliminated True ist
+                if row.get("eliminated") is True:
+                    color = "red"
+                    # Optional: Hintergrundfarbe für ausgeschieden
+                    return [f"color: {color}; background-color: #ffe6e6"] * len(row)
+                # Prüfe, ob is_champion True ist (d.h. gewonnen)
+                elif row.get("is_champion") is True:
+                    color = "green"
+                    # Optional: Hintergrundfarbe für gewonnen
+                    return [
+                        f"color: {color}; font-weight: bold; background-color: #e6ffe6"
+                    ] * len(row)
+                else:
+                    # Standardfarbe für aktiv/pending
+                    return ["color: black"] * len(row)
+
+            if champion_details:
+                # Erstellen Sie eine Liste, die nur das Champion-Detail-Objekt enthält
+                is_champion_status = champion_details.get("is_champion")
+                eliminated = champion_details.get("eliminated")
+                champion_flag_url = get_flag_url(champion_details.get("nation", ""))
+                if is_champion_status:
+                    champion_points = CHAMPION_POINTS
+                champion_data_list = [
+                    {
+                        "seed": champion_details.get("seed"),
+                        "name": champion_details.get("name"),
+                        "price": champion_details.get("price"),
+                        "nation": champion_details.get("nation"),
+                        "flag_url": champion_flag_url,  # Verwendet die bereits generierte URL
+                        "points": champion_details.get("points", 0),  # Base Points
+                        "Display_Points": champion_points,
+                        "Role": "🏆 CHAMPION PICK",
+                        "eliminated": eliminated,
+                        "is_champion": is_champion_status,  # Hinzufügen für die Highlight-Funktion
+                    }
+                ]
+
+                df_champion = pd.DataFrame(champion_data_list)
+
+                st.dataframe(
+                    df_champion[
+                        [
+                            "seed",
+                            "name",
+                            "price",
+                            "flag_url",
+                            "points",
+                            "Display_Points",
+                            "Role",
+                            "eliminated",
+                            "is_champion",
+                        ]
+                    ].style.apply(highlight_champion_row, axis=1),
+                    column_config={
+                        "seed": st.column_config.Column("Seed", width="tiny"),
+                        "name": st.column_config.Column("Player Name"),
+                        "price": st.column_config.NumberColumn(
+                            "Price", format="compact"
+                        ),
+                        "flag_url": st.column_config.ImageColumn(
+                            "Nation", width="tiny"
+                        ),
+                        "points": None,  # Ausblenden
+                        "is_champion": None,  # Ausblenden
+                        "eliminated": None,  # Ausblenden
+                        "Display_Points": st.column_config.Column(
+                            "Champion Bonus Points"
+                        ),
+                        "Role": st.column_config.Column("Role", width="medium"),
+                    },
+                    width="stretch",
+                    column_order=[
+                        "seed",
+                        "flag_url",
+                        "name",
+                        "price",
+                        "Display_Points",
+                        "Role",
+                    ],
+                    hide_index=True,
+                )
+            else:
+                st.info("No Champion Pick found for this team.")
+
+            st.markdown("---")
+            total_points = df_players["Calculated_Total_Points"].sum() + champion_points
             st.markdown(f"### 📊 Total Team Points: **{total_points:,.0f}**")
 
-        else:
-            st.info("No players found for this team.")
-
-        # Zurück-Button
-        st.markdown("---")
-        st.button("⬅️ Back to Leaderboard", on_click=back_to_overview)
+            # Zurück-Button
+            st.markdown("---")
+            st.button("⬅️ Back to Leaderboard", on_click=back_to_overview)
 
     # --- Leaderboard Seite ---
     # elif st.session_state.current_page == "overview":
     else:
-        st.title("🏠 Overview & Leaderboard")
+        # st.title("🏠 Overview & Leaderboard")
 
         # Load leaderboard
+        # requests.put(f"{BASE_URL}/players/points/recompute")
+        # leaderboard = requests.get(f"{BASE_URL}/leaderboard/").json()
+        # df_lb = pd.DataFrame(leaderboard)
+        # if not df_lb.empty:
+        #     df_lb = df_lb.sort_values(by="total_points", ascending=False).reset_index(
+        #         drop=True
+        #     )
+        #     df_lb.insert(0, "Rank", df_lb.index + 1)
+
+        #     st.subheader("🏆 Current Teams & Rankings")
+        #     for i, row in df_lb.iterrows():
+        #         cols = st.columns([1, 4, 2, 1])
+        #         cols[0].write(row["Rank"])
+        #         cols[1].write(row["team_name"])
+        #         cols[2].write(row["total_points"])
+        #         # View-Button mit Callback
+        #         cols[3].button(
+        #             "View",
+        #             key=f"team_{row['team_id']}",
+        #             on_click=go_to_team,
+        #             args=(row["team_id"], row["team_name"]),
+        #         )
+        st.title("🏠 Overview & Leaderboard")
+
+        team_selection = None
+
         requests.put(f"{BASE_URL}/players/points/recompute")
         leaderboard = requests.get(f"{BASE_URL}/leaderboard/").json()
         df_lb = pd.DataFrame(leaderboard)
+
         if not df_lb.empty:
             df_lb = df_lb.sort_values(by="total_points", ascending=False).reset_index(
                 drop=True
@@ -285,18 +500,44 @@ if page == "🏠 Overview":
             df_lb.insert(0, "Rank", df_lb.index + 1)
 
             st.subheader("🏆 Current Teams & Rankings")
-            for i, row in df_lb.iterrows():
-                cols = st.columns([1, 4, 2, 1])
-                cols[0].write(row["Rank"])
-                cols[1].write(row["team_name"])
-                cols[2].write(row["total_points"])
-                # View-Button mit Callback
-                cols[3].button(
-                    "View",
-                    key=f"team_{row['team_id']}",
-                    on_click=go_to_team,
-                    args=(row["team_id"], row["team_name"]),
-                )
+
+            # DataFrame für die Anzeige vorbereiten
+            df_display = df_lb[["Rank", "team_name", "total_points"]]
+            df_display.columns = ["Rank", "Name", "Total Points"]
+
+            # 1. Responsive Tabelle anzeigen
+            st.dataframe(
+                df_display,
+                width="stretch",
+                hide_index=True,
+            )
+
+            st.markdown("---")
+
+            # --- View Button Funktionalität ---
+
+            # 2. Dropdown zum Auswählen eines Teams (basierend auf dem Namen)
+            team_selection = st.selectbox(
+                "Select a Team to view the details:",
+                options=df_lb["team_name"],
+                index=0,  # Startet beim Rang 1 Team
+                key="leaderboard_team_select",
+            )
+
+        if team_selection:
+            if st.button(f"Show team details 🔍"):
+
+                # Finde die ID des ausgewählten Teams im Original-DataFrame
+                selected_row = df_lb[df_lb["team_name"] == team_selection].iloc[0]
+                team_id = selected_row["team_id"]
+
+                # Rufe die Callback-Funktion auf, die zur Team-Detailseite wechselt
+                # HINWEIS: go_to_team muss in Ihrem Skript definiert sein.
+                go_to_team(team_id, team_selection)
+                st.rerun()
+
+        else:
+            st.info("No teams found yet.")
 
 elif page == "🎯 Players":
     st.title("🎯 All Players")
@@ -941,7 +1182,7 @@ elif page == "📅 Tournament Schedule":
 
         st.session_state["all_possible_match_data"] = all_possible_match_data
 
-        st.write("### 🥇 Semi-Finals and Final")
+        st.write("### 🏆 Semi-Finals and Final")
         st.dataframe(
             table_2,
             hide_index=True,
@@ -1063,7 +1304,7 @@ elif page == "📅 Tournament Schedule":
                         col2_status.success("Completed")  # Grüner Badge
 
                         if col2_button.button(
-                            "Edit Result ✏️", key=f"edit_score_{match_id}"
+                            "Result 🔍", key=f"edit_score_{match_id}"
                         ):
                             # Hier ändern wir den Seiten-Status, um zur Detailseite zu springen
                             st.session_state.current_match = match_id
@@ -1095,6 +1336,7 @@ elif page == "📅 Tournament Schedule":
                     st.markdown("---")
 
     elif st.session_state.current_page == "match_detail":
+        is_admin = st.session_state.get("is_admin", False)
         match_id = st.session_state.current_match
         all_possible_match_data_s = st.session_state.get("all_possible_match_data", {})
 
@@ -1294,8 +1536,9 @@ elif page == "📅 Tournament Schedule":
             st.session_state.current_page = "overview"
             st.rerun()
 
-        # NEU: Lösch-Button mit Bestätigung
-        if col_buttons[1].button("Delete Match", type="secondary"):
+        if col_buttons[1].button(
+            "Delete Match", type="secondary", disabled=not is_admin
+        ):
 
             # 🎯 BESTÄTIGUNG ERFORDERLICH
             if (
@@ -1304,10 +1547,48 @@ elif page == "📅 Tournament Schedule":
             ):
 
                 try:
-                    resp = requests.delete(f"{BASE_URL}/matches/{match_id}")
+                    # IMPORTANT: Send the Admin Token!
+                    resp = requests.delete(
+                        f"{BASE_URL}/matches/{match_id}", headers=get_auth_headers()
+                    )
+
+                    # NEW: Differentiated Error Handling before raise_for_status()
+                    if resp.status_code == 403:
+                        # 403 Forbidden (Not an Admin or invalid token)
+                        error_detail = resp.json().get("detail", "Access Denied.")
+                        st.error(
+                            f"❌ **Deletion Error (403):** {error_detail} Ensure you are logged in as an Admin."
+                        )
+                        # Reset confirmation flag and stop execution
+                        st.session_state["confirm_delete"] = False
+                        st.stop()
+
+                    if resp.status_code == 404:
+                        # 404 Not Found (Match no longer exists in the backend)
+                        error_detail = resp.json().get("detail", "Match not found.")
+                        st.warning(
+                            f"⚠️ **Deletion Error (404):** {error_detail} The match may have already been deleted."
+                        )
+
+                        # Treat a 404 as a successful removal from the frontend state
+                        # as the desired outcome (match gone) is achieved.
+                        # Remove the match from the frontend Session State
+                        if match_id in st.session_state.match_data:
+                            del st.session_state.match_data[match_id]
+                        if match_id in st.session_state.get("results_map", {}):
+                            del st.session_state["results_map"][match_id]
+                        if match_id in st.session_state.get("winners", {}):
+                            del st.session_state["winners"][match_id]
+
+                        st.session_state.current_page = "overview"
+                        st.session_state["confirm_delete"] = False
+                        st.rerun()
+
+                    # If status code is 204 (Success) or an unexpected error occurs, proceed to check status.
                     resp.raise_for_status()
 
-                    # Entferne das Match aus dem Frontend-Session State
+                    # --- Success Case (Status 204) ---
+                    # Remove the match from the frontend Session State (rest of success logic)
                     if match_id in st.session_state.match_data:
                         del st.session_state.match_data[match_id]
                     if match_id in st.session_state.get("results_map", {}):
@@ -1319,27 +1600,35 @@ elif page == "📅 Tournament Schedule":
                         f"Match {match_id} successfully deleted and data cleared."
                     )
 
-                    # Punkte nach Löschung neu berechnen (optional, falls Backend es nicht macht)
-                    requests.put(f"{BASE_URL}/players/points/recompute")
+                    # Recompute points (if not handled by backend on delete)
+                    requests.put(
+                        f"{BASE_URL}/players/points/recompute",
+                        headers=get_auth_headers(),
+                    )
 
-                    # Zur Übersicht zurückkehren
+                    # Return to overview and Rerun
                     st.session_state.current_page = "overview"
-                    st.session_state["confirm_delete"] = False  # Reset Bestätigung
+                    st.session_state["confirm_delete"] = False
                     st.rerun()
 
                 except requests.exceptions.RequestException as e:
-                    st.error(f"Error deleting the match: {e}")
-                    st.session_state["confirm_delete"] = False  # Reset Bestätigung
+                    # Catch general connection or unexpected errors (5xx)
+                    st.error(
+                        f"🌐 **Connection Error:** Could not reach the server or unexpected error occurred: {e}"
+                    )
+                    st.session_state["confirm_delete"] = (
+                        False  # Reset confirmation flag
+                    )
+                    # Note: Rerunning is unnecessary here as we want the error to persist until the user interacts again.
+
             else:
-                # Zeige Bestätigungs-Nachricht an
+                # Logic to display the confirmation warning remains the same
                 st.session_state["confirm_delete"] = True
-                st.session_state["current_match"] = (
-                    match_id  # Speichere Match-ID für Bestätigung
-                )
+                st.session_state["current_match"] = match_id
                 st.warning(
                     f"⚠️ **CONFIRM DELETION:** Press the 'Delete Match' button again to permanently delete Match {match_id} from the database."
                 )
-                st.stop()  # Stoppe Rerun, um die Warnung zu zeigen
+                st.stop()
 
         # Überprüfe die Siegesbedingung
         is_p1_winner = p1_sets_final >= sets_to_win and p1_sets_final > p2_sets_final
@@ -1353,7 +1642,8 @@ elif page == "📅 Tournament Schedule":
 
         if col_buttons[2].button(
             "Save and Conclude Match",
-            disabled=not is_valid_match,
+            disabled=not is_valid_match
+            or not is_admin,  # <-- Hinzugefügter Admin-Check
             type="primary",
         ):
 
@@ -1392,15 +1682,21 @@ elif page == "📅 Tournament Schedule":
             try:
                 for attempt in range(3):
                     try:
+                        # WICHTIG: Sendet den Token im Header mit!
                         resp = requests.put(
-                            f"{BASE_URL}/matches/save_match/", json=payload
+                            f"{BASE_URL}/matches/save_match/",
+                            json=payload,
+                            headers=get_auth_headers(),
                         )
                         requests.put(
-                            f"{BASE_URL}/players/points/recompute", json=payload
+                            f"{BASE_URL}/players/points/recompute",
+                            json=payload,
+                            headers=get_auth_headers(),  # Falls recompute auch geschützt ist
                         )
                         resp.raise_for_status()
                         break
                     except requests.exceptions.RequestException as e:
+                        # ... (Rest der Wiederholungslogik) ...
                         if attempt < 2:
                             st.warning(
                                 f"Attempt {attempt+1}: Error saving the match: {e}. Trying again..."
@@ -1438,460 +1734,740 @@ elif page == "🧩 Teams":
         st.warning("⚠️ Please log in to create a team!")
         st.stop()
 
-    st.title("🧩 Your Teams")
-
-    # --- 1. Load user's teams ---
-    try:
-        user_teams = requests.get(
-            f"{BASE_URL}/teams/user/{st.session_state.user_id}"
-        ).json()
-        df_teams = pd.DataFrame(user_teams)
-        if not df_teams.empty:
-            st.subheader("📝 Your Existing Teams")
-            df_teams = df_teams.sort_values(
-                by="total_points", ascending=False
-            ).reset_index(drop=True)
-            df_teams.insert(0, "Rank", df_teams.index + 1)
-
-            for i, row in df_teams.iterrows():
-                cols = st.columns([1, 4, 2, 2, 2])
-                cols[0].write(row["Rank"])
-                cols[1].write(row["team_name"])
-                cols[2].write(row["total_points"])
-                if cols[3].button("✏️ Edit", key=f"edit_{row['team_id']}"):
-                    # Speichere Team für Edit
-                    st.session_state.edit_team_id = row["team_id"]
-                    st.session_state.edit_team_name = row["team_name"]
-                    st.session_state.current_page = "edit_team"
-                    st.rerun()
-
-                if cols[4].button("🗑 Delete", key=f"delete_{row['team_id']}"):
-                    try:
-                        response = requests.delete(f"{BASE_URL}/teams/{row['team_id']}")
-                        if response.status_code == 200:
-                            st.success(
-                                f"Team '{row['team_name']}' deleted successfully!"
-                            )
-                            st.session_state.current_page = "overview"
-                            st.rerun()  # Seite neu laden, damit gelöschtes Team verschwindet
-                        else:
-                            st.error(f"Error deleting team: {response.text}")
-                    except Exception as e:
-                        st.error(f"Error deleting team: {e}")
-        else:
-            st.info("You have not created any teams yet.")
-    except Exception as e:
-        st.warning(f"Could not load your teams: {e}")
-
-    st.markdown("---")
-
     if st.session_state.get("current_page", "") not in ["edit_team", "create_new_team"]:
+        st.title("🧩 Your Teams")
+
+        # --- 1. Load user's teams ---
+        try:
+            user_teams = requests.get(
+                f"{BASE_URL}/teams/user/{st.session_state.user_id}"
+            ).json()
+            df_teams = pd.DataFrame(user_teams)
+            if not df_teams.empty:
+                st.subheader("📝 Your Existing Teams")
+                df_teams = df_teams.sort_values(
+                    by="total_points", ascending=False
+                ).reset_index(drop=True)
+                df_teams.insert(0, "Rank", df_teams.index + 1)
+
+                for i, row in df_teams.iterrows():
+                    cols = st.columns([1, 4, 2, 2, 2])
+                    cols[0].write(row["Rank"])
+                    cols[1].write(row["team_name"])
+                    cols[2].write(row["total_points"])
+                    if cols[3].button("✏️ Edit", key=f"edit_{row['team_id']}"):
+                        # Speichere Team für Edit
+                        st.session_state.edit_team_id = row["team_id"]
+                        st.session_state.edit_team_name = row["team_name"]
+                        st.session_state.current_page = "edit_team"
+                        st.rerun()
+
+                    if cols[4].button("🗑 Delete", key=f"delete_{row['team_id']}"):
+                        try:
+                            response = requests.delete(
+                                f"{BASE_URL}/teams/{row['team_id']}"
+                            )
+                            if response.status_code == 200:
+                                st.success(
+                                    f"Team '{row['team_name']}' deleted successfully!"
+                                )
+                                st.session_state.current_page = "overview"
+                                st.rerun()  # Seite neu laden, damit gelöschtes Team verschwindet
+                            else:
+                                st.error(f"Error deleting team: {response.text}")
+                        except Exception as e:
+                            st.error(f"Error deleting team: {e}")
+            else:
+                st.info("You have not created any teams yet.")
+        except Exception as e:
+            st.warning(f"Could not load your teams: {e}")
+
+        st.markdown("---")
+
         if st.button("➕ Create New Team"):
             # Bereite Session State für Team Creation vor
             st.session_state.selected_ids = []
             st.session_state.current_page = "create_new_team"
             st.rerun()
 
+    # --- 3. Edit Team oder Create New Team Seiten ---
+    if "current_page" in st.session_state:
 
-# --- 3. Edit Team oder Create New Team Seiten ---
-if "current_page" in st.session_state:
-
-    # 🟦 --- EDIT EXISTING TEAM ---
-    if st.session_state.current_page == "edit_team":
-        if st.button("⬅️ Back to Teams"):
-            st.session_state.current_page = (
-                "overview"  # oder "teams_overview" je nach deinem Setup
-            )
-            st.rerun()
-        team_id = st.session_state.edit_team_id
-        team_name = st.session_state.edit_team_name
-        st.title(f"✏️ Edit Team: {team_name}")
-
-        TOTAL_BUDGET = 20000
-
-        # --- Lade Team-Spieler (mit Rollen) ---
-        # Annahme: Der Endpoint /teams/{team_id}/players gibt jetzt auch is_captain/is_underdog zurück
-        try:
-            team_players = requests.get(f"{BASE_URL}/teams/{team_id}/players").json()
-        except Exception as e:
-            st.error(f"Error loading team players: {e}")
-            st.stop()
-
-        # IDs der aktuellen Teamspieler & Rollen finden
-        if isinstance(team_players, list):
-            current_player_ids = [p["id"] for p in team_players]
-
-            # NEU: Aktuelle Rollen bestimmen
-            current_captain = next(
-                (p for p in team_players if p.get("is_captain")), None
-            )
-            current_underdog = next(
-                (p for p in team_players if p.get("is_underdog")), None
-            )
-        else:
-            current_player_ids = []
-            current_captain = None
-            current_underdog = None
-
-        # --- Lade alle Spieler ---
-        try:
-            players = requests.get(f"{BASE_URL}/players/").json()
-        except Exception as e:
-            st.error(f"Error loading the player list: {e}")
-            players = []
-
-        if not isinstance(players, list) or len(players) == 0:
-            st.error("❌ No players found!")
-            st.stop()
-
-        # --- DataFrame vorbereiten ---
-        df = pd.DataFrame(players)
-        df["selected"] = df["id"].isin(current_player_ids)
-
-        def get_flag_url(nation):
-            code = COUNTRY_CODE_MAP.get(nation.strip())
-            return f"{BASE_FLAG_URL}{code}.svg" if code else ""
-
-        df["flag_url"] = df["nation"].apply(get_flag_url)
-
-        # --- Tabelle anzeigen ---
-        edited_df = st.data_editor(
-            df,
-            column_config={
-                "seed": st.column_config.Column("Seed", width="small"),
-                "name": st.column_config.Column("Name"),
-                "price": st.column_config.Column("Price"),
-                "flag_url": st.column_config.ImageColumn("Nation", width="small"),
-                "selected": st.column_config.CheckboxColumn("Select"),
-            },
-            column_order=["seed", "name", "price", "flag_url", "selected"],
-            hide_index=True,
-            width="stretch",
-            disabled=[
-                "seed",
-                "name",
-                "price",
-                "nation",
-                "id",
-                "points",
-                "eliminated",
-            ],
-            key="edit_team_editor",
-        )
-
-        # --- Auswahl aktualisieren ---
-        # selected_df = edited_df[edited_df["selected"]]
-        selected_df = edited_df[edited_df["selected"]].copy()
-        # selected_ids = selected_df["id"].tolist()
-        selected_ids = selected_df["id"].apply(int).tolist()
-        total_spent = selected_df["price"].sum()
-        remaining_budget = TOTAL_BUDGET - total_spent
-        selected_count = len(selected_ids)
-
-        # --- Budgetanzeige ---
-        st.markdown(
-            f"""
-            ### 💰 Budget
-            - **Total:** {TOTAL_BUDGET:,.2f}  
-            - **Used:** {total_spent:,.2f}  
-            - **Remaining:** <span style="color:{'red' if remaining_budget < 0 else 'green'}">{remaining_budget:,.2f}</span>
-            """,
-            unsafe_allow_html=True,
-        )
-        st.markdown(f"### 🧍 Selected Players: {selected_count} / 15")
-
-        # --- Captain und Underdog Auswahl (NEU) ---
-        captain_id = None
-        underdog_id = None
-        can_select_roles = False
-
-        if selected_count == 15 and remaining_budget >= 0:
-            st.markdown("---")
-            st.subheader("⭐ Select Captain & Underdog")
-
-            player_options = selected_df.set_index("id")["name"].to_dict()
-            default_captain_name = current_captain["name"] if current_captain else None
-
-            # 1. Captain-Auswahl
-            captain_name = st.selectbox(
-                "Select your **Team Captain** (x2 Points):",
-                options=player_options.values(),
-                index=(
-                    list(player_options.values()).index(default_captain_name)
-                    if default_captain_name in player_options.values()
-                    else 0
-                ),
-                key="edit_captain_select",
-            )
-            # captain_id = selected_df[selected_df["name"] == captain_name]["id"].iloc[0]
-            captain_id = int(
-                selected_df[selected_df["name"] == captain_name]["id"].iloc[0]
-            )
-            # 2. Underdog-Auswahl
-            underdog_candidates = selected_df[selected_df["price"] < 800]
-            underdog_options = underdog_candidates.set_index("id")["name"].to_dict()
-            default_underdog_name = (
-                current_underdog["name"] if current_underdog else None
-            )
-
-            if underdog_options:
-                default_underdog_index = (
-                    list(underdog_options.values()).index(default_underdog_name)
-                    if default_underdog_name in underdog_options.values()
-                    else 0
+        if st.session_state.current_page == "edit_team":
+            if st.button("⬅️ Back to Teams"):
+                st.session_state.current_page = (
+                    "overview"  # oder "teams_overview" je nach deinem Setup
                 )
+                st.rerun()
 
-                underdog_name = st.selectbox(
-                    "Select your **Underdog** (Price < 800.0):",
-                    options=underdog_options.values(),
-                    index=default_underdog_index,
-                    key="edit_underdog_select",
+            team_id = st.session_state.edit_team_id
+            team_name = st.session_state.edit_team_name
+            st.title(f"✏️ Edit Team: {team_name}")
+
+            TOTAL_BUDGET = 20000
+
+            # --- Lade Team-Spieler & Champion-Tipp ---
+            try:
+                # 1. Hauptspieler laden (liefert Liste mit is_captain/is_underdog)
+                team_players = requests.get(
+                    f"{BASE_URL}/teams/{team_id}/players"
+                ).json()
+
+                # 2. Champion-Tipp laden (liefert Player-Objekt oder None/leeres Dict bei 200 OK)
+                champion_response = requests.get(
+                    f"{BASE_URL}/teams/{team_id}/champion_tip"
                 )
-                # underdog_id = underdog_candidates[
-                #     underdog_candidates["name"] == underdog_name
-                # ]["id"].iloc[0]
-                underdog_id = int(
-                    underdog_candidates[underdog_candidates["name"] == underdog_name][
-                        "id"
-                    ].iloc[0]
+                champion_response.raise_for_status()
+                current_champion = champion_response.json()
+
+            except requests.exceptions.HTTPError as http_err:
+                st.error(f"HTTP error occurred while loading data: {http_err}")
+                st.stop()
+            except Exception as e:
+                st.error(f"Error loading team data: {e}")
+                st.stop()
+
+            # IDs der aktuellen Teamspieler & Rollen finden
+            if isinstance(team_players, list):
+                current_player_ids = [p["id"] for p in team_players]
+                current_captain = next(
+                    (p for p in team_players if p.get("is_captain")), None
                 )
-                can_select_roles = True
+                current_underdog = next(
+                    (p for p in team_players if p.get("is_underdog")), None
+                )
             else:
-                st.error(
-                    "❌ No eligible Underdog player (Price < 800.0) selected in your team!"
-                )
-                can_select_roles = False
+                current_player_ids = []
+                current_captain = None
+                current_underdog = None
 
-        # --- Aktuelles Team anzeigen ---
-        if not selected_df.empty:
-            st.subheader("✅ Your Current Team")
-            # Füge hier die Kennzeichnung des Captains/Underdogs hinzu (optional)
+            # current_champion vorbereiten
+            if current_champion is None:
+                current_champion = {}
 
-            # Code zur Kennzeichnung:
-            selected_df["Role"] = ""
-            if captain_id in selected_ids:
-                selected_df.loc[selected_df["id"] == captain_id, "Role"] = "CAPTAIN 👑"
-            if underdog_id in selected_ids:
-                selected_df.loc[selected_df["id"] == underdog_id, "Role"] += (
-                    " / UNDERDOG 🐕 (x2)"
-                    if selected_df.loc[selected_df["id"] == underdog_id, "Role"].iloc[0]
-                    else "UNDERDOG 🐕 (x2)"
-                )
+            # --- Lade alle Spieler ---
+            try:
+                players = requests.get(f"{BASE_URL}/players/").json()
+            except Exception as e:
+                st.error(f"Error loading the player list: {e}")
+                players = []
 
-            st.dataframe(
-                selected_df[["seed", "name", "price", "flag_url", "Role"]],
+            if not isinstance(players, list) or len(players) == 0:
+                st.error("❌ No players found!")
+                st.stop()
+
+            # --- DataFrame vorbereiten ---
+            df = pd.DataFrame(players)
+            df["selected"] = df["id"].isin(current_player_ids)
+
+            def get_flag_url(nation):
+                code = COUNTRY_CODE_MAP.get(nation.strip())
+                return f"{BASE_FLAG_URL}{code}.svg" if code else ""
+
+            df["flag_url"] = df["nation"].apply(get_flag_url)
+
+            # --- Tabelle anzeigen ---
+            edited_df = st.data_editor(
+                df,
                 column_config={
-                    "seed": st.column_config.Column("Seed", width="tiny"),
-                    "name": st.column_config.Column("Player Name"),
+                    "seed": st.column_config.Column("Seed", width="small"),
+                    "name": st.column_config.Column("Name"),
                     "price": st.column_config.Column("Price"),
-                    "flag_url": st.column_config.ImageColumn("Flag", width="tiny"),
-                    "Role": st.column_config.Column("Role", width="medium"),
+                    "flag_url": st.column_config.ImageColumn("Nation", width="small"),
+                    "selected": st.column_config.CheckboxColumn("Select"),
                 },
+                column_order=["seed", "name", "price", "flag_url", "selected"],
                 hide_index=True,
                 width="stretch",
+                disabled=[
+                    "seed",
+                    "name",
+                    "price",
+                    "nation",
+                    "id",
+                    "points",
+                    "eliminated",
+                ],
+                key="edit_team_editor",
             )
-        else:
-            st.info("No players selected yet.")
 
-        # --- Update / Save Button ---
-        can_save = (
-            (selected_count == 15) and (remaining_budget >= 0) and can_select_roles
-        )
-        if can_save:
-            if st.button("💾 Save Team Changes"):
-                # NEU: captain_id und underdog_id zum Payload hinzufügen
-                payload = {
-                    "player_ids": selected_ids,
-                    "captain_id": captain_id,
-                    "underdog_id": underdog_id,
-                }
+            # --- Auswahl & Budget ---
+            selected_df = edited_df[edited_df["selected"]].copy()
+            selected_ids = selected_df["id"].apply(int).tolist()
+            total_spent = selected_df["price"].sum()
+            remaining_budget = TOTAL_BUDGET - total_spent
+            selected_count = len(selected_ids)
 
-                response = requests.put(f"{BASE_URL}/teams/{team_id}", json=payload)
-                if response.status_code == 200:
-                    st.success("Team updated successfully!")
-                    st.session_state.current_page = "overview"
-                    st.rerun()
-                else:
-                    st.error(f"Error updating team: {response.text}")
-        else:
-            st.warning("Team not valid (check 15 players, budget, and selected roles).")
-
-    # 🟩 --- CREATE NEW TEAM ---
-    elif st.session_state.current_page == "create_new_team":
-        if st.button("⬅️ Back to Teams"):
-            st.session_state.current_page = (
-                "overview"  # oder "teams_overview" je nach deinem Setup
+            # --- Budgetanzeige ---
+            st.markdown(
+                f"""
+                ### 💰 Budget
+                - **Total:** {TOTAL_BUDGET:,.2f} 
+                - **Used:** {total_spent:,.2f} 
+                - **Remaining:** <span style="color:{'red' if remaining_budget < 0 else 'green'}">{remaining_budget:,.2f}</span>
+                """,
+                unsafe_allow_html=True,
             )
-            st.rerun()
-        st.title("🎯 Fantasy Darts – Create Your Team")
-        TOTAL_BUDGET = 20000
+            st.markdown(f"### 🧍 Selected Players: {selected_count} / 15")
 
-        # --- Lade Spieler ---
-        try:
-            players = requests.get(f"{BASE_URL}/players/").json()
-        except Exception as e:
-            st.error(f"Error loading players: {e}")
-            st.stop()
+            # --- Rollen & Champion Tipp Initialisierung ---
+            captain_id = None
+            underdog_id = None
+            champion_id = None
+            captain_ok = False
+            underdog_ok = False
+            can_select_champion = False
 
-        if not isinstance(players, list) or len(players) == 0:
-            st.error("❌ No players found!")
-            st.stop()
+            if not selected_df.empty:
+                st.subheader("✅ Your Current Team")
 
-        df = pd.DataFrame(players)
-        df["selected"] = False
+                # Rollen-Markierung in der Tabelle (basierend auf den NEU GEWÄHLTEN IDs)
+                selected_df["Role"] = ""
+                # Verwende die IDs aus den selectboxen, wenn diese gültig sind
+                if captain_id in selected_ids and captain_ok:
+                    selected_df.loc[selected_df["id"] == captain_id, "Role"] = (
+                        "CAPTAIN 👑 (x2)"
+                    )
+                if underdog_id in selected_ids and underdog_ok:
+                    role_text = "UNDERDOG 🐕 (x2)"
+                    if selected_df.loc[selected_df["id"] == underdog_id, "Role"].iloc[
+                        0
+                    ]:
+                        role_text = (
+                            " / " + role_text
+                        )  # Füge Schrägstrich hinzu, wenn Captain auch Underdog ist
 
-        def get_flag_url(nation):
-            code = COUNTRY_CODE_MAP.get(nation.strip())
-            return f"{BASE_FLAG_URL}{code}.svg" if code else ""
+                    selected_df.loc[
+                        selected_df["id"] == underdog_id, "Role"
+                    ] += role_text
 
-        df["flag_url"] = df["nation"].apply(get_flag_url)
-
-        # --- Tabelle ---
-        edited_df = st.data_editor(
-            df,
-            column_config={
-                "seed": st.column_config.Column("Seed", width="small"),
-                "name": st.column_config.Column("Name"),
-                "price": st.column_config.Column("Price"),
-                "flag_url": st.column_config.ImageColumn("Nation", width="small"),
-                "selected": st.column_config.CheckboxColumn("Select"),
-            },
-            column_order=["seed", "name", "price", "flag_url", "selected"],
-            hide_index=True,
-            width="stretch",
-            disabled=[
-                "seed",
-                "name",
-                "price",
-                "nation",
-                "id",
-                "points",
-                "eliminated",
-            ],  # id, points, eliminated hinzugefügt
-            key="create_team_editor",
-        )
-
-        # --- Auswahl & Budget ---
-        # selected_df = edited_df[edited_df["selected"]]
-        selected_df = edited_df[edited_df["selected"]].copy()
-        # selected_ids = selected_df["id"].tolist()
-        selected_ids = selected_df["id"].apply(int).tolist()
-        total_spent = selected_df["price"].sum()
-        remaining_budget = TOTAL_BUDGET - total_spent
-        selected_count = len(selected_ids)
-
-        # --- Budgetanzeige ---
-        st.markdown(
-            f"""
-            ### 💰 Budget
-            - **Total:** {TOTAL_BUDGET:,.2f}  
-            - **Used:** {total_spent:,.2f}  
-            - **Remaining:** <span style="color:{'red' if remaining_budget < 0 else 'green'}">{remaining_budget:,.2f}</span>
-            """,
-            unsafe_allow_html=True,
-        )
-        st.markdown(f"### 🧍 Selected Players: {selected_count} / 15")
-
-        # --- Captain und Underdog Auswahl (NEU) ---
-        captain_id = None
-        underdog_id = None
-        can_select_roles = False
-
-        if selected_count == 15 and remaining_budget >= 0:
-            st.markdown("---")
-            st.subheader("⭐ Select Captain & Underdog")
-
-            player_options = selected_df.set_index("id")["name"].to_dict()
-
-            # 1. Captain-Auswahl
-            captain_name = st.selectbox(
-                "Select your **Team Captain** (x2 Points):",
-                options=player_options.values(),
-                key="create_captain_select",
-            )
-            # captain_id = selected_df[selected_df["name"] == captain_name]["id"].iloc[0]
-            captain_id = int(
-                selected_df[selected_df["name"] == captain_name]["id"].iloc[0]
-            )
-            # 2. Underdog-Auswahl
-            underdog_candidates = selected_df[selected_df["price"] < 800]
-            underdog_options = underdog_candidates.set_index("id")["name"].to_dict()
-
-            if underdog_options:
-                underdog_name = st.selectbox(
-                    "Select your **Underdog** (Price < 800.0):",
-                    options=underdog_options.values(),
-                    key="create_underdog_select",
+                st.dataframe(
+                    selected_df[["seed", "name", "price", "flag_url", "Role"]],
+                    column_config={
+                        "seed": st.column_config.Column("Seed", width="tiny"),
+                        "name": st.column_config.Column("Player Name"),
+                        "price": st.column_config.Column("Price"),
+                        "flag_url": st.column_config.ImageColumn("Flag", width="tiny"),
+                        "Role": st.column_config.Column("Role", width="medium"),
+                    },
+                    hide_index=True,
+                    width="stretch",
                 )
-                # underdog_id = underdog_candidates[
-                #     underdog_candidates["name"] == underdog_name
-                # ]["id"].iloc[0]
-                underdog_id = int(
-                    underdog_candidates[underdog_candidates["name"] == underdog_name][
-                        "id"
-                    ].iloc[0]
-                )
-                can_select_roles = True
             else:
-                st.error(
-                    "❌ No eligible Underdog player (Price < 800.0) selected in your team!"
+                st.info("No players selected yet.")
+
+            if selected_count == 15 and remaining_budget >= 0:
+                st.markdown("---")
+                st.subheader("⭐ Select Captain & Underdog")
+
+                # 1. Captain-Auswahl
+                max_price = selected_df["price"].max()
+                eligible_captains = selected_df[selected_df["price"] < max_price]
+                captain_options = eligible_captains.set_index("id")["name"].to_dict()
+
+                default_captain_name = (
+                    current_captain["name"]
+                    if current_captain
+                    and current_captain.get("name") in captain_options.values()
+                    else None
                 )
+
+                if captain_options:
+                    default_captain_index = (
+                        list(captain_options.values()).index(default_captain_name)
+                        if default_captain_name in captain_options.values()
+                        else 0
+                    )
+
+                    captain_name = st.selectbox(
+                        "Select your **Team Captain** (x2 Points, must not be the most expensive player):",
+                        options=captain_options.values(),
+                        index=default_captain_index,
+                        key="edit_captain_select",
+                    )
+                    captain_id = int(
+                        eligible_captains[eligible_captains["name"] == captain_name][
+                            "id"
+                        ].iloc[0]
+                    )
+                    captain_ok = True  # Captain erfolgreich gewählt
+                else:
+                    st.error(
+                        "❌ No eligible Captain player found! (Must not be the most expensive player in your squad)."
+                    )
+                    captain_ok = False
+
+                # 2. Underdog-Auswahl
+                underdog_candidates = selected_df[selected_df["price"] < 800]
+                underdog_options = underdog_candidates.set_index("id")["name"].to_dict()
+                default_underdog_name = (
+                    current_underdog["name"]
+                    if current_underdog
+                    and current_underdog.get("name") in underdog_options.values()
+                    else None
+                )
+
+                if underdog_options:
+                    default_underdog_index = (
+                        list(underdog_options.values()).index(default_underdog_name)
+                        if default_underdog_name in underdog_options.values()
+                        else 0
+                    )
+
+                    underdog_name = st.selectbox(
+                        "Select your **Underdog** (Price < 800.0):",
+                        options=underdog_options.values(),
+                        index=default_underdog_index,
+                        key="edit_underdog_select",
+                    )
+                    underdog_id = int(
+                        underdog_candidates[
+                            underdog_candidates["name"] == underdog_name
+                        ]["id"].iloc[0]
+                    )
+                    underdog_ok = True
+                else:
+                    st.error(
+                        "❌ No eligible Underdog player (Price < 800.0) selected in your team!"
+                    )
+                    underdog_ok = False
+
+                # Rollen sind nur wählbar, wenn Captain UND Underdog erfolgreich waren
+                can_select_roles = captain_ok and underdog_ok
+
+                st.markdown("---")
+                st.subheader("🏆 Champion Pick")
+
+                all_player_options = df.set_index("id")["name"].to_dict()
+                select_champion_label = "--- Select Champion ---"
+
+                # Standardwert für den Champion-Tipp laden
+                default_champion_name = (
+                    current_champion.get("name")
+                    if current_champion and current_champion.get("name")
+                    else select_champion_label  # Wenn kein Champion gesetzt, wähle den Platzhalter
+                )
+
+                champion_options_list = [select_champion_label] + list(
+                    all_player_options.values()
+                )
+
+                default_champion_index = (
+                    champion_options_list.index(default_champion_name)
+                    if default_champion_name in champion_options_list
+                    else 0
+                )
+
+                champion_name = st.selectbox(
+                    "Select your **Champion Pick** (Bonus Points if they win the tournament):",
+                    options=champion_options_list,
+                    index=default_champion_index,
+                    key="edit_champion_select",
+                )
+
+                # Finde die ID des ausgewählten Spielers
+                if champion_name != select_champion_label:
+                    champion_id_list = df[df["name"] == champion_name]["id"].tolist()
+                    if champion_id_list:
+                        champion_id = int(champion_id_list[0])
+                        can_select_champion = True
+                    else:
+                        can_select_champion = False
+                else:
+                    st.warning("⚠️ Please pick a Champion.")
+                    can_select_champion = False
+
+                st.markdown("---")
+
+            else:
                 can_select_roles = False
+                can_select_champion = False
 
-        # --- Teamübersicht ---
-        if not selected_df.empty:
-            st.subheader("✅ Your Current Team")
+            can_save = (
+                (selected_count == 15)
+                and (remaining_budget >= 0)
+                and can_select_roles  # Prüft Captain & Underdog
+                and can_select_champion  # Prüft Champion
+            )
 
-            # Code zur Kennzeichnung:
-            selected_df["Role"] = ""
-            if captain_id in selected_ids:
-                selected_df.loc[selected_df["id"] == captain_id, "Role"] = "CAPTAIN 👑"
-            if underdog_id in selected_ids:
-                selected_df.loc[selected_df["id"] == underdog_id, "Role"] += (
-                    " / UNDERDOG 🐕 (x2)"
-                    if selected_df.loc[selected_df["id"] == underdog_id, "Role"].iloc[0]
-                    else "UNDERDOG 🐕 (x2)"
+            if can_save:
+                if st.button("💾 Save Team Changes"):
+                    payload = {
+                        "player_ids": selected_ids,
+                        "captain_id": captain_id,
+                        "underdog_id": underdog_id,
+                        "champion_id": champion_id,
+                    }
+
+                    response = requests.put(f"{BASE_URL}/teams/{team_id}", json=payload)
+                    if response.status_code == 200:
+                        st.success("Team updated successfully!")
+                        st.session_state.current_page = "overview"
+                        st.rerun()
+                    else:
+                        st.error(f"Error updating team: {response.text}")
+            else:
+                st.warning(
+                    "⚠️ Select exactly 15 players, stay within budget, and choose Captain, Underdog, and Champion."
                 )
 
-            st.dataframe(
-                selected_df[["seed", "name", "price", "flag_url", "Role"]],
+        # 🟩 --- CREATE NEW TEAM ---
+        elif st.session_state.current_page == "create_new_team":
+            if st.button("⬅️ Back to Teams"):
+                st.session_state.current_page = (
+                    "overview"  # oder "teams_overview" je nach deinem Setup
+                )
+                st.rerun()
+            st.title("🎯 Fantasy Darts – Create Your Team")
+            TOTAL_BUDGET = 20000
+
+            # --- Lade Spieler ---
+            try:
+                players = requests.get(f"{BASE_URL}/players/").json()
+            except Exception as e:
+                st.error(f"Error loading players: {e}")
+                st.stop()
+
+            if not isinstance(players, list) or len(players) == 0:
+                st.error("❌ No players found!")
+                st.stop()
+
+            df = pd.DataFrame(players)
+            df["selected"] = False
+
+            def get_flag_url(nation):
+                code = COUNTRY_CODE_MAP.get(nation.strip())
+                return f"{BASE_FLAG_URL}{code}.svg" if code else ""
+
+            df["flag_url"] = df["nation"].apply(get_flag_url)
+
+            # --- Tabelle ---
+            edited_df = st.data_editor(
+                df,
                 column_config={
-                    "seed": st.column_config.Column("Seed", width="tiny"),
-                    "name": st.column_config.Column("Player Name"),
+                    "seed": st.column_config.Column("Seed", width="small"),
+                    "name": st.column_config.Column("Name"),
                     "price": st.column_config.Column("Price"),
-                    "flag_url": st.column_config.ImageColumn("Flag", width="tiny"),
-                    "Role": st.column_config.Column("Role", width="medium"),
+                    "flag_url": st.column_config.ImageColumn("Nation", width="small"),
+                    "selected": st.column_config.CheckboxColumn("Select"),
                 },
+                column_order=["seed", "name", "price", "flag_url", "selected"],
                 hide_index=True,
                 width="stretch",
+                disabled=[
+                    "seed",
+                    "name",
+                    "price",
+                    "nation",
+                    "id",
+                    "points",
+                    "eliminated",
+                ],  # id, points, eliminated hinzugefügt
+                key="create_team_editor",
             )
-        else:
-            st.info("No players selected yet.")
 
-        # --- Team speichern ---
-        can_create = (
-            (selected_count == 15) and (remaining_budget >= 0) and can_select_roles
-        )
-        team_name = st.text_input("Team name", "My Dream Team")
+            # --- Auswahl & Budget ---
+            # selected_df = edited_df[edited_df["selected"]]
+            selected_df = edited_df[edited_df["selected"]].copy()
+            # selected_ids = selected_df["id"].tolist()
+            selected_ids = selected_df["id"].apply(int).tolist()
+            total_spent = selected_df["price"].sum()
+            remaining_budget = TOTAL_BUDGET - total_spent
+            selected_count = len(selected_ids)
 
-        if can_create:
-            if st.button("✅ Create Team"):
-                payload = {
-                    "user_id": int(st.session_state.user_id),
-                    "team_name": team_name,
-                    "player_ids": selected_ids,
-                    "captain_id": captain_id,
-                    "underdog_id": underdog_id,
-                }
+            # --- Budgetanzeige ---
+            st.markdown(
+                f"""
+                ### 💰 Budget
+                - **Total:** {TOTAL_BUDGET:,.2f}  
+                - **Used:** {total_spent:,.2f}  
+                - **Remaining:** <span style="color:{'red' if remaining_budget < 0 else 'green'}">{remaining_budget:,.2f}</span>
+                """,
+                unsafe_allow_html=True,
+            )
+            st.markdown(f"### 🧍 Selected Players: {selected_count} / 15")
 
-                response = requests.post(f"{BASE_URL}/teams/", json=payload)
-                if response.status_code == 200:
-                    st.success("✅ Team successfully created!")
-                    st.session_state.current_page = "overview"
-                    st.rerun()
+            # --- Captain und Underdog Auswahl (NEU) ---
+            captain_id = None
+            underdog_id = None
+            champion_id = None
+            can_select_roles = False
+            can_select_champion = False
+
+            # --- Teamübersicht ---
+            if not selected_df.empty:
+                st.subheader("✅ Your Current Team")
+
+                # Code zur Kennzeichnung:
+                selected_df["Role"] = ""
+                if captain_id in selected_ids:
+                    selected_df.loc[selected_df["id"] == captain_id, "Role"] = (
+                        "CAPTAIN 👑 (x2)"
+                    )
+                if underdog_id in selected_ids:
+                    selected_df.loc[selected_df["id"] == underdog_id, "Role"] += (
+                        " / UNDERDOG 🐕 (x2)"
+                        if selected_df.loc[
+                            selected_df["id"] == underdog_id, "Role"
+                        ].iloc[0]
+                        else "UNDERDOG 🐕 (x2)"
+                    )
+
+                st.dataframe(
+                    selected_df[["seed", "name", "price", "flag_url", "Role"]],
+                    column_config={
+                        "seed": st.column_config.Column("Seed", width="tiny"),
+                        "name": st.column_config.Column("Player Name"),
+                        "price": st.column_config.Column("Price"),
+                        "flag_url": st.column_config.ImageColumn("Flag", width="tiny"),
+                        "Role": st.column_config.Column("Role", width="medium"),
+                    },
+                    hide_index=True,
+                    width="stretch",
+                )
+            else:
+                st.info("No players selected yet.")
+                # 3. Champion Auswahl
+
+            if selected_count == 15 and remaining_budget >= 0:
+
+                st.markdown("---")
+                st.subheader("⭐ Select Captain & Underdog")
+
+                # 1. Captain Auswahl
+                max_price = selected_df["price"].max()
+                eligible_captains = selected_df[selected_df["price"] < max_price]
+                captain_options = eligible_captains.set_index("id")["name"].to_dict()
+
+                if captain_options:
+                    captain_name = st.selectbox(
+                        "Select your **Team Captain** (x2 Points, must not be the most expensive player):",
+                        options=captain_options.values(),
+                        key="create_captain_select",
+                    )
+                    captain_id = int(
+                        eligible_captains[eligible_captains["name"] == captain_name][
+                            "id"
+                        ].iloc[0]
+                    )
+                    captain_ok = True
                 else:
-                    st.error(f"Error creating team: {response.text}")
-        else:
-            st.warning(
-                "⚠️ Select exactly 15 players, stay within budget, and choose both roles."
+                    st.error("❌ No eligible Captain player found!")
+                    captain_ok = False
+
+                # 2. Underdog Auswahl
+                underdog_candidates = selected_df[selected_df["price"] < 800]
+                underdog_options = underdog_candidates.set_index("id")["name"].to_dict()
+
+                if underdog_options:
+                    underdog_name = st.selectbox(
+                        "Select your **Underdog** (Price < 800.0):",
+                        options=underdog_options.values(),
+                        key="create_underdog_select",
+                    )
+                    underdog_id = int(
+                        underdog_candidates[
+                            underdog_candidates["name"] == underdog_name
+                        ]["id"].iloc[0]
+                    )
+                    underdog_ok = True
+                else:
+                    st.error(
+                        "❌ No eligible Underdog player (Price < 800.0) selected in your team!"
+                    )
+                    underdog_ok = False
+
+                can_select_roles = captain_ok and underdog_ok
+
+                st.markdown("---")
+                st.subheader("🏆 Champion Pick")
+
+                champion_options_names = df.set_index("id")["name"].to_dict()
+
+                champion_name = st.selectbox(
+                    "Select your **Champion Pick** (Bonus Points if they win the tournament):",
+                    options=["--- Select Champion ---"]
+                    + list(champion_options_names.values()),
+                    key="create_champion_select",
+                )
+
+                # Finde die ID des ausgewählten Spielers
+                if champion_name != "--- Select Champion ---" and champion_name:
+                    champion_id_list = df[df["name"] == champion_name]["id"].tolist()
+                    if champion_id_list:
+                        champion_id = int(champion_id_list[0])
+                        can_select_champion = True
+                    else:
+                        can_select_champion = False  # Sollte nicht passieren
+                else:
+                    st.warning("⚠️ Please pick a Champion.")
+                    can_select_champion = False
+
+            else:
+                can_select_roles = False
+                can_select_champion = False
+
+            # --- Team speichern ---
+
+            can_create = (
+                (selected_count == 15)
+                and (remaining_budget >= 0)
+                and can_select_roles
+                and can_select_champion
             )
+            team_name = st.text_input("Team name", "My Dream Team")
+
+            if can_create:
+                if st.button("✅ Create Team"):
+
+                    # --- NEU: PRÜFUNG DES TEAMNAMEN ---
+                    # 1. API-Aufruf zur Überprüfung des Teamnamens
+                    try:
+                        # ANNAHME: Der Backend-Service bietet einen GET-Endpunkt zur Prüfung der Verfügbarkeit
+                        check_response = requests.post(
+                            f"{BASE_URL}/teams/check_name",
+                            json={"team_name": team_name},  # Senden im Body
+                        )
+                    except requests.exceptions.RequestException as e:
+                        st.error(f"❌ Connection error during name check: {e}")
+                        st.stop()
+
+                    # 2. Prüfen der Verfügbarkeit
+                    if (
+                        check_response.status_code == 409
+                    ):  # 409 Conflict oder ein ähnlicher Code für "bereits existiert"
+                        st.error(
+                            f"⚠️ The team name **'{team_name}'** is already taken. Please choose a different name."
+                        )
+                        # st.stop() ist hier nicht nötig, da wir den Erstellungsprozess nur überspringen
+
+                    elif check_response.status_code != 200:
+                        st.error(
+                            f"❌ An error occurred during team name availability check. Status: {check_response.status_code}"
+                        )
+
+                    else:
+                        # Statuscode ist 200: Name ist verfügbar, Team erstellen
+
+                        payload = {
+                            "user_id": int(st.session_state.user_id),
+                            "team_name": team_name,
+                            "player_ids": selected_ids,
+                            "captain_id": captain_id,
+                            "underdog_id": underdog_id,
+                            "champion_id": champion_id,
+                        }
+
+                        response = requests.post(f"{BASE_URL}/teams/", json=payload)
+
+                        if response.status_code == 200:
+                            st.success("✅ Team successfully created!")
+                            st.session_state.current_page = "overview"
+                            st.rerun()
+                        else:
+                            # Zeigt die Fehlermeldung vom Backend an
+                            st.error(f"Error creating team: {response.text}")
+
+            else:
+                st.warning(
+                    "⚠️ Select exactly 15 players, stay within budget, and choose Captain, Underdog, and Champion."
+                )
+
+elif page == "📝 Manage Accounts":
+
+    st.title("🛡️ Admin User Management")
+
+    # 1. Admin Check
+    if st.session_state.get("is_admin") != True:
+        st.warning("🚫 Admin privileges required to access user management!")
+        st.stop()
+
+    st.markdown("---")
+
+    # 2. Add New User Section
+    st.header("➕ Create New User")
+    with st.form("create_new_user_form"):
+        new_username = st.text_input("Username")
+        new_password = st.text_input("Password", type="password")
+        is_new_admin = st.checkbox("Create as Admin?", value=False)
+
+        submitted = st.form_submit_button("Create User")
+
+        if submitted and new_username and new_password:
+            try:
+                create_new_user(new_username, new_password, is_new_admin)
+                st.success(f"User **'{new_username}'** created successfully.")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error creating user: {e}")
+        elif submitted:
+            st.error("Please enter both username and password.")
+
+    st.markdown("---")
+
+    # 3. Display User List and Change Admin Status
+    st.header("👥 All Registered Users")
+
+    users = fetch_users()
+
+    if users:
+        for user in users:
+            col1, col2, col3, col4 = st.columns([1, 2, 2, 1])
+
+            col1.write(f"**ID:** {user['id']}")
+            col2.write(f"**Username:** {user['username']}")
+
+            is_current_user = user.get("id") == st.session_state.get("user_id")
+
+            # Checkbox for Admin Status
+            new_status = col3.checkbox(
+                f"Admin Status",
+                value=user.get("is_admin", False),
+                key=f"admin_check_{user['id']}",
+                disabled=is_current_user,
+            )
+
+            if new_status != user.get("is_admin", False) and not is_current_user:
+                if col3.button("Save Status", key=f"save_btn_{user['id']}"):
+                    update_user_admin_status(user["id"], new_status)
+            elif is_current_user and new_status != user.get("is_admin", False):
+                col3.warning("Cannot change your own admin status.")
+
+            if not is_current_user:
+                # 1. DELETE BUTTON
+                delete_button_pressed = col4.button(
+                    "🗑️ Delete", key=f"delete_btn_{user['id']}"
+                )
+
+                # 2. ÜBERPRÜFUNG DER BESTÄTIGUNG
+
+                # Zustand prüfen: Ist die Bestätigung für diesen spezifischen Benutzer aktiv?
+                if (
+                    delete_button_pressed
+                    and st.session_state.get("confirm_delete_user_id") == user["id"]
+                ):
+
+                    try:
+                        delete_user_by_id(user["id"])
+
+                        st.session_state["confirm_delete_user_id"] = None
+                        st.success(f"User '{user['username']}' successfully deleted.")
+                        st.rerun()
+
+                    except Exception as e:
+                        st.error(f"Error deleting user: {e}")
+                        st.session_state["confirm_delete_user_id"] = None
+
+                elif delete_button_pressed:
+
+                    st.session_state["confirm_delete_user_id"] = user["id"]
+                    st.warning(
+                        f"⚠️ **CONFIRM DELETION:** Press the '🗑️ Delete' button again to permanently delete user '{user['username']}'."
+                    )
+                    st.stop()
+
+            else:
+                col4.write("🚫 Self-Delete")
+
+    else:
+        st.info("No users found or error loading data.")
