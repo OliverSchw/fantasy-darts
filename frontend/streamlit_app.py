@@ -340,10 +340,10 @@ if page == "🏠 Overview":
                     "price": st.column_config.NumberColumn(
                         "Price", format="compact", width="small"
                     ),
-                    "flag_url": st.column_config.ImageColumn("Nation", width="tiny"),
+                    "flag_url": st.column_config.ImageColumn("Nation", width=40),
                     "points": None,  # WICHTIG: Blende die redundante 'points' Spalte aus
                     "Display_Points": st.column_config.Column("Points", width="tiny"),
-                    "Role": st.column_config.Column("Role", width="medium"),
+                    "Role": st.column_config.Column("Role", width="small"),
                     "eliminated": None,
                 },
                 width="stretch",
@@ -426,9 +426,7 @@ if page == "🏠 Overview":
                         "price": st.column_config.NumberColumn(
                             "Price", format="compact", width="small"
                         ),
-                        "flag_url": st.column_config.ImageColumn(
-                            "Nation", width="tiny"
-                        ),
+                        "flag_url": st.column_config.ImageColumn("Nation", width=40),
                         "points": None,  # Ausblenden
                         "is_champion": None,  # Ausblenden
                         "eliminated": None,  # Ausblenden
@@ -589,7 +587,7 @@ elif page == "🎯 Players":
             "price": st.column_config.NumberColumn(
                 "Price", format="compact", width="small"
             ),
-            "flag_url": st.column_config.ImageColumn("Nation", width="tiny"),
+            "flag_url": st.column_config.ImageColumn("Nation", width=40),
             "points": st.column_config.NumberColumn(
                 "Points", format="compact", width="small"
             ),
@@ -1881,7 +1879,7 @@ elif page == "🧩 Teams":
                     "price": st.column_config.NumberColumn(
                         "Price", format="compact", width="small"
                     ),
-                    "flag_url": st.column_config.ImageColumn("Nation", width="small"),
+                    "flag_url": st.column_config.ImageColumn("Nation", width=40),
                     "selected": st.column_config.CheckboxColumn("Select"),
                 },
                 column_order=["seed", "name", "price", "flag_url", "selected"],
@@ -1957,7 +1955,7 @@ elif page == "🧩 Teams":
                         "price": st.column_config.NumberColumn(
                             "Price", format="compact", width="small"
                         ),
-                        "flag_url": st.column_config.ImageColumn("Flag", width="tiny"),
+                        "flag_url": st.column_config.ImageColumn("Flag", width=40),
                         "Role": st.column_config.Column("Role", width="medium"),
                     },
                     hide_index=True,
@@ -2158,7 +2156,7 @@ elif page == "🧩 Teams":
                     "seed": st.column_config.Column("Seed", width="small"),
                     "name": st.column_config.Column("Name"),
                     "price": st.column_config.Column("Price"),
-                    "flag_url": st.column_config.ImageColumn("Nation", width="small"),
+                    "flag_url": st.column_config.ImageColumn("Nation", width=40),
                     "selected": st.column_config.CheckboxColumn("Select"),
                 },
                 column_order=["seed", "name", "price", "flag_url", "selected"],
@@ -2231,7 +2229,7 @@ elif page == "🧩 Teams":
                         "price": st.column_config.NumberColumn(
                             "Price", format="compact", width="small"
                         ),
-                        "flag_url": st.column_config.ImageColumn("Flag", width="tiny"),
+                        "flag_url": st.column_config.ImageColumn("Nation", width=40),
                         "Role": st.column_config.Column("Role", width="medium"),
                     },
                     hide_index=True,
