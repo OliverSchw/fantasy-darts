@@ -2025,7 +2025,7 @@ elif page == "🧩 Teams":
                     )
 
                     underdog_name = st.selectbox(
-                        "Select your **Underdog** (Price < 800.0):",
+                        "Select your **Underdog** (x2 Points, Price < 800.0):",
                         options=underdog_options.values(),
                         index=default_underdog_index,
                         key="edit_underdog_select",
@@ -2273,7 +2273,7 @@ elif page == "🧩 Teams":
 
                 if underdog_options:
                     underdog_name = st.selectbox(
-                        "Select your **Underdog** (Price < 800.0):",
+                        "Select your **Underdog** (x2 Points, Price < 800.0):",
                         options=underdog_options.values(),
                         key="create_underdog_select",
                     )
