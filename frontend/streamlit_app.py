@@ -343,7 +343,7 @@ if page == "🏠 Overview":
                     "flag_url": st.column_config.ImageColumn("Nation", width=50),
                     "points": None,  # WICHTIG: Blende die redundante 'points' Spalte aus
                     "Display_Points": st.column_config.Column("Points", width="tiny"),
-                    "Role": st.column_config.Column("Role", width="small"),
+                    "Role": st.column_config.Column("Role", width="medium"),
                     "eliminated": None,
                 },
                 width="stretch",
@@ -583,7 +583,7 @@ elif page == "🎯 Players":
         ].style.apply(highlight_row, axis=1),
         column_config={
             "seed": st.column_config.Column("Seed", width="tiny"),
-            "name": st.column_config.Column("Player Name", width="small"),
+            "name": st.column_config.Column("Player Name", width="medium"),
             "price": st.column_config.NumberColumn(
                 "Price", format="compact", width="small"
             ),
@@ -1875,7 +1875,7 @@ elif page == "🧩 Teams":
                 df,
                 column_config={
                     "seed": st.column_config.NumberColumn("Seed", width="tiny"),
-                    "name": st.column_config.Column("Name", width="small"),
+                    "name": st.column_config.Column("Name", width="medium"),
                     "price": st.column_config.NumberColumn(
                         "Price", format="compact", width="small"
                     ),
@@ -1951,7 +1951,7 @@ elif page == "🧩 Teams":
                     selected_df[["seed", "name", "price", "flag_url", "Role"]],
                     column_config={
                         "seed": st.column_config.Column("Seed", width="tiny"),
-                        "name": st.column_config.Column("Player Name", width="small"),
+                        "name": st.column_config.Column("Player Name", width="medium"),
                         "price": st.column_config.NumberColumn(
                             "Price", format="compact", width="small"
                         ),
@@ -2153,7 +2153,7 @@ elif page == "🧩 Teams":
             edited_df = st.data_editor(
                 df,
                 column_config={
-                    "seed": st.column_config.Column("Seed", width="small"),
+                    "seed": st.column_config.Column("Seed", width="tiny"),
                     "name": st.column_config.Column("Name"),
                     "price": st.column_config.Column("Price"),
                     "flag_url": st.column_config.ImageColumn("Nation", width=50),
@@ -2225,7 +2225,7 @@ elif page == "🧩 Teams":
                     selected_df[["seed", "name", "price", "flag_url", "Role"]],
                     column_config={
                         "seed": st.column_config.Column("Seed", width="tiny"),
-                        "name": st.column_config.Column("Player Name", width="small"),
+                        "name": st.column_config.Column("Player Name", width="medium"),
                         "price": st.column_config.NumberColumn(
                             "Price", format="compact", width="small"
                         ),
