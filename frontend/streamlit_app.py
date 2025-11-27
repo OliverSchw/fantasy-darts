@@ -111,13 +111,13 @@ else:
         st.rerun()  # sofort neu rendern
 # Seiten-Navigation
 
-if "current_sub_state" not in st.session_state:
-    st.session_state.current_sub_state = "overview"
+if "current_page" not in st.session_state:
+    st.session_state.current_page = "overview"
 
 
 def reset_sub_state():
     # Setzt den gewünschten Session State auf den gewünschten Standardwert
-    st.session_state.current_sub_state = "overview"
+    st.session_state.current_page = "overview"
 
 
 page = st.sidebar.radio(
