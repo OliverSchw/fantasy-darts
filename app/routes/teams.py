@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from .. import database, models
 from ..schemas import TeamCreate
@@ -13,6 +13,15 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def get_current_user(db: Session = Depends(get_db)):
+    # ... Implementierung der Benutzer-Authentifizierung ...
+    # Nehmen wir an, wir geben hier den User mit ID 1 zurück
+    user = db.get(models.User, 1)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return user
 
 
 # @router.post("/")
@@ -310,3 +319,36 @@ def check_team_name_availability(
 
     # 200 OK senden, wenn der Name frei ist
     return {"message": "Team name available"}
+
+
+@router.post("/{team_id}/activate")
+def set_active_team(
+    team_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """
+    Setzt das angegebene Team als das aktive Team für den aktuellen Benutzer.
+    """
+
+    team_to_activate = db.get(models.Team, team_id)
+
+    if not team_to_activate:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Team not found"
+        )
+
+    if team_to_activate.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="You do not own this team"
+        )
+
+    current_user.active_team = team_to_activate
+
+    db.commit()
+    db.refresh(current_user)
+
+    return {
+        "message": f"Team '{team_to_activate.name}' is now the active team.",
+        "active_team_id": current_user.active_team_id,
+    }

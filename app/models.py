@@ -23,7 +23,16 @@ class User(Base):
     username = Column(String, unique=True)
     password_hash = Column(String)
     is_admin = Column(Boolean, default=False)
-    teams = relationship("Team", back_populates="user")
+
+    active_team_id = Column(
+        Integer, ForeignKey("teams.id", ondelete="SET NULL"), nullable=True, unique=True
+    )
+    active_team = relationship("Team", foreign_keys=[active_team_id], uselist=False)
+    teams = relationship(
+        "Team",
+        back_populates="user",
+        foreign_keys="[Team.user_id]",  # <-- HIER DIE ZIELSPALTE ANGEBEN!
+    )
 
 
 class Team(Base):
@@ -32,9 +41,7 @@ class Team(Base):
     name = Column(String)
     # user_id = Column(Integer, ForeignKey("users.id"))
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
-
-    user = relationship("User", back_populates="teams")
-    # team_players = relationship("TeamPlayer", back_populates="team")
+    user = relationship("User", back_populates="teams", foreign_keys=[user_id])
     team_players = relationship(
         "TeamPlayer",
         back_populates="team",
@@ -83,3 +90,22 @@ class Match(Base):
     high_checkout_p2 = Column(Integer, default=0)
     d180s_p1 = Column(Integer, default=0)
     d180s_p2 = Column(Integer, default=0)
+
+
+class Config(Base):
+    """
+    Datenbankmodell für globale Konfigurationseinstellungen.
+    Wird verwendet, um den globalen 'teams_locked' Status zu speichern.
+    """
+
+    __tablename__ = "global_config"  # Der Name der Datenbanktabelle
+
+    # Muss ein Primary Key sein
+    id = Column(Integer, primary_key=True, index=True)
+
+    # Der Schlüssel der Einstellung (z.B. 'teams_locked')
+    key = Column(String, unique=True, index=True, nullable=False)
+
+    # Der Wert der Einstellung (Boolean ist ideal für True/False Status)
+    # Wenn Sie kompliziertere Werte speichern wollen, nutzen Sie String und JSON Serialisierung.
+    value = Column(Boolean, default=False, nullable=False)

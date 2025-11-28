@@ -9,15 +9,6 @@ def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
 
-# def create_user(username: str, password: str):
-#     db = database.SessionLocal()
-#     hashed = hash_password(password)
-#     user = models.User(username=username, password_hash=hashed)
-#     db.add(user)
-#     db.commit()
-#     db.close()
-
-
 def create_user(username: str, password: str, is_admin=False):
     db = database.SessionLocal()
     try:

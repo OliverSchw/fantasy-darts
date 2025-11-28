@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from .database import Base, engine
 from .models import *
-from .routes import players, teams, matches, leaderboard, auth, add_points
+from .routes import players, teams, matches, leaderboard, auth, add_points, config
 from fastapi.middleware.cors import CORSMiddleware
 
 # Base.metadata.create_all(bind=engine)
@@ -45,3 +45,4 @@ app.include_router(players.router)
 app.include_router(teams.router)
 app.include_router(matches.router)
 app.include_router(leaderboard.router)
+app.include_router(config.router)

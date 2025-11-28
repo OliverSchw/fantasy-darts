@@ -223,3 +223,19 @@ def register_user(
     return {
         "message": f"User {user.username} created successfully with admin status: {user.is_admin}"
     }
+
+
+@router.get("/{user_id}/active_team")
+def get_active_team_id(user_id: int, db: Session = Depends(get_db)):
+
+    user = db.get(models.User, user_id)
+
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    return {
+        "user_id": user_id,
+        "active_team_id": user.active_team_id,  # Gibt entweder die ID oder None zurück
+    }

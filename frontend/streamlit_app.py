@@ -10,9 +10,11 @@ import os
 # Wenn auf Streamlit Cloud: nimm BASE_URL aus den Secrets
 # Wenn lokal: fallback auf localhost
 BASE_URL = os.getenv(
-    "BASE_URL", "https://fantasy-darts-1.onrender.com"
-)  # "http://127.0.0.1:8000"  #
+    "BASE_URL", "http://127.0.0.1:8000"
+)  #   #"https://fantasy-darts-1.onrender.com"
 
+
+TOTAL_BUDGET = 275
 CHAMPION_POINTS = 1000
 
 COUNTRY_CODE_MAP = {
@@ -114,6 +116,57 @@ else:
 if "current_page" not in st.session_state:
     st.session_state.current_page = "overview"
 
+import requests
+
+# ... (BASE_URL, token etc. sind angenommen)
+
+
+def get_team_lock_status():
+    """Ruft den globalen Team-Lock-Status vom Backend ab."""
+    token = st.session_state.get("access_token")
+    try:
+        # ANNAHME: Backend hat einen GET-Endpunkt für die Konfiguration
+        response = requests.get(
+            f"{BASE_URL}/config/lock-status",
+            headers={"Authorization": f"Bearer {token}"} if token else {},
+        )
+        if response.status_code == 200:
+            # ANNAHME: Backend gibt {"teams_locked": True/False} zurück
+            return response.json().get("teams_locked", False)
+        return False
+    except requests.exceptions.RequestException:
+        st.error("Error connecting to backend for team lock status.")
+        return False
+
+
+def set_team_lock_status(is_locked: bool):
+    """Setzt den globalen Team-Lock-Status im Backend."""
+    token = st.session_state.get("access_token")
+    try:
+        # ANNAHME: Backend hat einen POST/PUT-Endpunkt zum Setzen der Konfiguration
+        response = requests.post(
+            f"{BASE_URL}/config/lock-status",
+            json={"teams_locked": is_locked},
+            headers={"Authorization": f"Bearer {token}"} if token else {},
+        )
+        if response.status_code == 200:
+            st.success(
+                f"Team editing is now {'**LOCKED** 🔒' if is_locked else '**UNLOCKED** 🔓'}."
+            )
+            return True
+        else:
+            st.error(f"Error setting team lock status: {response.text}")
+            return False
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error connecting to backend: {e}")
+        return False
+
+
+if "teams_locked" not in st.session_state:
+    st.session_state["teams_locked"] = get_team_lock_status()
+
+teams_are_locked = st.session_state.get("teams_locked", False)
+
 
 def reset_sub_state():
     # Setzt den gewünschten Session State auf den gewünschten Standardwert
@@ -128,7 +181,7 @@ page = st.sidebar.radio(
         "🧩 Teams",
         # "⚔️ Tournament Bracket"
         "📅 Tournament Schedule",
-        "📝 Manage Accounts",
+        "⚙️ Settings",
     ],
     on_change=reset_sub_state,
 )
@@ -348,7 +401,7 @@ if page == "🏠 Overview":
                     "seed": st.column_config.Column("Seed", width="tiny"),
                     "name": st.column_config.Column("Player Name", width="medium"),
                     "price": st.column_config.NumberColumn(
-                        "Price", format="compact", width="small"
+                        "Price", format="%.1f", width="small"
                     ),
                     "flag_url": st.column_config.ImageColumn("Nation", width=50),
                     "points": None,  # WICHTIG: Blende die redundante 'points' Spalte aus
@@ -357,7 +410,6 @@ if page == "🏠 Overview":
                     "eliminated": None,
                 },
                 width="stretch",
-                # Passe die Spaltenreihenfolge an, indem du 'points' durch 'Display_Points' ersetzt
                 column_order=[
                     "seed",
                     "flag_url",
@@ -434,7 +486,7 @@ if page == "🏠 Overview":
                         "seed": st.column_config.Column("Seed", width="tiny"),
                         "name": st.column_config.Column("Player Name", width="medium"),
                         "price": st.column_config.NumberColumn(
-                            "Price", format="compact", width="small"
+                            "Price (Mio)", format="%.1f", width="small"
                         ),
                         "flag_url": st.column_config.ImageColumn("Nation", width=50),
                         "points": None,  # Ausblenden
@@ -467,34 +519,7 @@ if page == "🏠 Overview":
             st.markdown("---")
             st.button("⬅️ Back to Leaderboard", on_click=back_to_overview)
 
-    # --- Leaderboard Seite ---
-    # elif st.session_state.current_page == "overview":
     else:
-        # st.title("🏠 Overview & Leaderboard")
-
-        # Load leaderboard
-        # requests.put(f"{BASE_URL}/players/points/recompute")
-        # leaderboard = requests.get(f"{BASE_URL}/leaderboard/").json()
-        # df_lb = pd.DataFrame(leaderboard)
-        # if not df_lb.empty:
-        #     df_lb = df_lb.sort_values(by="total_points", ascending=False).reset_index(
-        #         drop=True
-        #     )
-        #     df_lb.insert(0, "Rank", df_lb.index + 1)
-
-        #     st.subheader("🏆 Current Teams & Rankings")
-        #     for i, row in df_lb.iterrows():
-        #         cols = st.columns([1, 4, 2, 1])
-        #         cols[0].write(row["Rank"])
-        #         cols[1].write(row["team_name"])
-        #         cols[2].write(row["total_points"])
-        #         # View-Button mit Callback
-        #         cols[3].button(
-        #             "View",
-        #             key=f"team_{row['team_id']}",
-        #             on_click=go_to_team,
-        #             args=(row["team_id"], row["team_name"]),
-        #         )
         st.title("🏠 Overview & Leaderboard")
 
         team_selection = None
@@ -535,7 +560,7 @@ if page == "🏠 Overview":
             )
 
         if team_selection:
-            if st.button(f"Show team details 🔍"):
+            if st.button(f"Show team details 🔍", disabled=(not teams_are_locked)):
 
                 # Finde die ID des ausgewählten Teams im Original-DataFrame
                 selected_row = df_lb[df_lb["team_name"] == team_selection].iloc[0]
@@ -595,11 +620,11 @@ elif page == "🎯 Players":
             "seed": st.column_config.Column("Seed", width="tiny"),
             "name": st.column_config.Column("Player Name", width="medium"),
             "price": st.column_config.NumberColumn(
-                "Price", format="compact", width="small"
+                "Price (Mio)", format="%.1f", width="small"
             ),
             "flag_url": st.column_config.ImageColumn("Nation", width=50),
             "points": st.column_config.NumberColumn(
-                "Points", format="compact", width="small"
+                "Points", format="%.1f", width="small"
             ),
             "eliminated": None,
         },
@@ -1748,35 +1773,135 @@ elif page == "🧩 Teams":
         st.warning("⚠️ Please log in to create a team!")
         st.stop()
 
+    def set_active_team_callback():
+        selected_name = st.session_state.active_team_selector
+        teams_are_locked = st.session_state.get("teams_locked", False)
+        if teams_are_locked:
+            st.error("Teams are locked.")
+            return
+        if (
+            "df_teams_data" not in st.session_state
+            or st.session_state.df_teams_data.empty
+        ):
+            st.error("Team data is not available.")
+            return
+
+        df_teams = st.session_state.df_teams_data
+
+        try:
+            # Finde die ID des ausgewählten Teams
+            selected_team = df_teams[df_teams["team_name"] == selected_name]
+            if selected_team.empty:
+                st.error(f"Team '{selected_name}' not found.")
+                return
+
+            team_id = selected_team["team_id"].iloc[0]
+            token = st.session_state.get("access_token")
+
+            # 2. API-Aufruf zum Aktivieren des Teams
+            response = requests.post(
+                f"{BASE_URL}/teams/{team_id}/activate",
+                headers={"Authorization": f"Bearer {token}"} if token else {},
+            )
+
+            if response.status_code == 200:
+                st.success(f"Team '{selected_name}' is now the active team!")
+                # 3. Neu laden, um den Status-Wechsel und die Selectbox zu aktualisieren
+                # st.rerun()
+            else:
+                st.error(f"Error activating team: {response.text}")
+
+        except Exception as e:
+            st.error(f"Error setting active team: {e}")
+
     if st.session_state.get("current_page", "") not in ["edit_team", "create_new_team"]:
         st.title("🧩 Your Teams")
 
-        # --- 1. Load user's teams ---
+        # --- 1. Load user's teams (und aktives Team laden!) ---
         try:
-            user_teams = requests.get(
+            # Aktives Team des Users laden, um den Status anzuzeigen
+            active_team_response = requests.get(
+                f"{BASE_URL}/auth/{st.session_state.user_id}/active_team"
+            )
+            current_active_id = active_team_response.json().get("active_team_id")
+
+            user_teams_response = requests.get(
                 f"{BASE_URL}/teams/user/{st.session_state.user_id}"
             ).json()
-            df_teams = pd.DataFrame(user_teams)
+
+            # token = st.session_state.get("access_token") # Nicht nötig hier
+            df_teams = pd.DataFrame(user_teams_response)
+
+            # Speichern des DataFrames, damit der Callback darauf zugreifen kann
+            st.session_state.df_teams_data = df_teams
+
+            # --- TEAMS TABELLE ANZEIGEN ---
             if not df_teams.empty:
                 st.subheader("📝 Your Existing Teams")
+
+                # Sortierlogik
                 df_teams = df_teams.sort_values(
                     by="total_points", ascending=False
                 ).reset_index(drop=True)
                 df_teams.insert(0, "Rank", df_teams.index + 1)
+                teams_are_locked = st.session_state.get("teams_locked", False)
+                # current_active_name = (
+                #     df_teams[df_teams["team_id"] == current_active_id][
+                #         "team_name"
+                #     ].iloc[0]
+                #     if current_active_id
+                #     else None
+                # )
+                current_active_name = None  # Starte mit None
+                if current_active_id and not df_teams.empty:
+                    # Versuche, das aktive Team zu finden
+                    active_team_row = df_teams[df_teams["team_id"] == current_active_id]
+
+                    # Prüfe, ob eine Zeile gefunden wurde, bevor iloc[0] aufgerufen wird
+                    if not active_team_row.empty:
+                        current_active_name = active_team_row["team_name"].iloc[0]
+
+                # Kopfzeile
+                cols_header = st.columns(
+                    [1, 4, 2, 2, 2]
+                )  # Eine Spalte weniger als vorher
+                cols_header[0].markdown("**#**")
+                cols_header[1].markdown("**Team Name**")
+                cols_header[2].markdown("**Points**")
+                cols_header[3].markdown("**Edit**")
+                cols_header[4].markdown("**Delete**")
+                st.markdown("---")
 
                 for i, row in df_teams.iterrows():
+                    # 5 Spalten: Rank, Name, Points, Edit, Delete
                     cols = st.columns([1, 4, 2, 2, 2])
-                    cols[0].write(row["Rank"])
-                    cols[1].write(row["team_name"])
+                    team_id = row["team_id"]
+                    is_active = team_id == current_active_id
+
+                    cols[0].write(f'{row["Rank"]}.')
+
+                    # Zeigt den Namen + Status an
+                    team_display_name = f'**{row["team_name"]}**'
+                    if is_active:
+                        team_display_name += " **(✅ Active)**"
+                    cols[1].markdown(team_display_name)
+
                     cols[2].write(row["total_points"])
-                    if cols[3].button("✏️ Edit", key=f"edit_{row['team_id']}"):
-                        # Speichere Team für Edit
-                        st.session_state.edit_team_id = row["team_id"]
+
+                    # --- Edit und Delete Logik (unverändert) ---
+                    if cols[3].button(
+                        "✏️ Edit", key=f"edit_{team_id}", disabled=teams_are_locked
+                    ):
+                        st.session_state.edit_team_id = team_id
                         st.session_state.edit_team_name = row["team_name"]
                         st.session_state.current_page = "edit_team"
                         st.rerun()
 
-                    if cols[4].button("🗑 Delete", key=f"delete_{row['team_id']}"):
+                    if cols[4].button(
+                        "🗑 Delete",
+                        key=f"delete_{row['team_id']}",
+                        disabled=teams_are_locked,
+                    ):
                         try:
                             response = requests.delete(
                                 f"{BASE_URL}/teams/{row['team_id']}"
@@ -1791,17 +1916,92 @@ elif page == "🧩 Teams":
                                 st.error(f"Error deleting team: {response.text}")
                         except Exception as e:
                             st.error(f"Error deleting team: {e}")
+
+                st.markdown("---")
+
+                # --- NEUE LOGIK: Selectbox zum Aktivieren ---
+                st.subheader("⭐ Set Active Team")
+
+                # Definiere den Index der Selectbox
+                if current_active_name:
+                    default_index = (
+                        df_teams["team_name"].to_list().index(current_active_name)
+                    )
+                else:
+                    default_index = 0
+
+                team_selection = st.selectbox(
+                    "Select the team you want to set as active:",
+                    options=df_teams["team_name"].to_list(),
+                    index=default_index,
+                    key="active_team_selector",  # Wichtig: Key für den Callback
+                    on_change=set_active_team_callback,  # Callback wird bei Änderung ausgelöst
+                    disabled=teams_are_locked,
+                )
+
             else:
                 st.info("You have not created any teams yet.")
+
         except Exception as e:
             st.warning(f"Could not load your teams: {e}")
 
         st.markdown("---")
 
-        if st.button("➕ Create New Team"):
+        # if st.session_state.get("current_page", "") not in ["edit_team", "create_new_team"]:
+        #     st.title("🧩 Your Teams")
+
+        #     # --- 1. Load user's teams ---
+        #     try:
+        #         user_teams = requests.get(
+        #             f"{BASE_URL}/teams/user/{st.session_state.user_id}"
+        #         ).json()
+        #         df_teams = pd.DataFrame(user_teams)
+        #         if not df_teams.empty:
+        #             st.subheader("📝 Your Existing Teams")
+        #             df_teams = df_teams.sort_values(
+        #                 by="total_points", ascending=False
+        #             ).reset_index(drop=True)
+        #             df_teams.insert(0, "Rank", df_teams.index + 1)
+
+        #             for i, row in df_teams.iterrows():
+        #                 cols = st.columns([1, 4, 2, 2, 2])
+        #                 cols[0].write(row["Rank"])
+        #                 cols[1].write(row["team_name"])
+        #                 cols[2].write(row["total_points"])
+        #                 if cols[3].button("✏️ Edit", key=f"edit_{row['team_id']}"):
+        #                     # Speichere Team für Edit
+        #                     st.session_state.edit_team_id = row["team_id"]
+        #                     st.session_state.edit_team_name = row["team_name"]
+        #                     st.session_state.current_page = "edit_team"
+        #                     st.rerun()
+
+        #                 if cols[4].button("🗑 Delete", key=f"delete_{row['team_id']}"):
+        #                     try:
+        #                         response = requests.delete(
+        #                             f"{BASE_URL}/teams/{row['team_id']}"
+        #                         )
+        #                         if response.status_code == 200:
+        #                             st.success(
+        #                                 f"Team '{row['team_name']}' deleted successfully!"
+        #                             )
+        #                             st.session_state.current_page = "overview"
+        #                             st.rerun()  # Seite neu laden, damit gelöschtes Team verschwindet
+        #                         else:
+        #                             st.error(f"Error deleting team: {response.text}")
+        #                     except Exception as e:
+        #                         st.error(f"Error deleting team: {e}")
+        #         else:
+        #             st.info("You have not created any teams yet.")
+        #     except Exception as e:
+        #         st.warning(f"Could not load your teams: {e}")
+
+        #     st.markdown("---")
+
+        if st.button("➕ Create New Team", disabled=teams_are_locked):
             # Bereite Session State für Team Creation vor
             st.session_state.selected_ids = []
             st.session_state.current_page = "create_new_team"
+
             st.rerun()
 
     # --- 3. Edit Team oder Create New Team Seiten ---
@@ -1817,8 +2017,6 @@ elif page == "🧩 Teams":
             team_id = st.session_state.edit_team_id
             team_name = st.session_state.edit_team_name
             st.title(f"✏️ Edit Team: {team_name}")
-
-            TOTAL_BUDGET = 20000
 
             # --- Lade Team-Spieler & Champion-Tipp ---
             try:
@@ -1887,7 +2085,7 @@ elif page == "🧩 Teams":
                     "seed": st.column_config.NumberColumn("Seed", width="tiny"),
                     "name": st.column_config.Column("Name", width="medium"),
                     "price": st.column_config.NumberColumn(
-                        "Price", format="compact", width="small"
+                        "Price (Mio)", format="%.1f", width="small"
                     ),
                     "flag_url": st.column_config.ImageColumn("Nation", width=50),
                     "selected": st.column_config.CheckboxColumn("Select"),
@@ -1963,7 +2161,7 @@ elif page == "🧩 Teams":
                         "seed": st.column_config.Column("Seed", width="tiny"),
                         "name": st.column_config.Column("Player Name", width="medium"),
                         "price": st.column_config.NumberColumn(
-                            "Price", format="compact", width="small"
+                            "Price (Mio)", format="%.1f", width="small"
                         ),
                         "flag_url": st.column_config.ImageColumn("Flag", width=50),
                         "Role": st.column_config.Column("Role", width="medium"),
@@ -2016,7 +2214,7 @@ elif page == "🧩 Teams":
                     captain_ok = False
 
                 # 2. Underdog-Auswahl
-                underdog_candidates = selected_df[selected_df["price"] < 800]
+                underdog_candidates = selected_df[selected_df["price"] < 5.0]
                 underdog_options = underdog_candidates.set_index("id")["name"].to_dict()
                 default_underdog_name = (
                     current_underdog["name"]
@@ -2033,7 +2231,7 @@ elif page == "🧩 Teams":
                     )
 
                     underdog_name = st.selectbox(
-                        "Select your **Underdog** (x2 Points, Price < 800.0):",
+                        "Select your **Underdog** (x2 Points, Price < 5.0 Mio):",
                         options=underdog_options.values(),
                         index=default_underdog_index,
                         key="edit_underdog_select",
@@ -2046,7 +2244,7 @@ elif page == "🧩 Teams":
                     underdog_ok = True
                 else:
                     st.error(
-                        "❌ No eligible Underdog player (Price < 800.0) selected in your team!"
+                        "❌ No eligible Underdog player (Price < 5.0 Mio) selected in your team!"
                     )
                     underdog_ok = False
 
@@ -2116,10 +2314,28 @@ elif page == "🧩 Teams":
                         "underdog_id": underdog_id,
                         "champion_id": champion_id,
                     }
-
-                    response = requests.put(f"{BASE_URL}/teams/{team_id}", json=payload)
+                    teams_are_locked = st.session_state.get("teams_locked", False)
+                    if teams_are_locked:
+                        st.error("Teams are locked.")
+                        st.rerun()
+                    else:
+                        response = requests.put(
+                            f"{BASE_URL}/teams/{team_id}", json=payload
+                        )
                     if response.status_code == 200:
-                        st.success("Team updated successfully!")
+                        set_active_payload = {"active_team_id": team_id}
+                        # active_response = requests.put( f"{BASE_URL}/auth/{st.session_state.user_id}/active_team", json=set_active_payload )
+                        token = st.session_state.get("access_token")
+                        active_response = requests.post(
+                            f"{BASE_URL}/teams/{team_id}/activate",
+                            headers=(
+                                {"Authorization": f"Bearer {token}"} if token else {}
+                            ),
+                        )
+                        if active_response.status_code == 200:
+                            st.success("Team updated and set as active!")
+                        else:
+                            st.warning("Team updated, but error setting it as active.")
                         st.session_state.current_page = "overview"
                         st.rerun()
                     else:
@@ -2137,7 +2353,6 @@ elif page == "🧩 Teams":
                 )
                 st.rerun()
             st.title("🎯 Fantasy Darts – Create Your Team")
-            TOTAL_BUDGET = 20000
 
             # --- Lade Spieler ---
             try:
@@ -2237,7 +2452,7 @@ elif page == "🧩 Teams":
                         "seed": st.column_config.Column("Seed", width="tiny"),
                         "name": st.column_config.Column("Player Name", width="medium"),
                         "price": st.column_config.NumberColumn(
-                            "Price", format="compact", width="small"
+                            "Price", format="%.1f", width="small"
                         ),
                         "flag_url": st.column_config.ImageColumn("Nation", width=50),
                         "Role": st.column_config.Column("Role", width="medium"),
@@ -2276,12 +2491,12 @@ elif page == "🧩 Teams":
                     captain_ok = False
 
                 # 2. Underdog Auswahl
-                underdog_candidates = selected_df[selected_df["price"] < 800]
+                underdog_candidates = selected_df[selected_df["price"] < 5.0]
                 underdog_options = underdog_candidates.set_index("id")["name"].to_dict()
 
                 if underdog_options:
                     underdog_name = st.selectbox(
-                        "Select your **Underdog** (x2 Points, Price < 800.0):",
+                        "Select your **Underdog** (x2 Points, Price < 5.0 Mio):",
                         options=underdog_options.values(),
                         key="create_underdog_select",
                     )
@@ -2293,7 +2508,7 @@ elif page == "🧩 Teams":
                     underdog_ok = True
                 else:
                     st.error(
-                        "❌ No eligible Underdog player (Price < 800.0) selected in your team!"
+                        "❌ No eligible Underdog player (Price < 5.0 Mio) selected in your team!"
                     )
                     underdog_ok = False
 
@@ -2378,12 +2593,45 @@ elif page == "🧩 Teams":
                             "champion_id": champion_id,
                         }
 
-                        response = requests.post(f"{BASE_URL}/teams/", json=payload)
+                        teams_are_locked = st.session_state.get("teams_locked", False)
+                        if teams_are_locked:
+                            st.error("Teams are locked.")
+                            st.rerun()
+                        else:
+                            response = requests.post(f"{BASE_URL}/teams/", json=payload)
 
                         if response.status_code == 200:
-                            st.success("✅ Team successfully created!")
-                            st.session_state.current_page = "overview"
-                            st.rerun()
+                            new_team_id = None
+                            try:
+                                new_team_data = response.json()
+                                new_team_id = new_team_data.get("team_id")
+                            except Exception:
+                                pass
+                            if new_team_id:
+                                token = st.session_state.get("access_token")
+                                active_response = requests.post(
+                                    f"{BASE_URL}/teams/{new_team_id}/activate",
+                                    headers=(
+                                        {"Authorization": f"Bearer {token}"}
+                                        if token
+                                        else {}
+                                    ),
+                                )
+                                if active_response.status_code == 200:
+                                    st.success(
+                                        "✅ Team successfully created and set as active!"
+                                    )
+                                else:
+                                    st.warning(
+                                        "Team created, but error setting it as active."
+                                    )
+                                st.success("✅ Team successfully created!")
+                                st.session_state.current_page = "overview"
+                                st.rerun()
+                            else:
+                                st.error(
+                                    "Team created, but the ID was missing in the response."
+                                )
                         else:
                             # Zeigt die Fehlermeldung vom Backend an
                             st.error(f"Error creating team: {response.text}")
@@ -2393,14 +2641,49 @@ elif page == "🧩 Teams":
                     "⚠️ Select exactly 15 players, stay within budget, and choose Captain, Underdog, and Champion."
                 )
 
-elif page == "📝 Manage Accounts":
-
-    st.title("🛡️ Admin User Management")
+elif page == "⚙️ Settings":
 
     # 1. Admin Check
     if st.session_state.get("is_admin") != True:
-        st.warning("🚫 Admin privileges required to access user management!")
+        st.warning("🚫 Admin privileges required to access Settings!")
         st.stop()
+    st.markdown("---")
+
+    ## 🔒 Global Team Lock Control
+    st.header("🔒 Global Team Lock Control")
+
+    # 1. Aktuellen Status abrufen
+    current_lock_status = get_team_lock_status()
+
+    # 2. Steuerungselement: Checkbox
+    new_lock_status = st.checkbox(
+        "Lock Team Editing and Management",
+        value=current_lock_status,
+        key="global_team_lock_checkbox",
+    )
+
+    # 3. Statusänderung erkennen und speichern
+    if new_lock_status != current_lock_status:
+
+        # Speichern-Button nur anzeigen, wenn eine Änderung vorliegt
+        if st.button("Save Team Lock Status", key="save_lock_status_btn"):
+            if set_team_lock_status(new_lock_status):
+                # Speichern war erfolgreich, Status aktualisieren und Seite neu laden
+                st.session_state["teams_locked"] = (
+                    new_lock_status  # Streamlit Session-Status aktualisieren
+                )
+                st.rerun()
+            else:
+                # Fehler beim Speichern
+                pass
+    else:
+        st.info(
+            f"Team Editing is currently: {'**LOCKED** 🔒' if current_lock_status else '**UNLOCKED** 🔓'}"
+        )
+
+    st.markdown("---")
+
+    st.title("🛡️ Admin User Management")
 
     st.markdown("---")
 
