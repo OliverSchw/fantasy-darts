@@ -1,129 +1,129 @@
 name,price,nation,seed
-Luke Littler,1234.5,England,1
-Luke Humphries,1200.0,England,2
-Michael van Gerwen,1478.6,Netherlands,3
-Stephen Bunting,1019.2,England,4
-Jonny Clayton,1008.7,Wales,5
-Danny Noppert,1145.3,Netherlands,6
-James Wade,987.4,England,7
-Chris Dobey,982.9,England,8
-Gerwyn Price,1208.8,Wales,9
-Gian van Veen,998.9,Netherlands,10
-Josh Rock,1044.2,Northern Ireland,11
-Ross Smith,935.5,England,12
-Martin Schindler,910.2,Germany,13
-Gary Anderson,1042.7,Scotland,14
-Nathan Aspinall,1001.6,England,15
-Damon Heta,986.1,Australia,16
-Rob Cross,1130.1,England,17
-Mike De Decker,987.2,Belgium,18
-Jermaine Wattimena,953.8,Netherlands,19
-Ryan Searle,1022.8,England,20
-Dave Chisnall,1123.3,England,21
-Daryl Gurney,1045.5,Northern Ireland,22
-Dimitri Van den Bergh,1155.4,Belgium,23
-Ryan Joyce,951.4,England,24
-Luke Woodhouse,943.6,England,25
-Cameron Menzies,987.7,Scotland,26
-Ritchie Edhouse,978.2,England,27
-Michael Smith,1288.9,England,28
-Dirk van Duijvenbode,1120.5,Netherlands,29
-Peter Wright,1199.7,Scotland,30
-Wessel Nijman,927.6,Netherlands,31
-Joe Cullen,1002.2,England,32
-Ricardo Pietreczko,888.5,Germany,33
-Andrew Gilding,933.4,England,34
-Raymond van Barneveld,1066.3,Netherlands,35
-Scott Williams,945.7,England,36
-Krzysztof Ratajski,970.8,Poland,37
-Martin Lukeman,905.5,England,38
-Brendan Dolan,974.2,Northern Ireland,39
-Ricky Evans,882.5,England,40
-Niko Springer,877.3,Germany,41
-William O'Connor,932.5,Ireland,42
-Niels Zonneveld,889.4,Netherlands,43
-Kevin Doets,901.2,Netherlands,44
-Karel Sedlacek,890.7,Czech Republic,45
-Bradley Brooks,883.6,England,46
-Jeffrey de Graaf,876.2,Sweden,47
-Mickey Mansell,909.1,Northern Ireland,48
-Mario Vandenbogaerde,952.3,Belgium,49
-Callan Rydz,968.8,England,50
-Cam Crabtree,890.2,England,51
-Ian White,925.4,England,52
-Sebastian Bialecki,894.5,Poland,53
-Dom Taylor,872.3,England,54
-Richard Veenstra,905.6,Netherlands,55
-Madars Razma,938.7,Latvia,56
-Alan Soutar,901.8,Scotland,57
-Lukas Wenig,868.7,Germany,58
-Kim Huybrechts, 900.3,Belgium, 59
-Mensur Suljovic,948.6,Austria,60
-Gabriel Clemens,962.1,Germany,61
-Thibault Tricole,865.4,France,62
-Matthew Dennant,856.2,England,63
-Darren Beveridge,874.8,Scotland,64
-Justin Hood,878.3,England,65
-Wesley Plaisier,894.8,Netherlands,66
-Steve Lennon,933.8,Ireland,67
-Max Hopp,925.9,Germany,68
-Ryan Meikle,903.1,England,69
-James Hurrell,911.9,England,70
-Nick Kenny,877.9,Wales,71
-Matt Campbell,915.4,Canada,72
-Keane Barry,910.7,Ireland,73
-Adam Lipscombe,871.6,England,74
-Darius Labanauskas,902.7,Lithuania,75
-Dominik Grüllich, 900.0,Germany,76
-Chris Landman, 845.2,Netherlands,77
-Owen Bates,855.8,England,78
-Cor Dekker,864.5,Norway,79
-Connor Scutt,866.5,England,80
-Beau Greaves,880.0,England,None
-Charlie Manby,875.0,England,None
-Jamai van den Herik,870.0,Netherlands,None
-Jurjen van der Velde,865.0,Netherlands,None
-Stefan Bellmont,860.0,Switzerland,None
-Ted Evetts,855.0,England,None
-Mervyn King,850.0,England,None
-Lisa Ashton,845.0,England,None
-Fallon Sherrock,840.0,England,None
-Noa van Leuven,835.0,Netherlands,None
-Gemma Hayter,830.0,England,None
-Mitsuhiko Tatsunami,825.0,Japan,None
-Xiaochen Zong,820.0,China,None
-Nitin Kumar,815.0,India,None
-Man Lok Leung,810.0,Hong Kong,None
-Paolo Nebrida,805.0,Philippines,None
-Alexis Toylo,800.0,Philippines,None
-Motomu Sakai,795.0,Japan,None
-Lourence Ilagan,790.0,Philippines,None
-Ryusei Azemoto,785.0,Japan,None
-Paul Lim,780.0,Singapore,None
-Andy Baetens,775.0,Belgium,None
-Cristo Reyes,770.0,Spain,None
-Boris Krcmar,765.0,Croatia,None
-Adam Gawlas,760.0,Czech Republic,None
-Krzysztof Kciuk,755.0,Poland,None
-Arno Merk,750.0,Germany,None
-Patrik Kovacs,745.0,Hungary,None
-David Davies,740.0,Wales,None
-Adam Sevada,735.0,USA,None
-Alex Spellman,730.0,USA,None
-Leonard Gates,725.0,USA,None
-Stowe Buntz,720.0,USA,None
-David Cameron,715.0,Canada,None
-Jesus Salate,710.0,Argentina,None
-Teemu Harju,705.0,Finland,None
-Andreas Harrysson,700.0,Sweden,None
-Oskar Lukasiak,695.0,Sweden,None
-Simon Whitlock,690.0,Australia,None
-Tim Pusey,685.0,Australia,None
-Joe Comito,680.0,Australia,None
-Jonny Tata,675.0,New Zealand,None
-David Munyua,670.0,Kenya,None
-Tavis Dudeney,665.0,England,None
-Adam Hunt,660.0,England,None
-Stephen Burton,655.0,England,None
-Haupai Puha,650.0,New Zealand,None
-José de Sousa,645.0,Portugal,None
+Luke Littler,50.0,England,1
+Luke Humphries,44.5,England,2
+Michael van Gerwen,36.7,Netherlands,3
+Stephen Bunting,32.1,England,4
+Jonny Clayton,26.7,Wales,5
+Danny Noppert,27.3,Netherlands,6
+James Wade,22.9,England,7
+Chris Dobey,24.0,England,8
+Gerwyn Price,29.8,Wales,9
+Gian van Veen,31.2,Netherlands,10
+Josh Rock,29.1,Northern Ireland,11
+Ross Smith,21.5,England,12
+Martin Schindler,18.8,Germany,13
+Gary Anderson,24.8,Scotland,14
+Nathan Aspinall,25.4,England,15
+Damon Heta,20.0,Australia,16
+Rob Cross,16.7,England,17
+Mike De Decker,15.8,Belgium,18
+Jermaine Wattimena,17.2,Netherlands,19
+Ryan Searle,20.1,England,20
+Dave Chisnall,16.0,England,21
+Daryl Gurney,12.0,Northern Ireland,22
+Dimitri Van den Bergh,14.0,Belgium,23
+Ryan Joyce,15.2,England,24
+Luke Woodhouse,15.4,England,25
+Cameron Menzies,14.7,Scotland,26
+Ritchie Edhouse,14.5,England,27
+Michael Smith,17.9,England,28
+Dirk van Duijvenbode,17.3,Netherlands,29
+Peter Wright,13.6,Scotland,30
+Wessel Nijman,16.5,Netherlands,31
+Joe Cullen,11.5,England,32
+Ricardo Pietreczko,11.8,Germany,33
+Andrew Gilding,7.7,England,34
+Raymond van Barneveld,11.6,Netherlands,35
+Scott Williams,9.4,England,36
+Krzysztof Ratajski,11.2,Poland,37
+Martin Lukeman,6.1,England,38
+Brendan Dolan,7.2,Northern Ireland,39
+Ricky Evans,10.8,England,40
+Niko Springer,8.3,Germany,41
+William O'Connor,7.4,Ireland,42
+Niels Zonneveld,8.5,Netherlands,43
+Kevin Doets,10.9,Netherlands,44
+Karel Sedlacek,3.6,Czech Republic,45
+Bradley Brooks,13.1,England,46
+Jeffrey de Graaf,6.7,Sweden,47
+Mickey Mansell,7.6,Northern Ireland,48
+Mario Vandenbogaerde,6.4,Belgium,49
+Callan Rydz,9.7,England,50
+Cam Crabtree,7.1,England,51
+Ian White,8.6,England,52
+Sebastian Bialecki,3.0,Poland,53
+Dom Taylor,9.1,England,54
+Richard Veenstra,7.5,Netherlands,55
+Madars Razma,8.6,Latvia,56
+Alan Soutar,6.6,Scotland,57
+Lukas Wenig,6.0,Germany,58
+Kim Huybrechts, 10.0,Belgium, 59
+Mensur Suljovic,8.0,Austria,60
+Gabriel Clemens,8.2,Germany,61
+Thibault Tricole,7.5,France,62
+Matthew Dennant,4.2,England,63
+Darren Beveridge,5.6,Scotland,64
+Justin Hood,7.0,England,65
+Wesley Plaisier,6.9,Netherlands,66
+Steve Lennon,3.1,Ireland,67
+Max Hopp,7.3,Germany,68
+Ryan Meikle,7.7,England,69
+James Hurrell,9.0,England,70
+Nick Kenny,5.9,Wales,71
+Matt Campbell,7.8,Canada,72
+Keane Barry,10.3,Ireland,73
+Adam Lipscombe,3.1,England,74
+Darius Labanauskas,2.4,Lithuania,75
+Dominik Grüllich, 2.8,Germany,76
+Chris Landman, 3.2,Netherlands,77
+Owen Bates,3.4,England,78
+Cor Dekker,3.7,Norway,79
+Connor Scutt,8.4,England,80
+Beau Greaves,13.9,England,None
+Charlie Manby,4.5,England,None
+Jamai van den Herik,6.5,Netherlands,None
+Jurjen van der Velde,3.0,Netherlands,None
+Stefan Bellmont,4.1,Switzerland,None
+Ted Evetts,2.4,England,None
+Mervyn King,6.2,England,None
+Lisa Ashton,2.1,England,None
+Fallon Sherrock,3.2,England,None
+Noa van Leuven,2.6,Netherlands,None
+Gemma Hayter,2.0,England,None
+Mitsuhiko Tatsunami,2.2,Japan,None
+Xiaochen Zong,2.3,China,None
+Nitin Kumar,2.7,India,None
+Man Lok Leung,4.4,Hong Kong,None
+Paolo Nebrida,4.2,Philippines,None
+Alexis Toylo,3.3,Philippines,None
+Motomu Sakai,4.7,Japan,None
+Lourence Ilagan,2.7,Philippines,None
+Ryusei Azemoto,2.8,Japan,None
+Paul Lim,3.0,Singapore,None
+Andy Baetens,3.5,Belgium,None
+Cristo Reyes,2.5,Spain,None
+Boris Krcmar,3.7,Croatia,None
+Adam Gawlas,2.5,Czech Republic,None
+Krzysztof Kciuk,3.9,Poland,None
+Arno Merk,4.8,Germany,None
+Patrik Kovacs,2.9,Hungary,None
+David Davies,3.8,Wales,None
+Adam Sevada,5.1,USA,None
+Alex Spellman,4.8,USA,None
+Leonard Gates,5.0,USA,None
+Stowe Buntz,4.9,USA,None
+David Cameron,5.2,Canada,None
+Jesus Salate,4.4,Argentina,None
+Teemu Harju,4.7,Finland,None
+Andreas Harrysson,3.3,Sweden,None
+Oskar Lukasiak,4.3,Sweden,None
+Simon Whitlock,4.0,Australia,None
+Tim Pusey,5.4,Australia,None
+Joe Comito,2.9,Australia,None
+Jonny Tata,3.8,New Zealand,None
+David Munyua,2.1,Kenya,None
+Tavis Dudeney,4.1,England,None
+Adam Hunt,2.6,England,None
+Stephen Burton,3.4,England,None
+Haupai Puha,4.6,New Zealand,None
+José de Sousa,5.1,Portugal,None
