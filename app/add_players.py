@@ -36,7 +36,7 @@ def add_players_from_csv():
                 if seed_str and seed_str.lower() != "none":
                     seed = int(seed_str)
                 else:
-                    seed = 0
+                    seed = None
                 player = models.Player(
                     seed=seed,
                     name=row["name"],

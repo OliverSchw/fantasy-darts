@@ -11,7 +11,7 @@ import os
 # Wenn lokal: fallback auf localhost
 BASE_URL = os.getenv(
     "BASE_URL", "https://fantasy-darts.onrender.com"
-)  #  #"http://127.0.0.1:8000"
+)  #   #"http://127.0.0.1:8000"
 
 
 TOTAL_BUDGET = 275
@@ -383,7 +383,9 @@ if page == "🏠 Overview":
 
                 return [f"color: {color}"] * len(row)
 
-            # --- ANPASSUNG HIER: 'points' in die Spaltenliste aufnehmen ---
+            df_players = df_players.sort_values(
+                by=["points", "price"], ascending=[False, False]
+            ).reset_index(drop=True)
             st.dataframe(
                 df_players[
                     [
@@ -398,7 +400,9 @@ if page == "🏠 Overview":
                     ]
                 ].style.apply(highlight_row, axis=1),
                 column_config={
-                    "seed": st.column_config.Column("Seed", width="tiny"),
+                    "seed": st.column_config.NumberColumn(
+                        "Seed", format="%.0f", width="tiny"
+                    ),
                     "name": st.column_config.Column("Player Name", width="medium"),
                     "price": st.column_config.NumberColumn(
                         "Price", format="%.1f", width="small"
@@ -483,10 +487,12 @@ if page == "🏠 Overview":
                         ]
                     ].style.apply(highlight_champion_row, axis=1),
                     column_config={
-                        "seed": st.column_config.Column("Seed", width="tiny"),
+                        "seed": st.column_config.NumberColumn(
+                            "Seed", format="%.0f", width="tiny"
+                        ),
                         "name": st.column_config.Column("Player Name", width="medium"),
                         "price": st.column_config.NumberColumn(
-                            "Price (Mio)", format="%.1f", width="small"
+                            "Price (Mio)", format="%.0f", width="small"
                         ),
                         "flag_url": st.column_config.ImageColumn("Nation", width=50),
                         "points": None,  # Ausblenden
@@ -612,12 +618,15 @@ elif page == "🎯 Players":
             else:
                 return [""] * len(row)  # keine Farbe
 
+    df_players = df_players.sort_values(
+        by=["seed", "price"], ascending=[True, False]
+    ).reset_index(drop=True)
     st.dataframe(
         df_players[
             ["seed", "name", "price", "flag_url", "points", "eliminated"]
         ].style.apply(highlight_row, axis=1),
         column_config={
-            "seed": st.column_config.Column("Seed", width="tiny"),
+            "seed": st.column_config.NumberColumn("Seed", format="%.0f", width="tiny"),
             "name": st.column_config.Column("Player Name", width="medium"),
             "price": st.column_config.NumberColumn(
                 "Price (Mio)", format="%.1f", width="small"
@@ -895,7 +904,7 @@ elif page == "📅 Tournament Schedule":
                         winner_name = winner_info.name
                         winner_seed = winner_info["seed"]
                         if winner_seed <= 32 and winner_seed > 0:
-                            winner_display = f"{winner_name} ({winner_seed})"
+                            winner_display = f"{winner_name} ({int(winner_seed)})"
                         else:
                             winner_display = f"{winner_name}"
                 except Exception:
@@ -944,10 +953,10 @@ elif page == "📅 Tournament Schedule":
             p2_id = p2_info.get("id")
 
             p1_display = (
-                f"{p1_name} ({p1_seed})" if p1_seed and p1_seed <= 32 else p1_name
+                f"{p1_name} ({int(p1_seed)})" if p1_seed and p1_seed <= 32 else p1_name
             )
             p2_display = (
-                f"{p2_name} ({p2_seed})" if p2_seed and p2_seed <= 32 else p2_name
+                f"{p2_name} ({int(p2_seed)})" if p2_seed and p2_seed <= 32 else p2_name
             )
 
             row_p1 = i * 2
@@ -2077,12 +2086,14 @@ elif page == "🧩 Teams":
                 return f"{BASE_FLAG_URL}{code}.svg" if code else ""
 
             df["flag_url"] = df["nation"].apply(get_flag_url)
-
+            df = df.sort_values(by="price", ascending=False).reset_index(drop=True)
             # --- Tabelle anzeigen ---
             edited_df = st.data_editor(
                 df,
                 column_config={
-                    "seed": st.column_config.NumberColumn("Seed", width="tiny"),
+                    "seed": st.column_config.NumberColumn(
+                        "Seed", format="%.0f", width="tiny"
+                    ),
                     "name": st.column_config.Column("Name", width="medium"),
                     "price": st.column_config.NumberColumn(
                         "Price (Mio)", format="%.1f", width="small"
@@ -2158,7 +2169,9 @@ elif page == "🧩 Teams":
                 st.dataframe(
                     selected_df[["seed", "name", "price", "flag_url", "Role"]],
                     column_config={
-                        "seed": st.column_config.Column("Seed", width="tiny"),
+                        "seed": st.column_config.NumberColumn(
+                            "Seed", format="%.0f", width="tiny"
+                        ),
                         "name": st.column_config.Column("Player Name", width="medium"),
                         "price": st.column_config.NumberColumn(
                             "Price (Mio)", format="%.1f", width="small"
@@ -2374,11 +2387,15 @@ elif page == "🧩 Teams":
 
             df["flag_url"] = df["nation"].apply(get_flag_url)
 
+            df = df.sort_values(by="price", ascending=False).reset_index(drop=True)
+
             # --- Tabelle ---
             edited_df = st.data_editor(
                 df,
                 column_config={
-                    "seed": st.column_config.Column("Seed", width="tiny"),
+                    "seed": st.column_config.NumberColumn(
+                        "Seed", format="%.0f", width="tiny"
+                    ),
                     "name": st.column_config.Column("Name"),
                     "price": st.column_config.Column("Price"),
                     "flag_url": st.column_config.ImageColumn("Nation", width=50),
@@ -2449,7 +2466,9 @@ elif page == "🧩 Teams":
                 st.dataframe(
                     selected_df[["seed", "name", "price", "flag_url", "Role"]],
                     column_config={
-                        "seed": st.column_config.Column("Seed", width="tiny"),
+                        "seed": st.column_config.NumberColumn(
+                            "Seed", format="%.0f", width="tiny"
+                        ),
                         "name": st.column_config.Column("Player Name", width="medium"),
                         "price": st.column_config.NumberColumn(
                             "Price", format="%.1f", width="small"
