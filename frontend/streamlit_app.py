@@ -1769,6 +1769,8 @@ elif page == "📅 Tournament Schedule":
             # Payload wird aus den Werten des Session State erstellt, die durch die number_inputs gesetzt wurden
             if match_id == FINAL_MATCH_ID:
                 is_final = True
+            else:
+                is_final = False
             payload = {
                 "match_id": match_id,
                 "is_final": is_final,
