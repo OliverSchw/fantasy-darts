@@ -57,20 +57,15 @@ def add_player(
 
 # --- Punkteberechnung ---
 def calculate_points(stats: dict) -> float:
+    """is_winner,sets_won,sets_lost,p171s,p161finishes,ninedarters"""
     pts = 0
-    if stats.get("is_winner"):
-        pts += 50
-    pts += stats.get("sets_won", 0) * 12
-    pts += stats.get("legs_won", 0) * 4
-    pts += stats.get("180s", 0) * 8
-    if stats.get("high_checkout", 0) >= 100:
-        pts += 10
-    if stats.get("average", 0) > 90:
-        pts += 5
-    if stats.get("average", 0) > 100:
-        pts += 5
-    if stats.get("checkout_pct", 0) > 40:
-        pts += 5
+    # if stats.get("is_winner"):
+    #     pts += 50
+    pts += stats.get("sets_won", 0) * 15
+    pts += stats.get("sets_lost", 0) * (-5)
+    pts += stats.get("p171s", 0) * 1
+    pts += stats.get("p161finishes", 0) * 3
+    pts += stats.get("ninedarters", 0) * 100
     return pts
 
 
@@ -129,11 +124,10 @@ def recompute_points(db: Session = Depends(get_db)):
             stats_p1 = {
                 "is_winner": match.winner_id == player1.id,
                 "sets_won": match.sets_p1,
-                "legs_won": match.legs_p1,
-                "180s": match.d180s_p1,
-                "high_checkout": match.high_checkout_p1,
-                "average": match.average_p1,
-                "checkout_pct": match.checkout_pct_p1,
+                "sets_lost": match.sets_p2,
+                "p171s": match.p171s_p1,
+                "p161finishes": match.p161finishes_p1,
+                "ninedarters": match.ninedarter_p1,
             }
             points = calculate_points(stats_p1)
             player1.points += points
@@ -148,11 +142,10 @@ def recompute_points(db: Session = Depends(get_db)):
             stats_p2 = {
                 "is_winner": match.winner_id == player2.id,
                 "sets_won": match.sets_p2,
-                "legs_won": match.legs_p2,
-                "180s": match.d180s_p2,
-                "high_checkout": match.high_checkout_p2,
-                "average": match.average_p2,
-                "checkout_pct": match.checkout_pct_p2,
+                "sets_lost": match.sets_p1,
+                "p171s": match.p171s_p2,
+                "p161finishes": match.p161finishes_p2,
+                "ninedarters": match.ninedarter_p2,
             }
             points = calculate_points(stats_p2)
             player2.points += points

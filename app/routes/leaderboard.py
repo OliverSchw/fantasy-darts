@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session, joinedload, aliased
 from .. import database, models
 
 router = APIRouter(prefix="/leaderboard", tags=["leaderboard"])
-CHAMPION_POINTS = 1000
+CHAMPION_POINTS = 50
 
 
 # --- DB Session Helper ---
@@ -53,10 +53,13 @@ def leaderboard(db: Session = Depends(get_db)):
                     weighted_points += player_points
 
                 # Hinweis: Stellen Sie sicher, dass CHAMPION_POINTS hier definiert ist
-                if tp.champion:
-                    weighted_points += CHAMPION_POINTS
+                # if tp.champion:
+                #     weighted_points += CHAMPION_POINTS # points for champion in team?
 
                 total_points += weighted_points
+
+        if team.team_champion_guess and team.team_champion_guess.champion:
+            total_points += CHAMPION_POINTS
 
         result.append(
             {

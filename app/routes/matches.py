@@ -57,14 +57,14 @@ def save_match(
     )
 
     if db_match:
-        # Update vorhandener Match
+        #
         for key, value in match.dict().items():
             setattr(db_match, key, value)
         db.commit()
         db.refresh(db_match)
         return {"msg": "Match updated"}
     else:
-        # Neues Match hinzufügen
+        #
         new_match = models.Match(**match.dict())
         db.add(new_match)
         db.commit()
@@ -78,8 +78,6 @@ def delete_match(
     db: Session = Depends(get_db),
     current_admin: models.User = Depends(get_current_admin),  # Admin-Schutz beibehalten
 ):
-    """Löscht ein Match und seine Ergebnisse basierend auf der Match-ID. NUR FÜR ADMINS."""
-
     deleted_count = (
         db.query(models.Match)
         .filter(models.Match.match_id == match_id)

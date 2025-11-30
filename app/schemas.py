@@ -24,16 +24,22 @@ class MatchResult(BaseModel):
 
     sets_p1: Optional[int] = 0
     sets_p2: Optional[int] = 0
-    legs_p1: Optional[int] = 0
-    legs_p2: Optional[int] = 0
-    average_p1: Optional[float] = 0.0
-    average_p2: Optional[float] = 0.0
-    checkout_pct_p1: Optional[float] = 0.0
-    checkout_pct_p2: Optional[float] = 0.0
-    high_checkout_p1: Optional[int] = 0
-    high_checkout_p2: Optional[int] = 0
-    d180s_p1: Optional[int] = 0
-    d180s_p2: Optional[int] = 0
+    # legs_p1: Optional[int] = 0
+    # legs_p2: Optional[int] = 0
+    # average_p1: Optional[float] = 0.0
+    # average_p2: Optional[float] = 0.0
+    # checkout_pct_p1: Optional[float] = 0.0
+    # checkout_pct_p2: Optional[float] = 0.0
+    # high_checkout_p1: Optional[int] = 0
+    # high_checkout_p2: Optional[int] = 0
+    # d180s_p1: Optional[int] = 0
+    # d180s_p2: Optional[int] = 0
+    p161finishes_p1: Optional[int] = 0
+    p161finishes_p2: Optional[int] = 0
+    p171s_p1: Optional[int] = 0
+    p171s_p2: Optional[int] = 0
+    ninedarter_p1: Optional[int] = 0
+    ninedarter_p2: Optional[int] = 0
 
     class Config:
         from_attributes = True

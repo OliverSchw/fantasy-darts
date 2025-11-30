@@ -14,8 +14,8 @@ BASE_URL = os.getenv(
 )  #   #"http://127.0.0.1:8000"
 
 
-TOTAL_BUDGET = 275
-CHAMPION_POINTS = 1000
+TOTAL_BUDGET = 220
+CHAMPION_POINTS = 50
 
 COUNTRY_CODE_MAP = {
     "England": "gb-eng",
@@ -1421,7 +1421,7 @@ elif page == "📅 Tournament Schedule":
             sets_to_win = 5
             round_num = "?"
 
-        st.write(f"### 🏹 Match Details – Round {round_num}")
+        st.write(f"### 🎯 Match Details – Round {round_num}")
         st.markdown(f"**{p1_name_display}** vs. **{p2_name_display}**")
         st.markdown(
             f"Best-of {sets_to_win*2+1} Sets. Needed to win: {sets_to_win} Sets."
@@ -1432,18 +1432,24 @@ elif page == "📅 Tournament Schedule":
 
         # Definition der eindeutigen Keys
         KEY_SETS_P1 = f"sets_p1_{match_id}"
-        KEY_LEGS_P1 = f"legs_p1_{match_id}"
-        KEY_180S_P1 = f"d180s_p1_{match_id}"
-        KEY_HIGH_CHECKOUT_P1 = f"high_checkout_p1_{match_id}"
-        KEY_AVERAGE_P1 = f"average_p1_{match_id}"
-        KEY_CHECKOUT_PCT_P1 = f"checkout_pct_p1_{match_id}"
+        # KEY_LEGS_P1 = f"legs_p1_{match_id}"
+        # KEY_180S_P1 = f"d180s_p1_{match_id}"
+        # KEY_HIGH_CHECKOUT_P1 = f"high_checkout_p1_{match_id}"
+        # KEY_AVERAGE_P1 = f"average_p1_{match_id}"
+        # KEY_CHECKOUT_PCT_P1 = f"checkout_pct_p1_{match_id}"
+        KEY_P161F_P1 = f"p161finishes_p1_{match_id}"
+        KEY_P171_P1 = f"p171s_p1_{match_id}"
+        KEY_NINE_P1 = f"ninedarter_p1_{match_id}"
 
         KEY_SETS_P2 = f"sets_p2_{match_id}"
-        KEY_LEGS_P2 = f"legs_p2_{match_id}"
-        KEY_180S_P2 = f"d180s_p2_{match_id}"
-        KEY_HIGH_CHECKOUT_P2 = f"high_checkout_p2_{match_id}"
-        KEY_AVERAGE_P2 = f"average_p2_{match_id}"
-        KEY_CHECKOUT_PCT_P2 = f"checkout_pct_p2_{match_id}"
+        # KEY_LEGS_P2 = f"legs_p2_{match_id}"
+        # KEY_180S_P2 = f"d180s_p2_{match_id}"
+        # KEY_HIGH_CHECKOUT_P2 = f"high_checkout_p2_{match_id}"
+        # KEY_AVERAGE_P2 = f"average_p2_{match_id}"
+        # KEY_CHECKOUT_PCT_P2 = f"checkout_pct_p2_{match_id}"
+        KEY_P161F_P2 = f"p161finishes_p2_{match_id}"
+        KEY_P171_P2 = f"p171s_p2_{match_id}"
+        KEY_NINE_P2 = f"ninedarter_p2_{match_id}"
 
         # Hilfsfunktion, um den Wert aus match_info oder 0/0.0 zu holen
         def get_initial_value(key_base, default_value):
@@ -1461,45 +1467,66 @@ elif page == "📅 Tournament Schedule":
             step=1,
             value=get_initial_value("sets_p1", 0),
         )
+        # col1.number_input(
+        #     "Legs won",
+        #     key=KEY_LEGS_P1,  # NEU: Eindeutiger Key
+        #     min_value=0,
+        #     step=1,
+        #     value=get_initial_value("legs_p1", 0),
+        # )
+        # col1.number_input(
+        #     "180s",
+        #     key=KEY_P171_P1,  # NEU: Eindeutiger Key
+        #     min_value=0,
+        #     step=1,
+        #     value=get_initial_value("d180s_p1", 0),
+        # )
         col1.number_input(
-            "Legs won",
-            key=KEY_LEGS_P1,  # NEU: Eindeutiger Key
+            "171+ Scores",
+            key=KEY_P171_P1,  # NEU: Eindeutiger Key
             min_value=0,
             step=1,
-            value=get_initial_value("legs_p1", 0),
+            value=get_initial_value("p171s_p1", 0),
         )
         col1.number_input(
-            "180s",
-            key=KEY_180S_P1,  # NEU: Eindeutiger Key
+            "161+ Finishes",
+            key=KEY_P161F_P1,  # NEU: Eindeutiger Key
             min_value=0,
             step=1,
-            value=get_initial_value("d180s_p1", 0),
+            value=get_initial_value("p161finishes_p1", 0),
         )
         col1.number_input(
-            "Highest Checkout",
-            key=KEY_HIGH_CHECKOUT_P1,  # NEU: Eindeutiger Key
+            "9-Darter",
+            key=KEY_NINE_P1,  # NEU: Eindeutiger Key
             min_value=0,
-            max_value=170,
             step=1,
-            value=get_initial_value("high_checkout_p1", 0),
+            value=get_initial_value("ninedarter_p1", 0),
         )
-        col1.number_input(
-            "Average",
-            key=KEY_AVERAGE_P1,  # NEU: Eindeutiger Key
-            min_value=0.0,
-            step=0.01,
-            format="%.2f",
-            value=get_initial_value("average_p1", 0.0),
-        )
-        col1.number_input(
-            "Checkout %",
-            key=KEY_CHECKOUT_PCT_P1,  # NEU: Eindeutiger Key
-            min_value=0.0,
-            max_value=100.0,
-            step=0.01,
-            format="%.2f",
-            value=get_initial_value("checkout_pct_p1", 0.0),
-        )
+        # col1.number_input(
+        #     "Highest Checkout",
+        #     key=KEY_HIGH_CHECKOUT_P1,  # NEU: Eindeutiger Key
+        #     min_value=0,
+        #     max_value=170,
+        #     step=1,
+        #     value=get_initial_value("high_checkout_p1", 0),
+        # )
+        # col1.number_input(
+        #     "Average",
+        #     key=KEY_AVERAGE_P1,  # NEU: Eindeutiger Key
+        #     min_value=0.0,
+        #     step=0.01,
+        #     format="%.2f",
+        #     value=get_initial_value("average_p1", 0.0),
+        # )
+        # col1.number_input(
+        #     "Checkout %",
+        #     key=KEY_CHECKOUT_PCT_P1,  # NEU: Eindeutiger Key
+        #     min_value=0.0,
+        #     max_value=100.0,
+        #     step=0.01,
+        #     format="%.2f",
+        #     value=get_initial_value("checkout_pct_p1", 0.0),
+        # )
 
         # Input-Felder für Spieler 2
         col2.subheader(f"{p2_name_display}")
@@ -1512,58 +1539,89 @@ elif page == "📅 Tournament Schedule":
             step=1,
             value=get_initial_value("sets_p2", 0),
         )
+        # col2.number_input(
+        #     "Legs won",
+        #     key=KEY_LEGS_P2,  # NEU: Eindeutiger Key
+        #     min_value=0,
+        #     step=1,
+        #     value=get_initial_value("legs_p2", 0),
+        # )
+        # col2.number_input(
+        #     "180s",
+        #     key=KEY_180S_P2,  # NEU: Eindeutiger Key
+        #     min_value=0,
+        #     step=1,
+        #     value=get_initial_value("d180s_p2", 0),
+        # )
+        # col2.number_input(
+        #     "Highest Checkout",
+        #     key=KEY_HIGH_CHECKOUT_P2,  # NEU: Eindeutiger Key
+        #     min_value=0,
+        #     max_value=170,
+        #     step=1,
+        #     value=get_initial_value("high_checkout_p2", 0),
+        # )
+        # col2.number_input(
+        #     "Average",
+        #     key=KEY_AVERAGE_P2,  # NEU: Eindeutiger Key
+        #     min_value=0.0,
+        #     step=0.01,
+        #     format="%.2f",
+        #     value=get_initial_value("average_p2", 0.0),
+        # )
+        # col2.number_input(
+        #     "Checkout %",
+        #     key=KEY_CHECKOUT_PCT_P2,  # NEU: Eindeutiger Key
+        #     min_value=0.0,
+        #     max_value=100.0,
+        #     step=0.01,
+        #     format="%.2f",
+        #     value=get_initial_value("checkout_pct_p2", 0.0),
+        # )
         col2.number_input(
-            "Legs won",
-            key=KEY_LEGS_P2,  # NEU: Eindeutiger Key
+            "171+ Scores",
+            key=KEY_P171_P2,  # NEU: Eindeutiger Key
             min_value=0,
             step=1,
-            value=get_initial_value("legs_p2", 0),
+            value=get_initial_value("p171s_p2", 0),
         )
         col2.number_input(
-            "180s",
-            key=KEY_180S_P2,  # NEU: Eindeutiger Key
+            "161+ Finishes",
+            key=KEY_P161F_P2,  # NEU: Eindeutiger Key
             min_value=0,
             step=1,
-            value=get_initial_value("d180s_p2", 0),
+            value=get_initial_value("p161finishes_p2", 0),
         )
         col2.number_input(
-            "Highest Checkout",
-            key=KEY_HIGH_CHECKOUT_P2,  # NEU: Eindeutiger Key
+            "9-Darter",
+            key=KEY_NINE_P2,  # NEU: Eindeutiger Key
             min_value=0,
-            max_value=170,
             step=1,
-            value=get_initial_value("high_checkout_p2", 0),
+            value=get_initial_value("ninedarter_p2", 0),
         )
-        col2.number_input(
-            "Average",
-            key=KEY_AVERAGE_P2,  # NEU: Eindeutiger Key
-            min_value=0.0,
-            step=0.01,
-            format="%.2f",
-            value=get_initial_value("average_p2", 0.0),
-        )
-        col2.number_input(
-            "Checkout %",
-            key=KEY_CHECKOUT_PCT_P2,  # NEU: Eindeutiger Key
-            min_value=0.0,
-            max_value=100.0,
-            step=0.01,
-            format="%.2f",
-            value=get_initial_value("checkout_pct_p2", 0.0),
-        )
+        # st.session_state["results_map"][match_id] = {
+        #     "sets_p1": st.session_state[KEY_SETS_P1],
+        #     "legs_p1": st.session_state[KEY_LEGS_P1],
+        #     "d180s_p1": st.session_state[KEY_180S_P1],
+        #     "high_checkout_p1": st.session_state[KEY_HIGH_CHECKOUT_P1],
+        #     "average_p1": st.session_state[KEY_AVERAGE_P1],
+        #     "checkout_pct_p1": st.session_state[KEY_CHECKOUT_PCT_P1],
+        #     "sets_p2": st.session_state[KEY_SETS_P2],
+        #     "legs_p2": st.session_state[KEY_LEGS_P2],
+        #     "d180s_p2": st.session_state[KEY_180S_P2],
+        #     "high_checkout_p2": st.session_state[KEY_HIGH_CHECKOUT_P2],
+        #     "average_p2": st.session_state[KEY_AVERAGE_P2],
+        #     "checkout_pct_p2": st.session_state[KEY_CHECKOUT_PCT_P2],
+        # }
         st.session_state["results_map"][match_id] = {
             "sets_p1": st.session_state[KEY_SETS_P1],
-            "legs_p1": st.session_state[KEY_LEGS_P1],
-            "d180s_p1": st.session_state[KEY_180S_P1],
-            "high_checkout_p1": st.session_state[KEY_HIGH_CHECKOUT_P1],
-            "average_p1": st.session_state[KEY_AVERAGE_P1],
-            "checkout_pct_p1": st.session_state[KEY_CHECKOUT_PCT_P1],
+            "p171s_p1": st.session_state[KEY_P171_P1],
+            "p161finishes_p1": st.session_state[KEY_P161F_P1],
+            "ninedarter_p1": st.session_state[KEY_NINE_P1],
             "sets_p2": st.session_state[KEY_SETS_P2],
-            "legs_p2": st.session_state[KEY_LEGS_P2],
-            "d180s_p2": st.session_state[KEY_180S_P2],
-            "high_checkout_p2": st.session_state[KEY_HIGH_CHECKOUT_P2],
-            "average_p2": st.session_state[KEY_AVERAGE_P2],
-            "checkout_pct_p2": st.session_state[KEY_CHECKOUT_PCT_P2],
+            "p171s_p2": st.session_state[KEY_P171_P2],
+            "p161finishes_p2": st.session_state[KEY_P161F_P2],
+            "ninedarter_p2": st.session_state[KEY_NINE_P2],
         }
 
         # --- DIESE ZEILE AM ENDE DES BLOCKS IST WICHTIG FÜR DIE KORREKTE BEENDIGUNG ---
@@ -1714,18 +1772,13 @@ elif page == "📅 Tournament Schedule":
                 "winner_id": int(winner_id),
                 "sets_p1": st.session_state[KEY_SETS_P1],
                 "sets_p2": st.session_state[KEY_SETS_P2],
-                "legs_p1": st.session_state[KEY_LEGS_P1],
-                "legs_p2": st.session_state[KEY_LEGS_P2],
-                "average_p1": st.session_state[KEY_AVERAGE_P1],
-                "average_p2": st.session_state[KEY_AVERAGE_P2],
-                "checkout_pct_p1": st.session_state[KEY_CHECKOUT_PCT_P1],
-                "checkout_pct_p2": st.session_state[KEY_CHECKOUT_PCT_P2],
-                "high_checkout_p1": st.session_state[KEY_HIGH_CHECKOUT_P1],
-                "high_checkout_p2": st.session_state[KEY_HIGH_CHECKOUT_P2],
-                "d180s_p1": st.session_state[KEY_180S_P1],
-                "d180s_p2": st.session_state[KEY_180S_P2],
+                "p171s_p1": st.session_state[KEY_P171_P1],
+                "p161finishes_p1": st.session_state[KEY_P161F_P1],
+                "ninedarter_p1": st.session_state[KEY_NINE_P1],
+                "p171s_p2": st.session_state[KEY_P171_P2],
+                "p161finishes_p2": st.session_state[KEY_P161F_P2],
+                "ninedarter_p2": st.session_state[KEY_NINE_P2],
             }
-
             # --- Speichere Daten im Backend (Mocked) ---
             try:
                 for attempt in range(3):
@@ -2227,7 +2280,7 @@ elif page == "🧩 Teams":
                     captain_ok = False
 
                 # 2. Underdog-Auswahl
-                underdog_candidates = selected_df[selected_df["price"] < 5.0]
+                underdog_candidates = selected_df[selected_df["price"] < 20.0]
                 underdog_options = underdog_candidates.set_index("id")["name"].to_dict()
                 default_underdog_name = (
                     current_underdog["name"]
@@ -2244,7 +2297,7 @@ elif page == "🧩 Teams":
                     )
 
                     underdog_name = st.selectbox(
-                        "Select your **Underdog** (x2 Points, Price < 5.0 Mio):",
+                        "Select your **Underdog** (x2 Points, Price < 20.0 Mio):",
                         options=underdog_options.values(),
                         index=default_underdog_index,
                         key="edit_underdog_select",
@@ -2257,7 +2310,7 @@ elif page == "🧩 Teams":
                     underdog_ok = True
                 else:
                     st.error(
-                        "❌ No eligible Underdog player (Price < 5.0 Mio) selected in your team!"
+                        "❌ No eligible Underdog player (Price < 20.0 Mio) selected in your team!"
                     )
                     underdog_ok = False
 
@@ -2510,12 +2563,12 @@ elif page == "🧩 Teams":
                     captain_ok = False
 
                 # 2. Underdog Auswahl
-                underdog_candidates = selected_df[selected_df["price"] < 5.0]
+                underdog_candidates = selected_df[selected_df["price"] < 20.0]
                 underdog_options = underdog_candidates.set_index("id")["name"].to_dict()
 
                 if underdog_options:
                     underdog_name = st.selectbox(
-                        "Select your **Underdog** (x2 Points, Price < 5.0 Mio):",
+                        "Select your **Underdog** (x2 Points, Price < 20.0 Mio):",
                         options=underdog_options.values(),
                         key="create_underdog_select",
                     )
@@ -2527,7 +2580,7 @@ elif page == "🧩 Teams":
                     underdog_ok = True
                 else:
                     st.error(
-                        "❌ No eligible Underdog player (Price < 5.0 Mio) selected in your team!"
+                        "❌ No eligible Underdog player (Price < 20.0 Mio) selected in your team!"
                     )
                     underdog_ok = False
 

@@ -31,7 +31,7 @@ class User(Base):
     teams = relationship(
         "Team",
         back_populates="user",
-        foreign_keys="[Team.user_id]",  # <-- HIER DIE ZIELSPALTE ANGEBEN!
+        foreign_keys="[Team.user_id]",
     )
 
 
@@ -60,7 +60,7 @@ class TeamPlayer(Base):
     player_id = Column(Integer, ForeignKey("players.id"), primary_key=True)
     is_captain = Column(Boolean, default=False)
     is_underdog = Column(Boolean, default=False)
-    champion = Column(Boolean, default=False)
+    # champion = Column(Boolean, default=False)
 
     team = relationship("Team", back_populates="team_players")
     player = relationship("Player", back_populates="team_players")
@@ -80,16 +80,18 @@ class Match(Base):
     # Stats
     sets_p1 = Column(Integer, default=0)
     sets_p2 = Column(Integer, default=0)
-    legs_p1 = Column(Integer, default=0)
-    legs_p2 = Column(Integer, default=0)
-    average_p1 = Column(Float, default=0.0)
-    average_p2 = Column(Float, default=0.0)
-    checkout_pct_p1 = Column(Float, default=0.0)
-    checkout_pct_p2 = Column(Float, default=0.0)
-    high_checkout_p1 = Column(Integer, default=0)
-    high_checkout_p2 = Column(Integer, default=0)
-    d180s_p1 = Column(Integer, default=0)
-    d180s_p2 = Column(Integer, default=0)
+    # legs_p1 = Column(Integer, default=0)
+    # legs_p2 = Column(Integer, default=0)
+    # average_p1 = Column(Float, default=0.0)
+    # average_p2 = Column(Float, default=0.0)
+    # checkout_pct_p1 = Column(Float, default=0.0)
+    # checkout_pct_p2 = Column(Float, default=0.0)
+    p161finishes_p1 = Column(Integer, default=0)
+    p161finishes_p2 = Column(Integer, default=0)
+    p171s_p1 = Column(Integer, default=0)
+    p171s_p2 = Column(Integer, default=0)
+    ninedarter_p1 = Column(Integer, default=0)
+    ninedarter_p2 = Column(Integer, default=0)
 
 
 class Config(Base):
