@@ -131,6 +131,8 @@ def recompute_points(db: Session = Depends(get_db)):
             }
             points = calculate_points(stats_p1)
             player1.points += points
+            if match.winner_id == player1.id and match.is_final:
+                player1.champion = True
             if not stats_p1["is_winner"]:
                 player1.eliminated = True
 
@@ -149,6 +151,8 @@ def recompute_points(db: Session = Depends(get_db)):
             }
             points = calculate_points(stats_p2)
             player2.points += points
+            if match.winner_id == player2.id and match.is_final:
+                player2.champion = True
             if not stats_p2["is_winner"]:
                 player2.eliminated = True
 

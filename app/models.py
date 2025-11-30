@@ -71,6 +71,7 @@ class Match(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     match_id = Column(String, unique=True, index=True)
+    is_final = Column(Boolean, default=False)
 
     # Nur IDs speichern
     p1_id = Column(Integer, ForeignKey("players.id"), nullable=False)

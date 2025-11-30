@@ -18,6 +18,8 @@ from pydantic import BaseModel
 
 class MatchResult(BaseModel):
     match_id: str
+    is_final: Optional[bool] = False
+
     p1_id: int
     p2_id: int
     winner_id: Optional[int] = None
