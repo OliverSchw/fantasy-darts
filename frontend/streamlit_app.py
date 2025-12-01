@@ -544,7 +544,7 @@ if page == "🏠 Overview":
                     ),
                     "name": st.column_config.Column("Player Name", width="medium"),
                     "price": st.column_config.NumberColumn(
-                        "Price", format="%.1f", width="small"
+                        "Price (Mio)", format="%.1f", width="small"
                     ),
                     "flag_url": st.column_config.ImageColumn("Nation", width=50),
                     "points": None,  # WICHTIG: Blende die redundante 'points' Spalte aus
@@ -2454,7 +2454,7 @@ elif page == "🧩 Teams":
                         "Seed", format="%.0f", width="tiny"
                     ),
                     "name": st.column_config.Column("Name"),
-                    "price": st.column_config.Column("Price"),
+                    "price": st.column_config.Column("Price (Mio)"),
                     "flag_url": st.column_config.ImageColumn("Nation", width=50),
                     "selected": st.column_config.CheckboxColumn("Select"),
                 },
@@ -2528,7 +2528,7 @@ elif page == "🧩 Teams":
                         ),
                         "name": st.column_config.Column("Player Name", width="medium"),
                         "price": st.column_config.NumberColumn(
-                            "Price", format="%.1f", width="small"
+                            "Price (Mio)", format="%.1f", width="small"
                         ),
                         "flag_url": st.column_config.ImageColumn("Nation", width=50),
                         "Role": st.column_config.Column("Role", width="medium"),
