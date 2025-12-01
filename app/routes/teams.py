@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from .. import database, models
 from ..schemas import TeamCreate
 from pydantic import BaseModel
+from .auth import get_current_user_id
 
 router = APIRouter(prefix="/teams", tags=["teams"])
 
@@ -13,15 +14,6 @@ def get_db():
         yield db
     finally:
         db.close()
-
-
-def get_current_user(db: Session = Depends(get_db)):
-    # ... Implementierung der Benutzer-Authentifizierung ...
-    # Nehmen wir an, wir geben hier den User mit ID 1 zurück
-    user = db.get(models.User, 1)
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return user
 
 
 # @router.post("/")
@@ -325,25 +317,45 @@ def check_team_name_availability(
 def set_active_team(
     team_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
+    user_id_from_token: int = Depends(get_current_user_id),
 ):
     """
     Setzt das angegebene Team als das aktive Team für den aktuellen Benutzer.
     """
 
+    # 1. User-Objekt INNERHALB DIESES ENDPUNKTS (gleiche DB-Session) laden:
+    current_user = db.get(models.User, user_id_from_token)
+
+    # 2. Team laden (auch in dieser DB-Session):
     team_to_activate = db.get(models.Team, team_id)
+
+    # Prüfen, ob der User überhaupt existiert (falls Token gültig, aber User gelöscht)
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found (Token valid)",
+        )
+
+    # Ihre Prints und Checks:
+    print(
+        f"Team-ID in DB: {team_to_activate.id}, Team-User-ID: {team_to_activate.user_id}"
+    )
+    print(f"Aktueller Benutzer-ID (aus Token): {current_user.id}")
 
     if not team_to_activate:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Team not found"
         )
 
+    # 3. Prüfung:
+    # team_to_activate.user_id (geladen mit Session B) vs. current_user.id (geladen mit Session B)
     if team_to_activate.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="You do not own this team"
         )
 
-    current_user.active_team = team_to_activate
+    # 4. Zuweisung der ID (wie Sie es bereits korrigiert haben):
+    current_user.active_team_id = team_id
 
     db.commit()
     db.refresh(current_user)

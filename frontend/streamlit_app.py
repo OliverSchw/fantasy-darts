@@ -11,7 +11,7 @@ import os
 # Wenn lokal: fallback auf localhost
 BASE_URL = os.getenv(
     "BASE_URL", "https://fantasy-darts.onrender.com"
-)  #   #"http://127.0.0.1:8000"
+)  #    #"http://127.0.0.1:8000"
 
 
 NUM_ROUNDS = 7  # Gesamtzahl der Runden (für Match-IDs und Logik)
@@ -1865,12 +1865,11 @@ elif page == "🧩 Teams":
                 return
 
             team_id = selected_team["team_id"].iloc[0]
-            token = st.session_state.get("access_token")
 
             # 2. API-Aufruf zum Aktivieren des Teams
             response = requests.post(
                 f"{BASE_URL}/teams/{team_id}/activate",
-                headers={"Authorization": f"Bearer {token}"} if token else {},
+                headers=get_auth_headers(),
             )
 
             if response.status_code == 200:
@@ -2387,6 +2386,7 @@ elif page == "🧩 Teams":
                         "underdog_id": underdog_id,
                         "champion_id": champion_id,
                     }
+
                     teams_are_locked = st.session_state.get("teams_locked", False)
                     if teams_are_locked:
                         st.error("Teams are locked.")
@@ -2398,12 +2398,9 @@ elif page == "🧩 Teams":
                     if response.status_code == 200:
                         set_active_payload = {"active_team_id": team_id}
                         # active_response = requests.put( f"{BASE_URL}/auth/{st.session_state.user_id}/active_team", json=set_active_payload )
-                        token = st.session_state.get("access_token")
                         active_response = requests.post(
                             f"{BASE_URL}/teams/{team_id}/activate",
-                            headers=(
-                                {"Authorization": f"Bearer {token}"} if token else {}
-                            ),
+                            headers=get_auth_headers(),
                         )
                         if active_response.status_code == 200:
                             st.success("Team updated and set as active!")
@@ -2687,14 +2684,9 @@ elif page == "🧩 Teams":
                             except Exception:
                                 pass
                             if new_team_id:
-                                token = st.session_state.get("access_token")
                                 active_response = requests.post(
                                     f"{BASE_URL}/teams/{new_team_id}/activate",
-                                    headers=(
-                                        {"Authorization": f"Bearer {token}"}
-                                        if token
-                                        else {}
-                                    ),
+                                    headers=get_auth_headers(),
                                 )
                                 if active_response.status_code == 200:
                                     st.success(
