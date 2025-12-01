@@ -1426,7 +1426,7 @@ elif page == "📅 Tournament Schedule":
         st.write(f"### 🎯 Match Details – Round {round_num}")
         st.markdown(f"**{p1_name_display}** vs. **{p2_name_display}**")
         st.markdown(
-            f"Best-of {sets_to_win*2+1} Sets. Needed to win: {sets_to_win} Sets."
+            f"Best-of {sets_to_win*2-1} Sets. Needed to win: {sets_to_win} Sets."
         )
         st.markdown("---")
 
