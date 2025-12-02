@@ -2134,7 +2134,7 @@ elif page == "🧩 Your Teams":
                     )
                     captain_ok = False
 
-                underdog_candidates = selected_df[selected_df["price"] < 20.0]
+                underdog_candidates = selected_df[selected_df["price"] <= 20.0]
                 underdog_options = underdog_candidates.set_index("id")["name"].to_dict()
                 default_underdog_name = (
                     current_underdog["name"]
@@ -2151,7 +2151,7 @@ elif page == "🧩 Your Teams":
                     )
 
                     underdog_name = st.selectbox(
-                        "Select your **Underdog** (x2 Points, Price < 20.0 Mio):",
+                        "Select your **Underdog** (x2 Points, Price <= 20.0 Mio):",
                         options=underdog_options.values(),
                         index=default_underdog_index,
                         key="edit_underdog_select",
@@ -2164,7 +2164,7 @@ elif page == "🧩 Your Teams":
                     underdog_ok = True
                 else:
                     st.error(
-                        "❌ No eligible Underdog player (Price < 20.0 Mio) selected in your team!"
+                        "❌ No eligible Underdog player (Price <= 20.0 Mio) selected in your team!"
                     )
                     underdog_ok = False
 
@@ -2398,12 +2398,12 @@ elif page == "🧩 Your Teams":
                     st.error("❌ No eligible Captain player found!")
                     captain_ok = False
 
-                underdog_candidates = selected_df[selected_df["price"] < 20.0]
+                underdog_candidates = selected_df[selected_df["price"] <= 20.0]
                 underdog_options = underdog_candidates.set_index("id")["name"].to_dict()
 
                 if underdog_options:
                     underdog_name = st.selectbox(
-                        "Select your **Underdog** (x2 Points, Price < 20.0 Mio):",
+                        "Select your **Underdog** (x2 Points, Price <= 20.0 Mio):",
                         options=underdog_options.values(),
                         key="create_underdog_select",
                     )
@@ -2415,7 +2415,7 @@ elif page == "🧩 Your Teams":
                     underdog_ok = True
                 else:
                     st.error(
-                        "❌ No eligible Underdog player (Price < 20.0 Mio) selected in your team!"
+                        "❌ No eligible Underdog player (Price <= 20.0 Mio) selected in your team!"
                     )
                     underdog_ok = False
 
