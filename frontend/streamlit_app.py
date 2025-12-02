@@ -22,7 +22,7 @@ ROWS_T2 = 7
 FINAL_MATCH_ID = f"match_{0}_{NUM_ROUNDS}"
 TOTAL_BUDGET = 225
 CHAMPION_POINTS = 50
-MAX_CAPTAIN_PRICE = 35.0
+MAX_PLAYMAKER_PRICE = 35.0
 
 FIRST_ROUND_PAIRS = [
     "Luke Littler",
@@ -557,10 +557,10 @@ if page == "🏆 Overview":
                 is_underdog = row.get("is_underdog")
                 base_points = row["points"]
                 if is_captain in (True, 1):
-                    role += f"👑 CAPTAIN ({int(base_points)}x2)"
+                    role += f"⭐ PLAYMAKER ({int(base_points)}x2)"
                 if is_underdog in (True, 1):
                     if role:
-                        role += f"👑 CAPTAIN  + 🐕 UNDERDOG ({int(base_points)}x3)"
+                        role += f"⭐ PLAYMAKER  + 🐕 UNDERDOG ({int(base_points)}x3)"
                     else:
                         role += f"🐕 UNDERDOG ({int(base_points)}x2)"
                 return role
@@ -2063,7 +2063,7 @@ elif page == "🧩 Your Teams":
 
                 if captain_id in selected_ids and captain_ok:
                     selected_df.loc[selected_df["id"] == captain_id, "Role"] = (
-                        "CAPTAIN 👑 (x2)"
+                        "PLAYMAKER ⭐ (x2)"
                     )
                 if underdog_id in selected_ids and underdog_ok:
                     role_text = "UNDERDOG 🐕 (x2)"
@@ -2097,10 +2097,10 @@ elif page == "🧩 Your Teams":
 
             if selected_count == 15 and remaining_budget >= 0:
                 st.markdown("---")
-                st.subheader("⭐ Select Captain & Underdog")
+                st.subheader("⭐ Select Playmaker & Underdog")
 
                 # max_price = selected_df["price"].max()
-                max_price = MAX_CAPTAIN_PRICE
+                max_price = MAX_PLAYMAKER_PRICE
                 eligible_captains = selected_df[selected_df["price"] <= max_price]
                 captain_options = eligible_captains.set_index("id")["name"].to_dict()
 
@@ -2119,7 +2119,7 @@ elif page == "🧩 Your Teams":
                     )
 
                     captain_name = st.selectbox(
-                        "Select your **Team Captain** (x2 Points, Price <= 35.0 Mio):",
+                        "Select your **Team Playmaker** (x2 Points, Price <= 35.0 Mio):",
                         options=captain_options.values(),
                         index=default_captain_index,
                         key="edit_captain_select",
@@ -2132,7 +2132,7 @@ elif page == "🧩 Your Teams":
                     captain_ok = True
                 else:
                     st.error(
-                        "❌ No eligible Captain player found! (Price must be <= 35.0 Mio)."
+                        "❌ No eligible Playmaker player found! (Price must be <= 35.0 Mio)."
                     )
                     captain_ok = False
 
@@ -2259,7 +2259,7 @@ elif page == "🧩 Your Teams":
                         st.error(f"Error updating team: {response.text}")
             else:
                 st.warning(
-                    "⚠️ Select exactly 15 players, stay within budget, and choose Captain, Underdog, and Champion."
+                    "⚠️ Select exactly 15 players, stay within budget, and choose Playmaker, Underdog, and Champion."
                 )
 
         elif st.session_state.current_page == "create_new_team":
@@ -2345,7 +2345,7 @@ elif page == "🧩 Your Teams":
                 selected_df["Role"] = ""
                 if captain_id in selected_ids:
                     selected_df.loc[selected_df["id"] == captain_id, "Role"] = (
-                        "CAPTAIN 👑 (x2)"
+                        "PLAYMAKER ⭐ (x2)"
                     )
                 if underdog_id in selected_ids:
                     selected_df.loc[selected_df["id"] == underdog_id, "Role"] += (
@@ -2378,16 +2378,16 @@ elif page == "🧩 Your Teams":
             if selected_count == 15 and remaining_budget >= 0:
 
                 st.markdown("---")
-                st.subheader("⭐ Select Captain & Underdog")
+                st.subheader("⭐ Select Playmaker & Underdog")
 
                 # max_price = selected_df["price"].max()
-                max_price = MAX_CAPTAIN_PRICE
+                max_price = MAX_PLAYMAKER_PRICE
                 eligible_captains = selected_df[selected_df["price"] <= max_price]
                 captain_options = eligible_captains.set_index("id")["name"].to_dict()
 
                 if captain_options:
                     captain_name = st.selectbox(
-                        "Select your **Team Captain** (x2 Points, Price <= 35.0 Mio):",
+                        "Select your **Team Playmaker** (x2 Points, Price <= 35.0 Mio):",
                         options=captain_options.values(),
                         key="create_captain_select",
                     )
@@ -2398,7 +2398,7 @@ elif page == "🧩 Your Teams":
                     )
                     captain_ok = True
                 else:
-                    st.error("❌ No eligible Captain player found!")
+                    st.error("❌ No eligible Playmaker player found!")
                     captain_ok = False
 
                 underdog_candidates = selected_df[selected_df["price"] <= 20.0]
@@ -2533,7 +2533,7 @@ elif page == "🧩 Your Teams":
 
             else:
                 st.warning(
-                    "⚠️ Select exactly 15 players, stay within budget, and choose Captain, Underdog, and Champion."
+                    "⚠️ Select exactly 15 players, stay within budget, and choose Playmaker, Underdog, and Champion."
                 )
 
 elif page == "⚙️ Settings":
