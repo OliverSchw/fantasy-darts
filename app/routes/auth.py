@@ -9,15 +9,14 @@ from pydantic import BaseModel
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# 1. JWT KONSTANTEN und Schema definieren (ganz oben)
-SECRET_KEY = "IHR_SUPER_GEHEIMER_SCHLÜSSEL"  # WICHTIG: Ändern!
+
+SECRET_KEY = "SUPER_GEHEIMER_SCHLÜSSEL"  #
 ALGORITHM = "HS256"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-# --- Abhängigkeiten ---
 def get_db():
     db = database.SessionLocal()
     try:
@@ -30,17 +29,13 @@ def verify_password(password, hashed):
     return pwd_context.verify(password, hashed)
 
 
-# --- Pydantic Modelle ---
-
-
 class LoginRequest(BaseModel):
     username: str
     password: str
 
 
-# Modell für die Rückgabe des Login-Tokens (enthält Token und User-Details)
 class TokenResponse(BaseModel):
-    user_id: int  # Wichtig: Fügen Sie hier user_id hinzu, da es im Endpunkt zurückgegeben wird
+    user_id: int
     username: str
     is_admin: bool
     access_token: str
@@ -56,7 +51,6 @@ class RegisterRequest(BaseModel):
     is_admin: bool = False
 
 
-# Modell für die Admin-Liste (enthält keine Tokens)
 class UserAdminOut(BaseModel):
     id: int
     username: str
@@ -70,9 +64,6 @@ class UserUpdateAdminStatus(BaseModel):
     is_admin: bool
 
 
-# --- JWT Hilfsfunktionen ---
-
-
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
     if expires_delta:
@@ -84,7 +75,6 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     return encoded_jwt
 
 
-# 4. Abhängigkeit: User-ID aus Token extrahieren
 def get_current_user_id(token: str = Depends(oauth2_scheme)) -> int:
     credentials_exception = HTTPException(
         status_code=401,
@@ -102,7 +92,6 @@ def get_current_user_id(token: str = Depends(oauth2_scheme)) -> int:
         raise credentials_exception
 
 
-# 5. Abhängigkeit: Admin-Prüfung
 def get_current_admin(
     db: Session = Depends(get_db), user_id: int = Depends(get_current_user_id)
 ):
@@ -112,7 +101,7 @@ def get_current_admin(
     return user
 
 
-@router.post("/login", response_model=TokenResponse)  # <-- Verwende das neue Modell
+@router.post("/login", response_model=TokenResponse)
 def login(req: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.username == req.username).first()
 
@@ -140,7 +129,7 @@ def get_all_users(
     db: Session = Depends(get_db),
     current_admin: models.User = Depends(get_current_admin),
 ):
-    """Gibt alle Benutzer zurück. Nur für Admins."""
+    """Returns a list of all users. Admins only."""
     users = db.query(models.User).all()
     return users
 
@@ -152,7 +141,7 @@ def update_user_admin_status(
     db: Session = Depends(get_db),
     current_admin: models.User = Depends(get_current_admin),
 ):
-    """Ändert den Admin-Status eines Benutzers. Nur für Admins."""
+    """Changes a user's admin status. Admins only."""
     user = db.query(models.User).filter(models.User.id == user_id).first()
 
     if not user:
@@ -171,7 +160,7 @@ def delete_user(
     db: Session = Depends(get_db),
     current_admin: models.User = Depends(get_current_admin),
 ):
-    """Löscht einen Benutzer und seine zugehörigen Daten (Teams, etc.). Nur für Admins."""
+    """Deletes a user by ID. Admins only."""
 
     if user_id == current_admin.id:
         raise HTTPException(
@@ -237,5 +226,5 @@ def get_active_team_id(user_id: int, db: Session = Depends(get_db)):
 
     return {
         "user_id": user_id,
-        "active_team_id": user.active_team_id,  # Gibt entweder die ID oder None zurück
+        "active_team_id": user.active_team_id,
     }

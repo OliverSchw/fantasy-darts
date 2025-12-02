@@ -39,7 +39,7 @@ def home():
     return {"msg": "Fantasy Darts läuft!"}
 
 
-app.include_router(add_points.router)
+# app.include_router(add_points.router) depricated
 app.include_router(auth.router)
 app.include_router(players.router)
 app.include_router(teams.router)

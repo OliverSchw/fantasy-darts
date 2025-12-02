@@ -5,7 +5,6 @@ from .. import database, models
 router = APIRouter(prefix="/players", tags=["players"])
 
 
-# --- DB Session Helper ---
 def get_db():
     db = database.SessionLocal()
     try:
@@ -14,11 +13,9 @@ def get_db():
         db.close()
 
 
-# --- GET: alle Spieler ---
 @router.get("/")
 def get_players(db: Session = Depends(get_db)):
     players = db.query(models.Player).all()
-    # Konvertiere SQLAlchemy-Objekte in dicts für JSON
     return [
         {
             "seed": p.seed,
@@ -33,7 +30,6 @@ def get_players(db: Session = Depends(get_db)):
     ]
 
 
-# --- POST: neuen Spieler hinzufügen ---
 @router.post("/")
 def add_player(
     name: str,
@@ -69,13 +65,9 @@ def calculate_points(stats: dict) -> float:
     return pts
 
 
-# --- Punkte auf Spieler anwenden ---
 @router.put("/player/{player_id}")
 def add_points_player(player_id: int, stats: dict, db: Session = Depends(get_db)):
-    """
-    Berechnet Punkte anhand von Match-Stats und addiert sie auf den Spielerpreis und Punkte.
-    `stats` ist ein dict mit Keys: is_winner, sets_won, legs_won, 180s, high_checkout, average, checkout_pct
-    """
+    """Adds points to a player based on match statistics."""
     player = db.query(models.Player).filter(models.Player.id == player_id).first()
     if not player:
         return {"error": "Player not found"}
@@ -100,8 +92,8 @@ def add_points_player(player_id: int, stats: dict, db: Session = Depends(get_db)
 @router.put("/points/recompute")
 def recompute_points(db: Session = Depends(get_db)):
     """
-    Berechnet die Punkte aller Spieler basierend auf allen gespeicherten Matches.
-    Setzt die Punkte neu und aktualisiert auch eliminierte Spieler.
+    Computes the points of all players based on all stored matches.
+    Resets the points and also updates eliminated players.
     """
     players = db.query(models.Player).all()
 

@@ -17,62 +17,6 @@ def get_db():
         db.close()
 
 
-# @router.post("/")
-# def create_team(team: TeamCreate, db: Session = Depends(get_db)):
-#     new_team = models.Team(name=team.team_name, user_id=team.user_id)
-#     db.add(new_team)
-#     db.commit()
-#     db.refresh(new_team)
-
-#     for pid in team.player_ids:
-#         db.add(models.TeamPlayer(team_id=new_team.id, player_id=pid))
-#     db.commit()
-
-#     return {"team_id": new_team.id, "team_name": new_team.name}
-
-
-# @router.post("/")
-# def create_team(team: TeamCreate, db: Session = Depends(get_db)):
-#     if (
-#         team.captain_id not in team.player_ids
-#         or team.underdog_id not in team.player_ids
-#     ):
-#         raise HTTPException(
-#             status_code=400,
-#             detail="Captain and Underdog must be in the selected player list.",
-#         )
-
-#     underdog_player = (
-#         db.query(models.Player).filter(models.Player.id == team.underdog_id).first()
-#     )
-#     if not underdog_player or underdog_player.price >= 800.0:
-#         raise HTTPException(
-#             status_code=400, detail="Underdog must have a price less than 800.0."
-#         )
-
-#     new_team = models.Team(name=team.team_name, user_id=team.user_id)
-#     db.add(new_team)
-#     db.commit()
-#     db.refresh(new_team)
-
-#     for pid in team.player_ids:
-#         # Setze is_captain/is_underdog basierend auf den übergebenen IDs
-#         is_captain = pid == team.captain_id
-#         is_underdog = pid == team.underdog_id
-
-#         db.add(
-#             models.TeamPlayer(
-#                 team_id=new_team.id,
-#                 player_id=pid,
-#                 is_captain=is_captain,  # NEU
-#                 is_underdog=is_underdog,  # NEU
-#             )
-#         )
-#     db.commit()
-
-#     return {"team_id": new_team.id, "team_name": new_team.name}
-
-
 @router.post("/")
 def create_team(team: TeamCreate, db: Session = Depends(get_db)):
 
@@ -85,14 +29,12 @@ def create_team(team: TeamCreate, db: Session = Depends(get_db)):
             detail="Captain and Underdog must be in the selected player list.",
         )
 
-    # 1.4 Champion Tipp muss existieren
     champion_player = (
         db.query(models.Player).filter(models.Player.id == team.champion_id).first()
     )
     if not champion_player:
         raise HTTPException(status_code=404, detail="Champion Pick player not found.")
 
-    # --- Team-Erstellung ---
     new_team = models.Team(
         name=team.team_name,
         user_id=team.user_id,
@@ -126,34 +68,27 @@ def update_team(team_id: int, payload: dict, db: Session = Depends(get_db)):
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
 
-    # --- Daten aus Payload holen ---
     new_player_ids = payload.get("player_ids")
     new_captain_id = payload.get("captain_id")
     new_underdog_id = payload.get("underdog_id")
     new_champion_id = payload.get("champion_id")
 
-    # Grundlegende Prüfung der Vollständigkeit
     if not all([new_player_ids, new_captain_id, new_underdog_id, new_champion_id]):
         raise HTTPException(
             status_code=400,
             detail="Missing required fields (player_ids, captain_id, underdog_id, champion_id).",
         )
 
-    # --- Validierung der Geschäftsregeln ---
-
-    # 2. Spieler-Objekte abrufen für Preisprüfung (nur die 15 Hauptspieler)
     all_players_in_team = (
         db.query(models.Player).filter(models.Player.id.in_(new_player_ids)).all()
     )
     player_map = {p.id: p for p in all_players_in_team}
 
-    # 2.1 Teamgröße prüfen (wenn das Frontend dies nicht garantiert)
     if len(new_player_ids) != 15:
         raise HTTPException(
             status_code=400, detail="Team must contain exactly 15 players."
         )
 
-    # 2.2 Captain und Underdog müssen im Team sein
     if new_captain_id not in new_player_ids or new_underdog_id not in new_player_ids:
         raise HTTPException(
             status_code=400,
@@ -264,17 +199,7 @@ def get_teams_by_user(user_id: int, db: Session = Depends(get_db)):
 
     result = []
     for t in teams:
-        # Summe aller Punkte der Spieler im Team
-        # total_points = (
-        #     db.query(models.Player.points)
-        #     .join(models.TeamPlayer, models.Player.id == models.TeamPlayer.player_id)
-        #     .filter(models.TeamPlayer.team_id == t.id)
-        #     .all()
-        # )
-        total_points_sum = (
-            t.points
-        )  # sum(p[0] for p in total_points) if total_points else 0
-
+        total_points_sum = t.points
         result.append(
             {
                 "team_id": t.id,
