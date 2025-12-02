@@ -1060,14 +1060,14 @@ elif page == "📅 Tournament Schedule":
                         else:
                             st.session_state.match_data[match_id] = current_match_data
 
-        st.write("### 🟨 Round 1 to 5 ")
-        st.dataframe(
-            table_1,
-            hide_index=True,
-            width="stretch",
-        )
+        # st.write("### 🟨 Round 1 to 5 ")
+        # st.dataframe(
+        #     table_1,
+        #     hide_index=True,
+        #     width="stretch",
+        # )
 
-        st.markdown("---")
+        # st.markdown("---")
         column_names_t2 = [
             f"Semi-Finals",
             f"Final",
@@ -1185,14 +1185,14 @@ elif page == "📅 Tournament Schedule":
 
         st.session_state["all_possible_match_data"] = all_possible_match_data
 
-        st.write("### 🏆 Semi-Finals and Final")
-        st.dataframe(
-            table_2,
-            hide_index=True,
-            width="stretch",
-        )
+        # st.write("### 🏆 Semi-Finals and Final")
+        # st.dataframe(
+        #     table_2,
+        #     hide_index=True,
+        #     width="stretch",
+        # )
 
-        st.markdown("---")
+        # st.markdown("---")
 
         def sort_key(item):
             match_id = item[0]
@@ -1315,6 +1315,24 @@ elif page == "📅 Tournament Schedule":
                         col2.info("Waiting for Predecessor")
 
                     st.markdown("---")
+
+        st.write("### 🟨 Round 1 to 5 ")
+        st.dataframe(
+            table_1,
+            hide_index=True,
+            width="stretch",
+        )
+
+        st.markdown("---")
+
+        st.write("### 🏆 Semi-Finals and Final")
+        st.dataframe(
+            table_2,
+            hide_index=True,
+            width="stretch",
+        )
+
+        st.markdown("---")
 
     elif st.session_state.current_page == "match_detail":
         is_admin = st.session_state.get("is_admin", False)
