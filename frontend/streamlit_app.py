@@ -20,8 +20,9 @@ NUM_MATCHES_ROUND_1 = 64
 ROWS = NUM_MATCHES_ROUND_1 * 2
 ROWS_T2 = 7
 FINAL_MATCH_ID = f"match_{0}_{NUM_ROUNDS}"
-TOTAL_BUDGET = 220
+TOTAL_BUDGET = 200
 CHAMPION_POINTS = 50
+MAX_CAPTAIN_PRICE = 35.0
 
 FIRST_ROUND_PAIRS = [
     "Luke Littler",
@@ -2098,8 +2099,9 @@ elif page == "🧩 Your Teams":
                 st.markdown("---")
                 st.subheader("⭐ Select Captain & Underdog")
 
-                max_price = selected_df["price"].max()
-                eligible_captains = selected_df[selected_df["price"] < max_price]
+                # max_price = selected_df["price"].max()
+                max_price = MAX_CAPTAIN_PRICE
+                eligible_captains = selected_df[selected_df["price"] <= max_price]
                 captain_options = eligible_captains.set_index("id")["name"].to_dict()
 
                 default_captain_name = (
@@ -2117,7 +2119,7 @@ elif page == "🧩 Your Teams":
                     )
 
                     captain_name = st.selectbox(
-                        "Select your **Team Captain** (x2 Points, must not be the most expensive player):",
+                        "Select your **Team Captain** (x2 Points, Price <= 35.0 Mio):",
                         options=captain_options.values(),
                         index=default_captain_index,
                         key="edit_captain_select",
@@ -2130,7 +2132,7 @@ elif page == "🧩 Your Teams":
                     captain_ok = True
                 else:
                     st.error(
-                        "❌ No eligible Captain player found! (Must not be the most expensive player in your squad)."
+                        "❌ No eligible Captain player found! (Price must be <= 35.0 Mio)."
                     )
                     captain_ok = False
 
@@ -2378,13 +2380,14 @@ elif page == "🧩 Your Teams":
                 st.markdown("---")
                 st.subheader("⭐ Select Captain & Underdog")
 
-                max_price = selected_df["price"].max()
-                eligible_captains = selected_df[selected_df["price"] < max_price]
+                # max_price = selected_df["price"].max()
+                max_price = MAX_CAPTAIN_PRICE
+                eligible_captains = selected_df[selected_df["price"] <= max_price]
                 captain_options = eligible_captains.set_index("id")["name"].to_dict()
 
                 if captain_options:
                     captain_name = st.selectbox(
-                        "Select your **Team Captain** (x2 Points, must not be the most expensive player):",
+                        "Select your **Team Captain** (x2 Points, Price <= 35.0 Mio):",
                         options=captain_options.values(),
                         key="create_captain_select",
                     )
