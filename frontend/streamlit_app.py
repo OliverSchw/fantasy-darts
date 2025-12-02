@@ -573,10 +573,11 @@ if page == "🏆 Overview":
                 if row.get("is_underdog") in (True, 1):
                     multiplier += 1
                 weighted_points = base_points * multiplier
-                if multiplier > 1:
-                    return f"{base_points:,.0f} ({weighted_points:,.0f})"
-                else:
-                    return f"{base_points:,.0f}"
+                # if multiplier > 1:
+                #     return f"{base_points:,.0f} ({weighted_points:,.0f})"
+                # else:
+                #     return f"{base_points:,.0f}"
+                return f"{weighted_points:,.0f}"
 
             df_players["Display_Points"] = df_players.apply(format_points, axis=1)
 
