@@ -391,7 +391,7 @@ def recompute_points(db: Session = Depends(get_db)):
             #     db.query(models.Player).filter(models.Player.id == tp.player_id).first()
             # )
             if tp:
-                player_points = tp.points
+                player_points = tp.player.points
                 weighted_points = player_points
 
                 if tp.is_captain:

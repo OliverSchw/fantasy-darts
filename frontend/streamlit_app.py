@@ -429,8 +429,8 @@ if page == "🏠 Overview":
 
     def back_to_overview():
         st.session_state.current_page = "overview"
-        requests.put(f"{BASE_URL}/players/points/recompute")
-        requests.put(f"{BASE_URL}/teams/points/recompute")
+        # requests.put(f"{BASE_URL}/players/points/recompute")
+        # requests.put(f"{BASE_URL}/teams/points/recompute")
 
     # --- Team Detail Seite ---
     if st.session_state.current_page == "team_detail":
