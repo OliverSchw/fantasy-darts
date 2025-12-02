@@ -65,7 +65,6 @@ def add_player(
 #     return pts
 
 
-# --- Punkteberechnung ---
 def calculate_points(stats: dict) -> float:
     """is_winner,sets_won,sets_lost,p171s,p161finishes,ninedarters"""
     pts = 0
@@ -74,6 +73,9 @@ def calculate_points(stats: dict) -> float:
     pts += stats.get("sets_won", 0) * 10
     if stats.get("is_winner", False):
         pts += (stats.get("sets_won", 0) - stats.get("sets_lost", 0)) * (10)
+
+    if stats.get("is_winner", False) and stats.get("is_final", False):
+        pts += 100
     pts += stats.get("p171s", 0) * 1
     pts += stats.get("p161finishes", 0) * 3
     pts += stats.get("ninedarters", 0) * 100
@@ -135,6 +137,7 @@ def recompute_points(db: Session = Depends(get_db)):
                 "p171s": match.p171s_p1,
                 "p161finishes": match.p161finishes_p1,
                 "ninedarters": match.ninedarter_p1,
+                "is_final": match.is_final,
             }
             points = calculate_points(stats_p1)
             player1.points += points
@@ -155,6 +158,7 @@ def recompute_points(db: Session = Depends(get_db)):
                 "p171s": match.p171s_p2,
                 "p161finishes": match.p161finishes_p2,
                 "ninedarters": match.ninedarter_p2,
+                "is_final": match.is_final,
             }
             points = calculate_points(stats_p2)
             player2.points += points
