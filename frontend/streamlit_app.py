@@ -614,7 +614,7 @@ if page == "🏆 Overview":
                 return [f"color: {color}"] * len(row)
 
             df_players = df_players.sort_values(
-                by=["points", "price"], ascending=[False, False]
+                by=["Calculated_Total_Points", "price"], ascending=[False, False]
             ).reset_index(drop=True)
             st.markdown("---")
             st.subheader("👥 Players")
