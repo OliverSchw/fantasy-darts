@@ -453,8 +453,6 @@ if page == "🏆 Overview":
         st.markdown("---")
         total_points = total_team_points  # df_players["Calculated_Total_Points"].sum() + champion_points
         st.markdown(f"### 📊 Total Team Points: **{total_points:,.0f}**")
-        st.markdown("---")
-        st.subheader("👥 Players")
 
         if players and isinstance(players, list):
 
@@ -619,6 +617,7 @@ if page == "🏆 Overview":
                 by=["points", "price"], ascending=[False, False]
             ).reset_index(drop=True)
             st.markdown("---")
+            st.subheader("👥 Players")
             st.dataframe(
                 df_players[
                     [
