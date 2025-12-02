@@ -265,13 +265,15 @@ def get_teams_by_user(user_id: int, db: Session = Depends(get_db)):
     result = []
     for t in teams:
         # Summe aller Punkte der Spieler im Team
-        total_points = (
-            db.query(models.Player.points)
-            .join(models.TeamPlayer, models.Player.id == models.TeamPlayer.player_id)
-            .filter(models.TeamPlayer.team_id == t.id)
-            .all()
-        )
-        total_points_sum = sum(p[0] for p in total_points) if total_points else 0
+        # total_points = (
+        #     db.query(models.Player.points)
+        #     .join(models.TeamPlayer, models.Player.id == models.TeamPlayer.player_id)
+        #     .filter(models.TeamPlayer.team_id == t.id)
+        #     .all()
+        # )
+        total_points_sum = (
+            t.points
+        )  # sum(p[0] for p in total_points) if total_points else 0
 
         result.append(
             {
