@@ -4,6 +4,7 @@ from .. import database, models
 from ..schemas import TeamCreate
 from pydantic import BaseModel
 from .auth import get_current_user_id
+from .leaderboard import CHAMPION_POINTS
 
 router = APIRouter(prefix="/teams", tags=["teams"])
 
@@ -218,6 +219,14 @@ def get_team_players(team_id: int, db: Session = Depends(get_db)):
     ]
 
 
+@router.get("/{team_id}/total_points")
+def get_team_points(team_id: int, db: Session = Depends(get_db)):
+    team = db.query(models.Team).filter(models.Team.id == team_id).first()
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    return {"team_id": team.id, "team_name": team.name, "total_points": team.points}
+
+
 @router.get("/{team_id}/champion_tip")
 def get_team_champion_tip(team_id: int, db: Session = Depends(get_db)):
     team = db.query(models.Team).filter(models.Team.id == team_id).first()
@@ -364,3 +373,38 @@ def set_active_team(
         "message": f"Team '{team_to_activate.name}' is now the active team.",
         "active_team_id": current_user.active_team_id,
     }
+
+
+@router.put("/points/recompute")
+def recompute_points(db: Session = Depends(get_db)):
+    teams = db.query(models.Team).all()
+
+    # Alle Spieler initial zurücksetzen
+    for team in teams:
+        team.points = 0
+    db.commit()
+
+    for team in teams:
+        total_team_points = 0
+        for tp in team.team_players:
+            # player = (
+            #     db.query(models.Player).filter(models.Player.id == tp.player_id).first()
+            # )
+            if tp:
+                player_points = tp.points
+                weighted_points = player_points
+
+                if tp.is_captain:
+                    weighted_points += player_points
+
+                if tp.is_underdog:
+                    weighted_points += player_points
+
+                total_team_points += weighted_points
+
+        if team.team_champion_guess and team.team_champion_guess.champion:
+            total_team_points += CHAMPION_POINTS
+
+        team.points = total_team_points
+
+    db.commit()

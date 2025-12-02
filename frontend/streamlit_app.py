@@ -430,6 +430,7 @@ if page == "🏠 Overview":
     def back_to_overview():
         st.session_state.current_page = "overview"
         requests.put(f"{BASE_URL}/players/points/recompute")
+        requests.put(f"{BASE_URL}/teams/points/recompute")
 
     # --- Team Detail Seite ---
     if st.session_state.current_page == "team_detail":
@@ -445,6 +446,10 @@ if page == "🏠 Overview":
             champion_details = requests.get(
                 f"{BASE_URL}/teams/{team_id}/champion_tip"
             ).json()
+            total_team_points_data = requests.get(
+                f"{BASE_URL}/teams/{team_id}/total_points"
+            ).json()
+            total_team_points = total_team_points_data.get("total_points", 0)
 
         except Exception as e:
             st.error(
@@ -657,7 +662,7 @@ if page == "🏠 Overview":
                 st.info("No Champion Pick found for this team.")
 
             st.markdown("---")
-            total_points = df_players["Calculated_Total_Points"].sum() + champion_points
+            total_points = total_team_points  # df_players["Calculated_Total_Points"].sum() + champion_points
             st.markdown(f"### 📊 Total Team Points: **{total_points:,.0f}**")
 
             # Zurück-Button
@@ -670,6 +675,7 @@ if page == "🏠 Overview":
         team_selection = None
 
         requests.put(f"{BASE_URL}/players/points/recompute")
+        requests.put(f"{BASE_URL}/teams/points/recompute")
         leaderboard = requests.get(f"{BASE_URL}/leaderboard/").json()
         df_lb = pd.DataFrame(leaderboard)
 
@@ -1713,6 +1719,7 @@ elif page == "📅 Tournament Schedule":
                         f"{BASE_URL}/players/points/recompute",
                         headers=get_auth_headers(),
                     )
+                    requests.put(f"{BASE_URL}/teams/points/recompute")
 
                     # Return to overview and Rerun
                     st.session_state.current_page = "overview"
@@ -1801,6 +1808,7 @@ elif page == "📅 Tournament Schedule":
                             json=payload,
                             headers=get_auth_headers(),  # Falls recompute auch geschützt ist
                         )
+                        requests.put(f"{BASE_URL}/teams/points/recompute")
                         resp.raise_for_status()
                         break
                     except requests.exceptions.RequestException as e:
