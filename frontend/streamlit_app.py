@@ -556,12 +556,12 @@ if page == "🏆 Overview":
                 is_underdog = row.get("is_underdog")
                 base_points = row["points"]
                 if is_captain in (True, 1):
-                    role += f"👑 CAPTAIN ({base_points}x2)"
+                    role += f"👑 CAPTAIN ({int(base_points)}x2)"
                 if is_underdog in (True, 1):
                     if role:
-                        role += f"👑 CAPTAIN  + 🐕 UNDERDOG ({base_points}x3)"
+                        role += f"👑 CAPTAIN  + 🐕 UNDERDOG ({int(base_points)}x3)"
                     else:
-                        role += f"🐕 UNDERDOG ({base_points}x2)"
+                        role += f"🐕 UNDERDOG ({int(base_points)}x2)"
                 return role
 
             df_players["Role"] = df_players.apply(get_player_role, axis=1)
