@@ -7,19 +7,18 @@ import time
 
 import os
 
-# Wenn auf Streamlit Cloud: nimm BASE_URL aus den Secrets
-# Wenn lokal: fallback auf localhost
+
 BASE_URL = os.getenv(
     "BASE_URL", "https://fantasy-darts.onrender.com"
 )  #    #"http://127.0.0.1:8000"
 
 
-NUM_ROUNDS = 7  # Gesamtzahl der Runden (für Match-IDs und Logik)
-NUM_ROUNDS_T1 = 5  # Runden für Tabelle 1 (R1 bis R5)
-NUM_ROUNDS_T2 = NUM_ROUNDS - NUM_ROUNDS_T1  # Runden für Tabelle 2 (R6 und R7)
+NUM_ROUNDS = 7
+NUM_ROUNDS_T1 = 5
+NUM_ROUNDS_T2 = NUM_ROUNDS - NUM_ROUNDS_T1
 NUM_MATCHES_ROUND_1 = 64
 ROWS = NUM_MATCHES_ROUND_1 * 2
-ROWS_T2 = 7  # Genug Platz, u
+ROWS_T2 = 7
 FINAL_MATCH_ID = f"match_{0}_{NUM_ROUNDS}"
 TOTAL_BUDGET = 220
 CHAMPION_POINTS = 50
@@ -200,10 +199,8 @@ BASE_FLAG_URL = "https://cdnjs.cloudflare.com/ajax/libs/flag-icons/7.5.0/flags/4
 def get_flag_url(nation):
     code = COUNTRY_CODE_MAP.get(nation.strip())
     if code:
-        # Beispiel: https://cdnjs.cloudflare.com/ajax/libs/flag-icons/7.5.0/flags/4x3/gb-eng.svg
-        # Wir verwenden SVG, da es gut skaliert
         return f"{BASE_FLAG_URL}{code}.svg"
-    return ""  # Leerer String, falls kein Code gefunden wurde
+    return ""
 
 
 st.set_page_config(page_title="Fantasy Darts WM", layout="wide")
@@ -242,15 +239,15 @@ else:
     if st.sidebar.button("Logout"):
         del st.session_state.user_id
         del st.session_state.username
-        # NEU: Token beim Logout ebenfalls entfernen
+
         if "is_admin" in st.session_state:
             del st.session_state.is_admin
         if "access_token" in st.session_state:
             del st.session_state.access_token
-        # Ende NEU
+
         st.success("Logged out successfully!")
-        st.rerun()  # sofort neu rendern
-# Seiten-Navigation
+        st.rerun()
+
 
 if "current_page" not in st.session_state:
     st.session_state.current_page = "overview"
@@ -259,20 +256,18 @@ if "current_page" not in st.session_state:
 
 import requests
 
-# ... (BASE_URL, token etc. sind angenommen)
-
 
 def get_team_lock_status():
-    """Ruft den globalen Team-Lock-Status vom Backend ab."""
+
     token = st.session_state.get("access_token")
     try:
-        # ANNAHME: Backend hat einen GET-Endpunkt für die Konfiguration
+
         response = requests.get(
             f"{BASE_URL}/config/lock-status",
             headers={"Authorization": f"Bearer {token}"} if token else {},
         )
         if response.status_code == 200:
-            # ANNAHME: Backend gibt {"teams_locked": True/False} zurück
+
             return response.json().get("teams_locked", False)
         return False
     except requests.exceptions.RequestException:
@@ -281,10 +276,10 @@ def get_team_lock_status():
 
 
 def set_team_lock_status(is_locked: bool):
-    """Setzt den globalen Team-Lock-Status im Backend."""
+
     token = st.session_state.get("access_token")
     try:
-        # ANNAHME: Backend hat einen POST/PUT-Endpunkt zum Setzen der Konfiguration
+
         response = requests.post(
             f"{BASE_URL}/config/lock-status",
             json={"teams_locked": is_locked},
@@ -310,14 +305,14 @@ teams_are_locked = st.session_state.get("teams_locked", False)
 
 
 def reset_sub_state():
-    # Setzt den gewünschten Session State auf den gewünschten Standardwert
+
     st.session_state.current_page = "overview"
 
 
 page = st.sidebar.radio(
     "Navigation",
     [
-        "🏠 Overview",
+        "🏆 Overview",
         "🎯 Players",
         "🧩 Teams",
         # "⚔️ Tournament Bracket"
@@ -396,7 +391,7 @@ def create_new_user(username, password, is_admin):
 
 
 def delete_user_by_id(user_id):
-    """Sendet die DELETE-Anfrage an den FastAPI-Endpunkt."""
+    """Deletes a user by ID via the FastAPI backend endpoint."""
     try:
         response = requests.delete(
             f"{BASE_URL}/auth/users/{user_id}", headers=get_auth_headers()
@@ -417,13 +412,12 @@ def delete_user_by_id(user_id):
 # -----------------------------------
 # 🔹 Overview (Dashboard)
 # -----------------------------------
-if page == "🏠 Overview":
+if page == "🏆 Overview":
 
     # --- Initial page state ---
     if "current_page" not in st.session_state:
         st.session_state.current_page = "overview"
 
-    # --- Callback-Funktionen ---
     def go_to_team(team_id, team_name):
         st.session_state.selected_team_id = team_id
         st.session_state.selected_team_name = team_name
@@ -434,7 +428,6 @@ if page == "🏠 Overview":
         # requests.put(f"{BASE_URL}/players/points/recompute")
         # requests.put(f"{BASE_URL}/teams/points/recompute")
 
-    # --- Team Detail Seite ---
     if st.session_state.current_page == "team_detail":
         team_id = st.session_state.selected_team_id
         team_name = st.session_state.selected_team_name
@@ -442,7 +435,6 @@ if page == "🏠 Overview":
         st.title(f"🎯 Team: {team_name}")
         st.subheader("👥 Players")
 
-        # Spieler laden (enthält jetzt is_captain/is_underdog)
         try:
             players = requests.get(f"{BASE_URL}/teams/{team_id}/players").json()
             champion_details = requests.get(
@@ -477,7 +469,6 @@ if page == "🏠 Overview":
 
             df_players["Role"] = df_players.apply(get_player_role, axis=1)
 
-            # --- Punkte-Formatierung ---
             def format_points(row):
                 base_points = row["points"]
                 multiplier = 1
@@ -493,7 +484,6 @@ if page == "🏠 Overview":
 
             df_players["Display_Points"] = df_players.apply(format_points, axis=1)
 
-            # --- Berechnung der Total Points (für Sortierung und Summe) ---
             def calculate_weighted_points_value(row):
                 base_points = row["points"]
                 multiplier = 1
@@ -509,14 +499,12 @@ if page == "🏠 Overview":
 
             df_players["flag_url"] = df_players["nation"].apply(get_flag_url)
 
-            # Sortierung
             df_players = df_players.sort_values(
                 by="Calculated_Total_Points", ascending=False
             ).reset_index(drop=True)
 
-            # --- Highlight Row Funktion (Unverändert, aber funktioniert, da 'points' jetzt in der Liste unten ist) ---
             def highlight_row(row):
-                # 'points' ist hier jetzt verfügbar, da es in die Liste der zu stylenden Spalten aufgenommen wird
+
                 if row["points"] > 0:
                     color = "red" if row["eliminated"] else "green"
                 else:
@@ -539,7 +527,7 @@ if page == "🏠 Overview":
                         "name",
                         "price",
                         "flag_url",
-                        "points",  # WICHTIG: Füge 'points' hinzu, damit highlight_row es findet
+                        "points",
                         "Display_Points",
                         "Role",
                         "eliminated",
@@ -554,7 +542,7 @@ if page == "🏠 Overview":
                         "Price (Mio)", format="%.1f", width="small"
                     ),
                     "flag_url": st.column_config.ImageColumn("Nation", width=50),
-                    "points": None,  # WICHTIG: Blende die redundante 'points' Spalte aus
+                    "points": None,
                     "Display_Points": st.column_config.Column("Points", width="tiny"),
                     "Role": st.column_config.Column("Role", width="medium"),
                     "eliminated": None,
@@ -578,24 +566,24 @@ if page == "🏠 Overview":
             champion_points = 0
 
             def highlight_champion_row(row):
-                # Prüfe, ob eliminated True ist
+
                 if row.get("eliminated") is True:
                     color = "red"
-                    # Optional: Hintergrundfarbe für ausgeschieden
+
                     return [f"color: {color}; background-color: #ffe6e6"] * len(row)
-                # Prüfe, ob is_champion True ist (d.h. gewonnen)
+
                 elif row.get("is_champion") is True:
                     color = "green"
-                    # Optional: Hintergrundfarbe für gewonnen
+
                     return [
                         f"color: {color}; font-weight: bold; background-color: #e6ffe6"
                     ] * len(row)
                 else:
-                    # Standardfarbe für aktiv/pending
+
                     return ["color: black"] * len(row)
 
             if champion_details:
-                # Erstellen Sie eine Liste, die nur das Champion-Detail-Objekt enthält
+
                 is_champion_status = champion_details.get("is_champion")
                 eliminated = champion_details.get("eliminated")
                 champion_flag_url = get_flag_url(champion_details.get("nation", ""))
@@ -607,12 +595,12 @@ if page == "🏠 Overview":
                         "name": champion_details.get("name"),
                         "price": champion_details.get("price"),
                         "nation": champion_details.get("nation"),
-                        "flag_url": champion_flag_url,  # Verwendet die bereits generierte URL
+                        "flag_url": champion_flag_url,
                         "points": champion_details.get("points", 0),  # Base Points
                         "Display_Points": champion_points,
                         "Role": "🏆 CHAMPION PICK",
                         "eliminated": eliminated,
-                        "is_champion": is_champion_status,  # Hinzufügen für die Highlight-Funktion
+                        "is_champion": is_champion_status,
                     }
                 ]
 
@@ -641,9 +629,9 @@ if page == "🏠 Overview":
                             "Price (Mio)", format="%.0f", width="small"
                         ),
                         "flag_url": st.column_config.ImageColumn("Nation", width=50),
-                        "points": None,  # Ausblenden
-                        "is_champion": None,  # Ausblenden
-                        "eliminated": None,  # Ausblenden
+                        "points": None,  # ignored
+                        "is_champion": None,  # ignored
+                        "eliminated": None,  # ignored
                         "Display_Points": st.column_config.Column(
                             "Champion Bonus Points", width="tiny"
                         ),
@@ -667,12 +655,11 @@ if page == "🏠 Overview":
             total_points = total_team_points  # df_players["Calculated_Total_Points"].sum() + champion_points
             st.markdown(f"### 📊 Total Team Points: **{total_points:,.0f}**")
 
-            # Zurück-Button
             st.markdown("---")
             st.button("⬅️ Back to Leaderboard", on_click=back_to_overview)
 
     else:
-        st.title("🏠 Overview & Leaderboard")
+        st.title("🏆 Overview & Leaderboard")
 
         team_selection = None
 
@@ -687,13 +674,11 @@ if page == "🏠 Overview":
             )
             df_lb.insert(0, "Rank", df_lb.index + 1)
 
-            st.subheader("🏆 Current Teams & Rankings")
+            st.subheader("Current Teams & Rankings")
 
-            # DataFrame für die Anzeige vorbereiten
             df_display = df_lb[["Rank", "team_name", "total_points"]]
             df_display.columns = ["Rank", "Name", "Total Points"]
 
-            # 1. Responsive Tabelle anzeigen
             st.dataframe(
                 df_display,
                 width="stretch",
@@ -702,25 +687,19 @@ if page == "🏠 Overview":
 
             st.markdown("---")
 
-            # --- View Button Funktionalität ---
-
-            # 2. Dropdown zum Auswählen eines Teams (basierend auf dem Namen)
             team_selection = st.selectbox(
                 "Select a Team to view the details:",
                 options=df_lb["team_name"],
-                index=0,  # Startet beim Rang 1 Team
+                index=0,
                 key="leaderboard_team_select",
             )
 
         if team_selection:
             if st.button(f"Show team details 🔍", disabled=(not teams_are_locked)):
 
-                # Finde die ID des ausgewählten Teams im Original-DataFrame
                 selected_row = df_lb[df_lb["team_name"] == team_selection].iloc[0]
                 team_id = selected_row["team_id"]
 
-                # Rufe die Callback-Funktion auf, die zur Team-Detailseite wechselt
-                # HINWEIS: go_to_team muss in Ihrem Skript definiert sein.
                 go_to_team(team_id, team_selection)
                 st.rerun()
 
@@ -733,13 +712,11 @@ elif page == "🎯 Players":
     players = requests.get(f"{BASE_URL}/players/").json()
     df_players = pd.DataFrame(players)
 
-    def get_flag_url(nation):
-        code = COUNTRY_CODE_MAP.get(nation.strip())
-        if code:
-            # Beispiel: https://cdnjs.cloudflare.com/ajax/libs/flag-icons/7.5.0/flags/4x3/gb-eng.svg
-            # Wir verwenden SVG, da es gut skaliert
-            return f"{BASE_FLAG_URL}{code}.svg"
-        return ""  # Leerer String, falls kein Code gefunden wurde
+    # def get_flag_url(nation):
+    #     code = COUNTRY_CODE_MAP.get(nation.strip())
+    #     if code:
+    #         return f"{BASE_FLAG_URL}{code}.svg"
+    #     return ""
 
     df_players["flag_url"] = df_players["nation"].apply(get_flag_url)
 
@@ -756,14 +733,14 @@ elif page == "🎯 Players":
     def highlight_row(row):
         if row["points"] > 0:
             if row["eliminated"]:
-                return ["color: red"] * len(row)  # alle Spalten rot
+                return ["color: red"] * len(row)
             else:
-                return ["color: green"] * len(row)  # alle Spalten grün
+                return ["color: green"] * len(row)
         else:
             if row["eliminated"]:
                 return ["color: red"] * len(row)
             else:
-                return [""] * len(row)  # keine Farbe
+                return [""] * len(row)
 
     df_players = df_players.sort_values(
         by=["seed", "price"], ascending=[True, False]
@@ -790,7 +767,6 @@ elif page == "🎯 Players":
     )
 elif page == "📅 Tournament Schedule":
 
-    # --- INITIALISIERUNG DES SESSION STATE ---
     if "current_page" not in st.session_state:
         st.session_state.current_page = "overview"
     if "winners" not in st.session_state:
@@ -800,38 +776,31 @@ elif page == "📅 Tournament Schedule":
     if "current_match" not in st.session_state:
         st.session_state["current_match"] = None
 
-    # --- HILFSFUNKTIONEN ---
     def extract_base_name(full_name_display):
-        """Extrahiert den Spielernamen ohne (Seed) oder (ID)."""
-        # Entfernt Seed/ID in Klammern am Ende des Strings
+        """Extracts the base player name from a display string like 'Player Name (Seed)'."""
+
         match = re.match(r"^(.*?) \(\d+|\?\)$", full_name_display)
         return match.group(1).strip() if match else full_name_display
 
     def get_round_num(match_id):
-        """Extrahiert die Runden-Nummer aus der Match-ID (z.B. match_0_1 -> 1)."""
+        """Exctracts the round number from a match ID like 'match_1_3'."""
         try:
             parts = match_id.split("_")
             return int(parts[-1])
         except:
             return 999
 
-    # Helferfunktion, um alle Spielerdaten zu laden
     @st.cache_data
     def load_all_players():
-        """Lädt alle Spielerdaten vom Backend und erstellt einen Index nach Name.
-        Fügt Dummy-Daten für eine lauffähige Version hinzu."""
 
         player_list = []
 
-        # Füge die Spieler aus der FIRST_ROUND_PAIRS Liste hinzu
         for i, name in enumerate(FIRST_ROUND_PAIRS):
-            # Bestimme den Seed nur für die ersten 32 Spieler
+
             seed = (i // 2) + 1 if i < 64 and i % 2 == 0 else None
 
-            # Erstelle eine ID, die für das Backend benötigt wird
             player_id = i + 1
 
-            # Simuliere, dass nur die Top-Spieler Seeds haben
             player_list.append(
                 {
                     "id": player_id,
@@ -841,23 +810,21 @@ elif page == "📅 Tournament Schedule":
             )
 
         try:
-            # Versuche, echte Daten vom Backend zu laden
+
             response = requests.get(f"{BASE_URL}/players/")
             response.raise_for_status()
             players = response.json()
             df = pd.DataFrame(players)
         except (requests.exceptions.RequestException, KeyError) as e:
-            # Bei Fehler oder fehlendem Backend: Verwende die Dummy-Daten
+
             st.warning(
                 f"Konnte keine echten Spielerdaten laden (Fehler: {e}). Verwende Platzhalterdaten."
             )
             df = pd.DataFrame(player_list)
 
-        # Erstellt ein DataFrame, das nach 'name' indiziert ist, für schnelles Nachschlagen
         df_indexed_by_name = df.set_index("name")
         return df_indexed_by_name
 
-    # --- HAUPTTEIL DER ANWENDUNG ---
     if st.session_state.current_page == "overview":
         st.write("## 🏆 Darts World Championship Match-Overview")
 
@@ -871,19 +838,15 @@ elif page == "📅 Tournament Schedule":
             )
             st.stop()
 
-        # Initialisiere den Gewinner-State
         if "winners" not in st.session_state:
             st.session_state["winners"] = {}
 
-        # --- FIX: Speichere den aktuellen Match-State, bevor die Struktur neu aufgebaut wird ---
-        # Dies ist notwendig, um ungespeicherte Stats zu behalten
         old_match_data = st.session_state.match_data.copy()
         st.session_state.match_data = {}
 
-        # Lade existierende Ergebnisse und fülle den winners State (simuliert)
         try:
             results = []
-            # Implementiere Exponential Backoff für den Request
+
             for attempt in range(3):
                 try:
                     results_resp = requests.get(f"{BASE_URL}/matches/results/")
@@ -899,13 +862,13 @@ elif page == "📅 Tournament Schedule":
                     else:
                         st.error(f"Error loading match results after 3 attempts: {e}")
                         raise e
-            # Verarbeite die geladenen Ergebnisse (Füllt den 'winners' State)
+
             for match in results:
                 match_id = match["match_id"]
                 winner_id = match["winner_id"]
 
                 try:
-                    # Suche in der Spalte 'id' im DataFrame
+
                     winner_info = df_players_all[df_players_all["id"] == winner_id]
                     if winner_info.empty:
                         winner_display = f"Winner (ID: {winner_id} not found)"
@@ -927,10 +890,8 @@ elif page == "📅 Tournament Schedule":
             )
             st.session_state["winners"] = {}
 
-        # Temporäre Match-Daten, um alle möglichen Matches zu speichern (R1 bis R7)
         all_possible_match_data = {}
 
-        # --- Tabelle 1 aufbauen (Runden 1 bis 5) ---
         column_names_t1 = [f"Round {i+1}" for i in range(NUM_ROUNDS_T1 - 1)] + [
             "Quarter-Finals"
         ]
@@ -940,12 +901,8 @@ elif page == "📅 Tournament Schedule":
             columns=column_names_t1,
         )
 
-        # --- RUNDE 1: Spieler setzen und IDs speichern ---
         for i in range(NUM_MATCHES_ROUND_1):
-            # ... (Logik zum Bestimmen von p1_display, p2_display, p1_id, p2_id) ...
-            # (Dieser Abschnitt aus Ihrem Original-Code bleibt fast unverändert)
-
-            # Annahme: Der Teil zur Bestimmung der Player-Infos ist hier vorhanden
+            # ...
 
             p1_name = FIRST_ROUND_PAIRS[i * 2]
             p2_name = FIRST_ROUND_PAIRS[i * 2 + 1]
@@ -974,7 +931,6 @@ elif page == "📅 Tournament Schedule":
 
             match_id_r1 = f"match_{row_p1}_{1}"
 
-            # 1. Speichere Basis-Match-Daten in der zentralen Map
             current_match_data_r1 = {
                 "p1_id": p1_id,
                 "p2_id": p2_id,
@@ -983,7 +939,6 @@ elif page == "📅 Tournament Schedule":
             }
             all_possible_match_data[match_id_r1] = current_match_data_r1
 
-            # 2. Fülle die Tabelle 1
             winner_display = st.session_state["winners"].get(match_id_r1)
 
             if winner_display:
@@ -995,13 +950,12 @@ elif page == "📅 Tournament Schedule":
                     table_1.iloc[row_p2, 0] = p2_display
                 else:
                     table_1.iloc[row_p1, 0] = winner_display
-                    table_1.iloc[row_p2, 0] = f"~{p2_display}~"  # Annahme
+                    table_1.iloc[row_p2, 0] = f"~{p2_display}~"
             else:
-                # Match ist offen, zeige beide Namen unverändert
+
                 table_1.iloc[row_p1, 0] = p1_display
                 table_1.iloc[row_p2, 0] = p2_display
 
-                # --- FIX: Übernehme alte, ungespeicherte Stats, falls vorhanden ---
                 if match_id_r1 in old_match_data:
                     st.session_state.match_data[match_id_r1] = {
                         **current_match_data_r1,
@@ -1010,8 +964,7 @@ elif page == "📅 Tournament Schedule":
                 else:
                     st.session_state.match_data[match_id_r1] = current_match_data_r1
 
-        # --- Weitere Runden: Gewinner weiterleiten oder Platzhalter setzen (Tabelle 1) ---
-        for r in range(1, NUM_ROUNDS_T1):  # Läuft von r=1 (R2) bis r=4 (R5)
+        for r in range(1, NUM_ROUNDS_T1):
             step = 2**r
             step_prev = 2 ** (r - 1)
 
@@ -1034,7 +987,7 @@ elif page == "📅 Tournament Schedule":
                 p1_id_r = None
                 p2_id_r = None
 
-                # --- Spieler 1 bestimmen ---
+                # -- determining Player 1 ---
                 if p1_winner_name:
                     table_1.iloc[row_p1_current, r] = p1_winner_name
                     p1_base_name = extract_base_name(p1_winner_name)
@@ -1045,7 +998,7 @@ elif page == "📅 Tournament Schedule":
                 else:
                     table_1.iloc[row_p1_current, r] = "TBD"
 
-                # --- Spieler 2 bestimmen ---
+                # -- determining Player 2 ---
                 if p2_winner_name:
                     table_1.iloc[row_p2_current, r] = p2_winner_name
                     p2_base_name = extract_base_name(p2_winner_name)
@@ -1059,7 +1012,6 @@ elif page == "📅 Tournament Schedule":
                 display_p1 = table_1.iloc[row_p1_current, r]
                 display_p2 = table_1.iloc[row_p2_current, r]
 
-                # Wir müssen sicherstellen, dass wir keine ~TBD~ übergeben, also nur den reinen Namen
                 if display_p1.startswith("~"):
                     display_p1 = extract_base_name(display_p1)
                 if display_p2.startswith("~"):
@@ -1072,14 +1024,8 @@ elif page == "📅 Tournament Schedule":
                     "p2_name_display": display_p2,
                 }
 
-                # NEU: Das Match IMMER zur Liste der möglichen Matches hinzufügen (unbedingt)
                 all_possible_match_data[match_id] = current_match_data
 
-                # *************************************************************************
-                # AB HIER STARTET DIE LOGIK FÜR SPIELBEREITE UND ABGESCHLOSSENE MATCHES
-                # *************************************************************************
-
-                # 2. Prüfen, ob das Match spielbereit ist (beide Spieler + IDs bekannt)
                 if (
                     p1_winner_name
                     and p2_winner_name
@@ -1090,17 +1036,16 @@ elif page == "📅 Tournament Schedule":
                     winner_display = st.session_state["winners"].get(match_id)
 
                     if winner_display:
-                        # MATCH ABGESCHLOSSEN (visuelle Darstellung in table_1)
+
                         if winner_display == p1_winner_name:
                             table_1.iloc[row_p1_current, r] = p1_winner_name
                             table_1.iloc[row_p2_current, r] = f"~{p2_winner_name}~"
                         elif winner_display == p2_winner_name:
                             table_1.iloc[row_p1_current, r] = f"~{p1_winner_name}~"
                             table_1.iloc[row_p2_current, r] = p2_winner_name
-                        # ... (Restliche Logik für Abgeschlossene Matches, z.B. Linien zeichnen)
 
                     else:
-                        # MATCH SPIELBEREIT (noch kein Gewinner): Zu st.session_state.match_data hinzufügen
+
                         if match_id in old_match_data:
                             st.session_state.match_data[match_id] = {
                                 **current_match_data,
@@ -1109,7 +1054,6 @@ elif page == "📅 Tournament Schedule":
                         else:
                             st.session_state.match_data[match_id] = current_match_data
 
-        # --- Visuelle Darstellung der Tabelle 1 (Runden 1-5) ---
         st.write("### 🟨 Round 1 to 5 ")
         st.dataframe(
             table_1,
@@ -1129,8 +1073,8 @@ elif page == "📅 Tournament Schedule":
             columns=column_names_t2,
         )
 
-        for r in range(NUM_ROUNDS_T2):  # r läuft von 0 (R6) bis 1 (R7)
-            r_abs = r + NUM_ROUNDS_T1  # r_abs läuft von 6 bis 7
+        for r in range(NUM_ROUNDS_T2):
+            r_abs = r + NUM_ROUNDS_T1
 
             step = 2**r_abs
             num_matches_in_round = NUM_MATCHES_ROUND_1 // step
@@ -1157,13 +1101,12 @@ elif page == "📅 Tournament Schedule":
                 p1_id_r = None
                 p2_id_r = None
 
-                # --- Bestimmung der Zeilen-Indizes in table_2 ---
-                if r == 0:  # Runde 6 (nutzt den index_step)
+                if r == 0:
                     row_p1_current_t2 = i * index_step
                     row_p2_current_t2 = row_p1_current_t2 + 2
-                elif r == 1:  # Runde 7 (Finale, zentral in der Mitte)
-                    row_p1_current_t2 = 1  # Zeile 5
-                    row_p2_current_t2 = 5  # Zeile 6
+                elif r == 1:
+                    row_p1_current_t2 = 1
+                    row_p2_current_t2 = 5
 
                 if p1_winner_name:
                     table_2.iloc[row_p1_current_t2, r] = p1_winner_name
@@ -1175,7 +1118,6 @@ elif page == "📅 Tournament Schedule":
                 else:
                     table_2.iloc[row_p1_current_t2, r] = "TBD"
 
-                # --- Spieler 2 bestimmen ---
                 if p2_winner_name:
                     table_2.iloc[row_p2_current_t2, r] = p2_winner_name
                     p2_base_name = extract_base_name(p2_winner_name)
@@ -1192,12 +1134,10 @@ elif page == "📅 Tournament Schedule":
                 current_match_data = {
                     "p1_id": p1_id_r,
                     "p2_id": p2_id_r,
-                    "p1_name_display": display_p1,  # Wichtig: Setzt "TBD" wenn nötig
+                    "p1_name_display": display_p1,
                     "p2_name_display": display_p2,
                 }
 
-                # NEU: Das Match IMMER zur Liste der möglichen Matches hinzufügen
-                # Dadurch werden auch TBD vs. TBD Matches angezeigt.
                 all_possible_match_data[match_id] = current_match_data
                 if (
                     p1_winner_name
@@ -1209,7 +1149,7 @@ elif page == "📅 Tournament Schedule":
                     winner_display = st.session_state["winners"].get(match_id)
 
                     if winner_display:
-                        # MATCH ABGESCHLOSSEN: Ergebnisse in table_2 anzeigen (durchgestrichen)
+
                         if winner_display == p1_winner_name:
                             table_2.iloc[row_p1_current_t2, r] = p1_winner_name
                             table_2.iloc[row_p2_current_t2, r] = f"~{p2_winner_name}~"
@@ -1222,7 +1162,7 @@ elif page == "📅 Tournament Schedule":
                             table_2.iloc[middle_row, 2] = winner_display
 
                     else:
-                        # MATCH SPIELBEREIT (noch kein Gewinner): Zu st.session_state.match_data hinzufügen
+
                         if match_id in old_match_data:
                             st.session_state.match_data[match_id] = {
                                 **current_match_data,
@@ -1231,7 +1171,6 @@ elif page == "📅 Tournament Schedule":
                         else:
                             st.session_state.match_data[match_id] = current_match_data
 
-        # FINAL_MATCH_ID = f"match_{0}_{NUM_ROUNDS}"
         if FINAL_MATCH_ID not in st.session_state["winners"]:
             table_2.iloc[3, 2] = "TBD"
         else:
@@ -1261,12 +1200,11 @@ elif page == "📅 Tournament Schedule":
 
         all_matches_by_round = {}
 
-        # Iteriere über alle möglichen Match-Daten (Runde 1 bis 7)
         for match_id, match_data in all_possible_match_data.items():
             try:
                 round_num = get_round_num(match_id)
             except:
-                # Matches, die nicht unseren ID-Format entsprechen (sollte nicht passieren)
+
                 round_num = "?"
 
             if round_num not in all_matches_by_round:
@@ -1274,7 +1212,6 @@ elif page == "📅 Tournament Schedule":
 
             all_matches_by_round[round_num].append((match_id, match_data))
 
-        # Die Rundennummern sortieren, um sie in der richtigen Reihenfolge anzuzeigen (1, 2, 3...)
         sorted_round_nums = sorted(
             [r for r in all_matches_by_round.keys() if isinstance(r, int)]
         )
@@ -1283,7 +1220,6 @@ elif page == "📅 Tournament Schedule":
 
         for round_num in sorted_round_nums:
 
-            # --- Rundenüberschrift erstellen ---
             if round_num == 7:
                 round_title = "Final"
             elif round_num == 6:
@@ -1293,15 +1229,12 @@ elif page == "📅 Tournament Schedule":
             else:
                 round_title = f"Round {round_num}"
 
-            # --- Expander-Logik ---
-
-            # Das Finale (Runde 7) soll standardmäßig offen sein
             if round_num == 7:
-                title_text = f"🏅 **{round_title}**"
-                # Kein Expander hier
+                title_text = f"🏆 **{round_title}**"
+
                 display_container = st.expander(title_text, expanded=False)
             else:
-                # Alle anderen Runden kommen in einen Expander
+
                 if round_num == 6:
                     title_text = f"🏅 {round_title} ({len(all_matches_by_round[round_num])} Matches)"
                 else:
@@ -1310,31 +1243,23 @@ elif page == "📅 Tournament Schedule":
 
                 display_container = st.expander(title_text, expanded=is_expanded)
 
-            # Die Matches innerhalb der Runde sortieren (nach Start-Zeile)
             current_round_matches = sorted(
                 all_matches_by_round[round_num], key=sort_key
             )
 
-            # Wir verwenden den Container/Expander, um den Match-Code einzuschließen
             with display_container:
 
-                # Jedes Match in dieser Runde anzeigen
                 for match_id, match_data in current_round_matches:
                     p1_display = match_data.get("p1_name_display", "TBD")
                     p2_display = match_data.get("p2_name_display", "TBD")
 
-                    # Prüfen, ob das Match bereits gespielt wurde
                     winner_text = st.session_state["winners"].get(match_id)
 
-                    # Prüfen, ob das Match spielbereit ist (Offenes Match im State)
                     is_open_match = match_id in st.session_state.match_data
 
-                    # Die Spalten-Anordnung muss INNERHALB des expanders/containers sein
                     col1, col2 = st.columns([0.7, 0.3])
 
-                    # --- Match-Status bestimmen und anzeigen ---
                     if winner_text:
-                        # FALL 1: MATCH ABGESCHLOSSEN
                         scores = st.session_state["results_map"].get(match_id, {})
                         score_string = ""
                         if scores:
@@ -1355,25 +1280,19 @@ elif page == "📅 Tournament Schedule":
                             f"✅ {display_string}",
                             unsafe_allow_html=True,
                         )
-                        col2_status, col2_button = col2.columns(
-                            [0.4, 0.6]
-                        )  # Neue Spaltenstruktur in col2
-
-                        col2_status.success("Completed")  # Grüner Badge
+                        col2_status, col2_button = col2.columns([0.4, 0.6])  #
+                        col2_status.success("Completed")
 
                         if col2_button.button(
                             "Result 🔍", key=f"edit_score_{match_id}"
                         ):
-                            # Hier ändern wir den Seiten-Status, um zur Detailseite zu springen
                             st.session_state.current_match = match_id
                             st.session_state.current_page = "match_detail"
                             st.rerun()
 
                     elif is_open_match:
-                        # FALL 2: MATCH SPIELBEREIT (Spieler stehen fest)
                         col1.markdown(f"🎯 **{p1_display}** vs. **{p2_display}**")
 
-                        # Button, um zur Detailseite zu wechseln
                         if col2.button(
                             "Capture Result 📝", key=f"enter_score_{match_id}"
                         ):
@@ -1382,15 +1301,13 @@ elif page == "📅 Tournament Schedule":
                             st.rerun()
 
                     else:
-                        # FALL 3: MATCH NOCH NICHT SPIELBEREIT (TBD)
                         if p1_display == "TBD" and p2_display == "TBD":
                             col1.markdown(f"⏳ **TBD** vs. **TBD**")
                         else:
                             col1.markdown(f"⏳ **{p1_display}** vs. **{p2_display}**")
 
-                        col2.info("Waiting for Predecessor")  # Blauer Badge
+                        col2.info("Waiting for Predecessor")
 
-                    # Trennlinie nach jedem Match
                     st.markdown("---")
 
     elif st.session_state.current_page == "match_detail":
@@ -1401,7 +1318,6 @@ elif page == "📅 Tournament Schedule":
         if match_id in st.session_state.match_data:
             match_info = st.session_state.match_data[match_id]
 
-        # Prüfe zweitens, ob es ein abgeschlossenes Match zur Bearbeitung ist
         elif match_id in st.session_state.get("results_map", {}):
 
             base_data = all_possible_match_data_s.get(match_id, {})
@@ -1440,7 +1356,6 @@ elif page == "📅 Tournament Schedule":
 
         col1, col2 = st.columns(2)
 
-        # Definition der eindeutigen Keys
         KEY_SETS_P1 = f"sets_p1_{match_id}"
         # KEY_LEGS_P1 = f"legs_p1_{match_id}"
         # KEY_180S_P1 = f"d180s_p1_{match_id}"
@@ -1461,9 +1376,7 @@ elif page == "📅 Tournament Schedule":
         KEY_P171_P2 = f"p171s_p2_{match_id}"
         KEY_NINE_P2 = f"ninedarter_p2_{match_id}"
 
-        # Hilfsfunktion, um den Wert aus match_info oder 0/0.0 zu holen
         def get_initial_value(key_base, default_value):
-            # Die Match-Info enthält die Keys ohne match_id Suffix
             return match_info.get(key_base, default_value)
 
         # Input-Felder für Spieler 1
@@ -1471,7 +1384,7 @@ elif page == "📅 Tournament Schedule":
 
         p1_sets = col1.number_input(
             "Sets won",
-            key=KEY_SETS_P1,  # NEU: Eindeutiger Key
+            key=KEY_SETS_P1,
             min_value=0,
             max_value=sets_to_win,
             step=1,
@@ -1538,7 +1451,6 @@ elif page == "📅 Tournament Schedule":
         #     value=get_initial_value("checkout_pct_p1", 0.0),
         # )
 
-        # Input-Felder für Spieler 2
         col2.subheader(f"{p2_name_display}")
 
         p2_sets = col2.number_input(
@@ -1634,12 +1546,9 @@ elif page == "📅 Tournament Schedule":
             "ninedarter_p2": st.session_state[KEY_NINE_P2],
         }
 
-        # --- DIESE ZEILE AM ENDE DES BLOCKS IST WICHTIG FÜR DIE KORREKTE BEENDIGUNG ---
-        # NEU: Entferne das Match aus match_data, wenn es abgeschlossen wird/wurde
         if match_id in st.session_state.match_data:
             del st.session_state.match_data[match_id]
 
-        # NEU: Verwende die Werte direkt aus dem Session State, die durch number_input gesetzt wurden
         p1_sets_final = st.session_state[KEY_SETS_P1]
         p2_sets_final = st.session_state[KEY_SETS_P2]
 
@@ -1656,7 +1565,6 @@ elif page == "📅 Tournament Schedule":
             "Delete Match", type="secondary", disabled=not is_admin
         ):
 
-            # 🎯 BESTÄTIGUNG ERFORDERLICH
             if (
                 st.session_state.get("confirm_delete", False)
                 and st.session_state.current_match == match_id
@@ -1747,7 +1655,6 @@ elif page == "📅 Tournament Schedule":
                 )
                 st.stop()
 
-        # Überprüfe die Siegesbedingung
         is_p1_winner = p1_sets_final >= sets_to_win and p1_sets_final > p2_sets_final
         is_p2_winner = p2_sets_final >= sets_to_win and p2_sets_final > p1_sets_final
         is_valid_match = is_p1_winner or is_p2_winner
@@ -1759,12 +1666,10 @@ elif page == "📅 Tournament Schedule":
 
         if col_buttons[2].button(
             "Save and Conclude Match",
-            disabled=not is_valid_match
-            or not is_admin,  # <-- Hinzugefügter Admin-Check
+            disabled=not is_valid_match or not is_admin,
             type="primary",
         ):
 
-            # Gewinnerbestimmung
             if is_p1_winner:
                 winner_id = p1_id
                 winner_display = p1_name_display
@@ -1775,7 +1680,6 @@ elif page == "📅 Tournament Schedule":
                 st.error("Internal Error: Invalid result before saving.")
                 st.stop()
 
-            # Payload wird aus den Werten des Session State erstellt, die durch die number_inputs gesetzt wurden
             if match_id == FINAL_MATCH_ID:
                 is_final = True
             else:
@@ -1795,11 +1699,11 @@ elif page == "📅 Tournament Schedule":
                 "p161finishes_p2": st.session_state[KEY_P161F_P2],
                 "ninedarter_p2": st.session_state[KEY_NINE_P2],
             }
-            # --- Speichere Daten im Backend (Mocked) ---
+
             try:
                 for attempt in range(3):
                     try:
-                        # WICHTIG: Sendet den Token im Header mit!
+
                         resp = requests.put(
                             f"{BASE_URL}/matches/save_match/",
                             json=payload,
@@ -1808,13 +1712,13 @@ elif page == "📅 Tournament Schedule":
                         requests.put(
                             f"{BASE_URL}/players/points/recompute",
                             json=payload,
-                            headers=get_auth_headers(),  # Falls recompute auch geschützt ist
+                            headers=get_auth_headers(),
                         )
                         requests.put(f"{BASE_URL}/teams/points/recompute")
                         resp.raise_for_status()
                         break
                     except requests.exceptions.RequestException as e:
-                        # ... (Rest der Wiederholungslogik) ...
+
                         if attempt < 2:
                             st.warning(
                                 f"Attempt {attempt+1}: Error saving the match: {e}. Trying again..."
@@ -1823,10 +1727,8 @@ elif page == "📅 Tournament Schedule":
                         else:
                             raise e
 
-                # Aktualisiere den Gewinner-Status und kehre zur Übersicht zurück
                 st.session_state["winners"][match_id] = winner_display
 
-                # NEU: Entferne das Match aus match_data, da es nun abgeschlossen ist
                 if match_id in st.session_state.match_data:
                     del st.session_state.match_data[match_id]
 
@@ -1868,7 +1770,7 @@ elif page == "🧩 Teams":
         df_teams = st.session_state.df_teams_data
 
         try:
-            # Finde die ID des ausgewählten Teams
+
             selected_team = df_teams[df_teams["team_name"] == selected_name]
             if selected_team.empty:
                 st.error(f"Team '{selected_name}' not found.")
@@ -1876,7 +1778,6 @@ elif page == "🧩 Teams":
 
             team_id = selected_team["team_id"].iloc[0]
 
-            # 2. API-Aufruf zum Aktivieren des Teams
             response = requests.post(
                 f"{BASE_URL}/teams/{team_id}/activate",
                 headers=get_auth_headers(),
@@ -1884,8 +1785,7 @@ elif page == "🧩 Teams":
 
             if response.status_code == 200:
                 st.success(f"Team '{selected_name}' is now the active team!")
-                # 3. Neu laden, um den Status-Wechsel und die Selectbox zu aktualisieren
-                # st.rerun()
+
             else:
                 st.error(f"Error activating team: {response.text}")
 
@@ -1895,9 +1795,8 @@ elif page == "🧩 Teams":
     if st.session_state.get("current_page", "") not in ["edit_team", "create_new_team"]:
         st.title("🧩 Your Teams")
 
-        # --- 1. Load user's teams (und aktives Team laden!) ---
         try:
-            # Aktives Team des Users laden, um den Status anzuzeigen
+
             active_team_response = requests.get(
                 f"{BASE_URL}/auth/{st.session_state.user_id}/active_team"
             )
@@ -1910,39 +1809,26 @@ elif page == "🧩 Teams":
             # token = st.session_state.get("access_token") # Nicht nötig hier
             df_teams = pd.DataFrame(user_teams_response)
 
-            # Speichern des DataFrames, damit der Callback darauf zugreifen kann
             st.session_state.df_teams_data = df_teams
 
-            # --- TEAMS TABELLE ANZEIGEN ---
             if not df_teams.empty:
                 st.subheader("📝 Your Existing Teams")
 
-                # Sortierlogik
                 df_teams = df_teams.sort_values(
                     by="total_points", ascending=False
                 ).reset_index(drop=True)
                 df_teams.insert(0, "Rank", df_teams.index + 1)
                 teams_are_locked = st.session_state.get("teams_locked", False)
-                # current_active_name = (
-                #     df_teams[df_teams["team_id"] == current_active_id][
-                #         "team_name"
-                #     ].iloc[0]
-                #     if current_active_id
-                #     else None
-                # )
+
                 current_active_name = None  # Starte mit None
                 if current_active_id and not df_teams.empty:
-                    # Versuche, das aktive Team zu finden
+
                     active_team_row = df_teams[df_teams["team_id"] == current_active_id]
 
-                    # Prüfe, ob eine Zeile gefunden wurde, bevor iloc[0] aufgerufen wird
                     if not active_team_row.empty:
                         current_active_name = active_team_row["team_name"].iloc[0]
 
-                # Kopfzeile
-                cols_header = st.columns(
-                    [1, 4, 2, 2, 2]
-                )  # Eine Spalte weniger als vorher
+                cols_header = st.columns([1, 4, 2, 2, 2])
                 cols_header[0].markdown("**#**")
                 cols_header[1].markdown("**Team Name**")
                 cols_header[2].markdown("**Points**")
@@ -1951,14 +1837,13 @@ elif page == "🧩 Teams":
                 st.markdown("---")
 
                 for i, row in df_teams.iterrows():
-                    # 5 Spalten: Rank, Name, Points, Edit, Delete
+
                     cols = st.columns([1, 4, 2, 2, 2])
                     team_id = row["team_id"]
                     is_active = team_id == current_active_id
 
                     cols[0].write(f'{row["Rank"]}.')
 
-                    # Zeigt den Namen + Status an
                     team_display_name = f'**{row["team_name"]}**'
                     if is_active:
                         team_display_name += " **(✅ Active)**"
@@ -1966,7 +1851,6 @@ elif page == "🧩 Teams":
 
                     cols[2].write(row["total_points"])
 
-                    # --- Edit und Delete Logik (unverändert) ---
                     if cols[3].button(
                         "✏️ Edit", key=f"edit_{team_id}", disabled=teams_are_locked
                     ):
@@ -1989,7 +1873,7 @@ elif page == "🧩 Teams":
                                     f"Team '{row['team_name']}' deleted successfully!"
                                 )
                                 st.session_state.current_page = "overview"
-                                st.rerun()  # Seite neu laden, damit gelöschtes Team verschwindet
+                                st.rerun()
                             else:
                                 st.error(f"Error deleting team: {response.text}")
                         except Exception as e:
@@ -1997,10 +1881,8 @@ elif page == "🧩 Teams":
 
                 st.markdown("---")
 
-                # --- NEUE LOGIK: Selectbox zum Aktivieren ---
                 st.subheader("⭐ Set Active Team")
 
-                # Definiere den Index der Selectbox
                 if current_active_name:
                     default_index = (
                         df_teams["team_name"].to_list().index(current_active_name)
@@ -2012,8 +1894,8 @@ elif page == "🧩 Teams":
                     "Select the team you want to set as active:",
                     options=df_teams["team_name"].to_list(),
                     index=default_index,
-                    key="active_team_selector",  # Wichtig: Key für den Callback
-                    on_change=set_active_team_callback,  # Callback wird bei Änderung ausgelöst
+                    key="active_team_selector",
+                    on_change=set_active_team_callback,
                     disabled=teams_are_locked,
                 )
 
@@ -2025,85 +1907,29 @@ elif page == "🧩 Teams":
 
         st.markdown("---")
 
-        # if st.session_state.get("current_page", "") not in ["edit_team", "create_new_team"]:
-        #     st.title("🧩 Your Teams")
-
-        #     # --- 1. Load user's teams ---
-        #     try:
-        #         user_teams = requests.get(
-        #             f"{BASE_URL}/teams/user/{st.session_state.user_id}"
-        #         ).json()
-        #         df_teams = pd.DataFrame(user_teams)
-        #         if not df_teams.empty:
-        #             st.subheader("📝 Your Existing Teams")
-        #             df_teams = df_teams.sort_values(
-        #                 by="total_points", ascending=False
-        #             ).reset_index(drop=True)
-        #             df_teams.insert(0, "Rank", df_teams.index + 1)
-
-        #             for i, row in df_teams.iterrows():
-        #                 cols = st.columns([1, 4, 2, 2, 2])
-        #                 cols[0].write(row["Rank"])
-        #                 cols[1].write(row["team_name"])
-        #                 cols[2].write(row["total_points"])
-        #                 if cols[3].button("✏️ Edit", key=f"edit_{row['team_id']}"):
-        #                     # Speichere Team für Edit
-        #                     st.session_state.edit_team_id = row["team_id"]
-        #                     st.session_state.edit_team_name = row["team_name"]
-        #                     st.session_state.current_page = "edit_team"
-        #                     st.rerun()
-
-        #                 if cols[4].button("🗑 Delete", key=f"delete_{row['team_id']}"):
-        #                     try:
-        #                         response = requests.delete(
-        #                             f"{BASE_URL}/teams/{row['team_id']}"
-        #                         )
-        #                         if response.status_code == 200:
-        #                             st.success(
-        #                                 f"Team '{row['team_name']}' deleted successfully!"
-        #                             )
-        #                             st.session_state.current_page = "overview"
-        #                             st.rerun()  # Seite neu laden, damit gelöschtes Team verschwindet
-        #                         else:
-        #                             st.error(f"Error deleting team: {response.text}")
-        #                     except Exception as e:
-        #                         st.error(f"Error deleting team: {e}")
-        #         else:
-        #             st.info("You have not created any teams yet.")
-        #     except Exception as e:
-        #         st.warning(f"Could not load your teams: {e}")
-
-        #     st.markdown("---")
-
         if st.button("➕ Create New Team", disabled=teams_are_locked):
-            # Bereite Session State für Team Creation vor
             st.session_state.selected_ids = []
             st.session_state.current_page = "create_new_team"
 
             st.rerun()
 
-    # --- 3. Edit Team oder Create New Team Seiten ---
     if "current_page" in st.session_state:
 
         if st.session_state.current_page == "edit_team":
             if st.button("⬅️ Back to Teams"):
-                st.session_state.current_page = (
-                    "overview"  # oder "teams_overview" je nach deinem Setup
-                )
+                st.session_state.current_page = "overview"
                 st.rerun()
 
             team_id = st.session_state.edit_team_id
             team_name = st.session_state.edit_team_name
             st.title(f"✏️ Edit Team: {team_name}")
 
-            # --- Lade Team-Spieler & Champion-Tipp ---
             try:
-                # 1. Hauptspieler laden (liefert Liste mit is_captain/is_underdog)
+
                 team_players = requests.get(
                     f"{BASE_URL}/teams/{team_id}/players"
                 ).json()
 
-                # 2. Champion-Tipp laden (liefert Player-Objekt oder None/leeres Dict bei 200 OK)
                 champion_response = requests.get(
                     f"{BASE_URL}/teams/{team_id}/champion_tip"
                 )
@@ -2117,7 +1943,6 @@ elif page == "🧩 Teams":
                 st.error(f"Error loading team data: {e}")
                 st.stop()
 
-            # IDs der aktuellen Teamspieler & Rollen finden
             if isinstance(team_players, list):
                 current_player_ids = [p["id"] for p in team_players]
                 current_captain = next(
@@ -2131,11 +1956,9 @@ elif page == "🧩 Teams":
                 current_captain = None
                 current_underdog = None
 
-            # current_champion vorbereiten
             if current_champion is None:
                 current_champion = {}
 
-            # --- Lade alle Spieler ---
             try:
                 players = requests.get(f"{BASE_URL}/players/").json()
             except Exception as e:
@@ -2146,17 +1969,16 @@ elif page == "🧩 Teams":
                 st.error("❌ No players found!")
                 st.stop()
 
-            # --- DataFrame vorbereiten ---
             df = pd.DataFrame(players)
             df["selected"] = df["id"].isin(current_player_ids)
 
-            def get_flag_url(nation):
-                code = COUNTRY_CODE_MAP.get(nation.strip())
-                return f"{BASE_FLAG_URL}{code}.svg" if code else ""
+            # def get_flag_url(nation):
+            #     code = COUNTRY_CODE_MAP.get(nation.strip())
+            #     return f"{BASE_FLAG_URL}{code}.svg" if code else ""
 
             df["flag_url"] = df["nation"].apply(get_flag_url)
             df = df.sort_values(by="price", ascending=False).reset_index(drop=True)
-            # --- Tabelle anzeigen ---
+
             edited_df = st.data_editor(
                 df,
                 column_config={
@@ -2185,14 +2007,12 @@ elif page == "🧩 Teams":
                 key="edit_team_editor",
             )
 
-            # --- Auswahl & Budget ---
             selected_df = edited_df[edited_df["selected"]].copy()
             selected_ids = selected_df["id"].apply(int).tolist()
             total_spent = selected_df["price"].sum()
             remaining_budget = TOTAL_BUDGET - total_spent
             selected_count = len(selected_ids)
 
-            # --- Budgetanzeige ---
             st.markdown(
                 f"""
                 ### 💰 Budget
@@ -2204,7 +2024,6 @@ elif page == "🧩 Teams":
             )
             st.markdown(f"### 🧍 Selected Players: {selected_count} / 15")
 
-            # --- Rollen & Champion Tipp Initialisierung ---
             captain_id = None
             underdog_id = None
             champion_id = None
@@ -2215,9 +2034,8 @@ elif page == "🧩 Teams":
             if not selected_df.empty:
                 st.subheader("✅ Your Current Team")
 
-                # Rollen-Markierung in der Tabelle (basierend auf den NEU GEWÄHLTEN IDs)
                 selected_df["Role"] = ""
-                # Verwende die IDs aus den selectboxen, wenn diese gültig sind
+
                 if captain_id in selected_ids and captain_ok:
                     selected_df.loc[selected_df["id"] == captain_id, "Role"] = (
                         "CAPTAIN 👑 (x2)"
@@ -2227,9 +2045,7 @@ elif page == "🧩 Teams":
                     if selected_df.loc[selected_df["id"] == underdog_id, "Role"].iloc[
                         0
                     ]:
-                        role_text = (
-                            " / " + role_text
-                        )  # Füge Schrägstrich hinzu, wenn Captain auch Underdog ist
+                        role_text = " / " + role_text
 
                     selected_df.loc[
                         selected_df["id"] == underdog_id, "Role"
@@ -2258,7 +2074,6 @@ elif page == "🧩 Teams":
                 st.markdown("---")
                 st.subheader("⭐ Select Captain & Underdog")
 
-                # 1. Captain-Auswahl
                 max_price = selected_df["price"].max()
                 eligible_captains = selected_df[selected_df["price"] < max_price]
                 captain_options = eligible_captains.set_index("id")["name"].to_dict()
@@ -2288,14 +2103,13 @@ elif page == "🧩 Teams":
                             "id"
                         ].iloc[0]
                     )
-                    captain_ok = True  # Captain erfolgreich gewählt
+                    captain_ok = True
                 else:
                     st.error(
                         "❌ No eligible Captain player found! (Must not be the most expensive player in your squad)."
                     )
                     captain_ok = False
 
-                # 2. Underdog-Auswahl
                 underdog_candidates = selected_df[selected_df["price"] < 20.0]
                 underdog_options = underdog_candidates.set_index("id")["name"].to_dict()
                 default_underdog_name = (
@@ -2330,7 +2144,6 @@ elif page == "🧩 Teams":
                     )
                     underdog_ok = False
 
-                # Rollen sind nur wählbar, wenn Captain UND Underdog erfolgreich waren
                 can_select_roles = captain_ok and underdog_ok
 
                 st.markdown("---")
@@ -2339,11 +2152,10 @@ elif page == "🧩 Teams":
                 all_player_options = df.set_index("id")["name"].to_dict()
                 select_champion_label = "--- Select Champion ---"
 
-                # Standardwert für den Champion-Tipp laden
                 default_champion_name = (
                     current_champion.get("name")
                     if current_champion and current_champion.get("name")
-                    else select_champion_label  # Wenn kein Champion gesetzt, wähle den Platzhalter
+                    else select_champion_label
                 )
 
                 champion_options_list = [select_champion_label] + list(
@@ -2363,7 +2175,6 @@ elif page == "🧩 Teams":
                     key="edit_champion_select",
                 )
 
-                # Finde die ID des ausgewählten Spielers
                 if champion_name != select_champion_label:
                     champion_id_list = df[df["name"] == champion_name]["id"].tolist()
                     if champion_id_list:
@@ -2384,8 +2195,8 @@ elif page == "🧩 Teams":
             can_save = (
                 (selected_count == 15)
                 and (remaining_budget >= 0)
-                and can_select_roles  # Prüft Captain & Underdog
-                and can_select_champion  # Prüft Champion
+                and can_select_roles
+                and can_select_champion
             )
 
             if can_save:
@@ -2425,16 +2236,12 @@ elif page == "🧩 Teams":
                     "⚠️ Select exactly 15 players, stay within budget, and choose Captain, Underdog, and Champion."
                 )
 
-        # 🟩 --- CREATE NEW TEAM ---
         elif st.session_state.current_page == "create_new_team":
             if st.button("⬅️ Back to Teams"):
-                st.session_state.current_page = (
-                    "overview"  # oder "teams_overview" je nach deinem Setup
-                )
+                st.session_state.current_page = "overview"
                 st.rerun()
             st.title("🎯 Fantasy Darts – Create Your Team")
 
-            # --- Lade Spieler ---
             try:
                 players = requests.get(f"{BASE_URL}/players/").json()
             except Exception as e:
@@ -2448,15 +2255,14 @@ elif page == "🧩 Teams":
             df = pd.DataFrame(players)
             df["selected"] = False
 
-            def get_flag_url(nation):
-                code = COUNTRY_CODE_MAP.get(nation.strip())
-                return f"{BASE_FLAG_URL}{code}.svg" if code else ""
+            # def get_flag_url(nation):
+            #     code = COUNTRY_CODE_MAP.get(nation.strip())
+            #     return f"{BASE_FLAG_URL}{code}.svg" if code else ""
 
             df["flag_url"] = df["nation"].apply(get_flag_url)
 
             df = df.sort_values(by="price", ascending=False).reset_index(drop=True)
 
-            # --- Tabelle ---
             edited_df = st.data_editor(
                 df,
                 column_config={
@@ -2483,16 +2289,13 @@ elif page == "🧩 Teams":
                 key="create_team_editor",
             )
 
-            # --- Auswahl & Budget ---
-            # selected_df = edited_df[edited_df["selected"]]
             selected_df = edited_df[edited_df["selected"]].copy()
-            # selected_ids = selected_df["id"].tolist()
+
             selected_ids = selected_df["id"].apply(int).tolist()
             total_spent = selected_df["price"].sum()
             remaining_budget = TOTAL_BUDGET - total_spent
             selected_count = len(selected_ids)
 
-            # --- Budgetanzeige ---
             st.markdown(
                 f"""
                 ### 💰 Budget
@@ -2504,18 +2307,15 @@ elif page == "🧩 Teams":
             )
             st.markdown(f"### 🧍 Selected Players: {selected_count} / 15")
 
-            # --- Captain und Underdog Auswahl (NEU) ---
             captain_id = None
             underdog_id = None
             champion_id = None
             can_select_roles = False
             can_select_champion = False
 
-            # --- Teamübersicht ---
             if not selected_df.empty:
                 st.subheader("✅ Your Current Team")
 
-                # Code zur Kennzeichnung:
                 selected_df["Role"] = ""
                 if captain_id in selected_ids:
                     selected_df.loc[selected_df["id"] == captain_id, "Role"] = (
@@ -2548,14 +2348,12 @@ elif page == "🧩 Teams":
                 )
             else:
                 st.info("No players selected yet.")
-                # 3. Champion Auswahl
 
             if selected_count == 15 and remaining_budget >= 0:
 
                 st.markdown("---")
                 st.subheader("⭐ Select Captain & Underdog")
 
-                # 1. Captain Auswahl
                 max_price = selected_df["price"].max()
                 eligible_captains = selected_df[selected_df["price"] < max_price]
                 captain_options = eligible_captains.set_index("id")["name"].to_dict()
@@ -2576,7 +2374,6 @@ elif page == "🧩 Teams":
                     st.error("❌ No eligible Captain player found!")
                     captain_ok = False
 
-                # 2. Underdog Auswahl
                 underdog_candidates = selected_df[selected_df["price"] < 20.0]
                 underdog_options = underdog_candidates.set_index("id")["name"].to_dict()
 
@@ -2612,7 +2409,6 @@ elif page == "🧩 Teams":
                     key="create_champion_select",
                 )
 
-                # Finde die ID des ausgewählten Spielers
                 if champion_name != "--- Select Champion ---" and champion_name:
                     champion_id_list = df[df["name"] == champion_name]["id"].tolist()
                     if champion_id_list:
@@ -2628,8 +2424,6 @@ elif page == "🧩 Teams":
                 can_select_roles = False
                 can_select_champion = False
 
-            # --- Team speichern ---
-
             can_create = (
                 (selected_count == 15)
                 and (remaining_budget >= 0)
@@ -2641,26 +2435,20 @@ elif page == "🧩 Teams":
             if can_create:
                 if st.button("✅ Create Team"):
 
-                    # --- NEU: PRÜFUNG DES TEAMNAMEN ---
-                    # 1. API-Aufruf zur Überprüfung des Teamnamens
                     try:
-                        # ANNAHME: Der Backend-Service bietet einen GET-Endpunkt zur Prüfung der Verfügbarkeit
+
                         check_response = requests.post(
                             f"{BASE_URL}/teams/check_name",
-                            json={"team_name": team_name},  # Senden im Body
+                            json={"team_name": team_name},
                         )
                     except requests.exceptions.RequestException as e:
                         st.error(f"❌ Connection error during name check: {e}")
                         st.stop()
 
-                    # 2. Prüfen der Verfügbarkeit
-                    if (
-                        check_response.status_code == 409
-                    ):  # 409 Conflict oder ein ähnlicher Code für "bereits existiert"
+                    if check_response.status_code == 409:
                         st.error(
                             f"⚠️ The team name **'{team_name}'** is already taken. Please choose a different name."
                         )
-                        # st.stop() ist hier nicht nötig, da wir den Erstellungsprozess nur überspringen
 
                     elif check_response.status_code != 200:
                         st.error(
@@ -2668,7 +2456,6 @@ elif page == "🧩 Teams":
                         )
 
                     else:
-                        # Statuscode ist 200: Name ist verfügbar, Team erstellen
 
                         payload = {
                             "user_id": int(st.session_state.user_id),
@@ -2714,7 +2501,7 @@ elif page == "🧩 Teams":
                                     "Team created, but the ID was missing in the response."
                                 )
                         else:
-                            # Zeigt die Fehlermeldung vom Backend an
+
                             st.error(f"Error creating team: {response.text}")
 
             else:
@@ -2733,29 +2520,23 @@ elif page == "⚙️ Settings":
     ## 🔒 Global Team Lock Control
     st.header("🔒 Global Team Lock Control")
 
-    # 1. Aktuellen Status abrufen
     current_lock_status = get_team_lock_status()
 
-    # 2. Steuerungselement: Checkbox
     new_lock_status = st.checkbox(
         "Lock Team Editing and Management",
         value=current_lock_status,
         key="global_team_lock_checkbox",
     )
 
-    # 3. Statusänderung erkennen und speichern
     if new_lock_status != current_lock_status:
 
-        # Speichern-Button nur anzeigen, wenn eine Änderung vorliegt
         if st.button("Save Team Lock Status", key="save_lock_status_btn"):
             if set_team_lock_status(new_lock_status):
-                # Speichern war erfolgreich, Status aktualisieren und Seite neu laden
-                st.session_state["teams_locked"] = (
-                    new_lock_status  # Streamlit Session-Status aktualisieren
-                )
+
+                st.session_state["teams_locked"] = new_lock_status
                 st.rerun()
             else:
-                # Fehler beim Speichern
+
                 pass
     else:
         st.info(
@@ -2768,7 +2549,6 @@ elif page == "⚙️ Settings":
 
     st.markdown("---")
 
-    # 2. Add New User Section
     st.header("➕ Create New User")
     with st.form("create_new_user_form"):
         new_username = st.text_input("Username")
@@ -2789,7 +2569,6 @@ elif page == "⚙️ Settings":
 
     st.markdown("---")
 
-    # 3. Display User List and Change Admin Status
     st.header("👥 All Registered Users")
 
     users = fetch_users()
@@ -2823,9 +2602,6 @@ elif page == "⚙️ Settings":
                     "🗑️ Delete", key=f"delete_btn_{user['id']}"
                 )
 
-                # 2. ÜBERPRÜFUNG DER BESTÄTIGUNG
-
-                # Zustand prüfen: Ist die Bestätigung für diesen spezifischen Benutzer aktiv?
                 if (
                     delete_button_pressed
                     and st.session_state.get("confirm_delete_user_id") == user["id"]
