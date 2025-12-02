@@ -254,6 +254,8 @@ else:
 
 if "current_page" not in st.session_state:
     st.session_state.current_page = "overview"
+    requests.put(f"{BASE_URL}/players/points/recompute")
+    requests.put(f"{BASE_URL}/teams/points/recompute")
 
 import requests
 
@@ -674,8 +676,8 @@ if page == "🏠 Overview":
 
         team_selection = None
 
-        requests.put(f"{BASE_URL}/players/points/recompute")
-        requests.put(f"{BASE_URL}/teams/points/recompute")
+        # requests.put(f"{BASE_URL}/players/points/recompute")
+        # requests.put(f"{BASE_URL}/teams/points/recompute")
         leaderboard = requests.get(f"{BASE_URL}/leaderboard/").json()
         df_lb = pd.DataFrame(leaderboard)
 
