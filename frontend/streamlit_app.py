@@ -432,9 +432,6 @@ if page == "🏆 Overview":
         team_id = st.session_state.selected_team_id
         team_name = st.session_state.selected_team_name
 
-        st.title(f"🎯 Team: {team_name}")
-        st.subheader("👥 Players")
-
         try:
             players = requests.get(f"{BASE_URL}/teams/{team_id}/players").json()
             champion_details = requests.get(
@@ -450,6 +447,14 @@ if page == "🏆 Overview":
                 f"❌ Failed to load team data from the server. Please check the connection or API endpoint. Error details: {e}"
             )
             st.stop()
+
+        st.title(f"🎯 Team: {team_name}")
+
+        # st.markdown("---")
+        total_points = total_team_points  # df_players["Calculated_Total_Points"].sum() + champion_points
+        st.markdown(f"### 📊 Total Team Points: **{total_points:,.0f}**")
+        st.markdown("---")
+        st.subheader("👥 Players")
 
         if players and isinstance(players, list):
             df_players = pd.DataFrame(players)
@@ -650,10 +655,6 @@ if page == "🏆 Overview":
                 )
             else:
                 st.info("No Champion Pick found for this team.")
-
-            st.markdown("---")
-            total_points = total_team_points  # df_players["Calculated_Total_Points"].sum() + champion_points
-            st.markdown(f"### 📊 Total Team Points: **{total_points:,.0f}**")
 
             st.markdown("---")
             st.button("⬅️ Back to Leaderboard", on_click=back_to_overview)
