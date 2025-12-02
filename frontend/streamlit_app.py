@@ -314,7 +314,7 @@ page = st.sidebar.radio(
     [
         "🏆 Overview",
         "🎯 Players",
-        "🧩 Teams",
+        "🧩 Your Teams",
         # "⚔️ Tournament Bracket"
         "📅 Tournament Schedule",
         "⚙️ Settings",
@@ -1755,7 +1755,7 @@ elif page == "📅 Tournament Schedule":
 # -----------------------------------
 # 🔹 Team erstellen
 # -----------------------------------
-elif page == "🧩 Teams":
+elif page == "🧩 Your Teams":
     if "user_id" not in st.session_state:
         st.warning("⚠️ Please log in to create a team!")
         st.stop()
