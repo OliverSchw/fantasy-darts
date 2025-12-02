@@ -641,7 +641,9 @@ if page == "🏆 Overview":
                     ),
                     "flag_url": st.column_config.ImageColumn("Nation", width=50),
                     "points": None,
-                    "Display_Points": st.column_config.Column("Points", width="tiny"),
+                    "Display_Points": st.column_config.NumberColumn(
+                        "Points", width="tiny"
+                    ),
                     "Role": st.column_config.Column("Role", width="medium"),
                     "eliminated": None,
                 },
