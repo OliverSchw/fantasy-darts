@@ -70,14 +70,14 @@ def calculate_points(stats: dict) -> float:
     pts = 0
     # if stats.get("is_winner"):
     #     pts += 50
-    pts += stats.get("sets_won", 0) * 5
+    pts += stats.get("sets_won", 0) * 10
     if stats.get("is_winner", False):
-        pts += (stats.get("sets_won", 0) - stats.get("sets_lost", 0)) * (5)
+        pts += (stats.get("sets_won", 0) - stats.get("sets_lost", 0)) * (10)
 
     if stats.get("is_winner", False) and stats.get("is_final", False):
-        pts += 50
+        pts += 100
     pts += stats.get("p171s", 0) * 1
-    pts += stats.get("p161finishes", 0) * 3
+    pts += stats.get("p161finishes", 0) * 5
     pts += stats.get("ninedarters", 0) * 100
     return pts
 
