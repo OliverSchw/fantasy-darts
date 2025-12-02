@@ -450,119 +450,13 @@ if page == "🏆 Overview":
 
         st.title(f"🎯 Team: {team_name}")
 
-        # st.markdown("---")
+        st.markdown("---")
         total_points = total_team_points  # df_players["Calculated_Total_Points"].sum() + champion_points
         st.markdown(f"### 📊 Total Team Points: **{total_points:,.0f}**")
         st.markdown("---")
         st.subheader("👥 Players")
 
         if players and isinstance(players, list):
-            df_players = pd.DataFrame(players)
-
-            def get_player_role(row):
-                role = ""
-                is_captain = row.get("is_captain")
-                is_underdog = row.get("is_underdog")
-                if is_captain in (True, 1):
-                    role += "👑 CAPTAIN (x2)"
-                if is_underdog in (True, 1):
-                    if role:
-                        role += " / 🐕 UNDERDOG (x2)"
-                    else:
-                        role += "🐕 UNDERDOG (x2)"
-                return role
-
-            df_players["Role"] = df_players.apply(get_player_role, axis=1)
-
-            def format_points(row):
-                base_points = row["points"]
-                multiplier = 1
-                if row.get("is_captain") in (True, 1):
-                    multiplier += 1
-                if row.get("is_underdog") in (True, 1):
-                    multiplier += 1
-                weighted_points = base_points * multiplier
-                if multiplier > 1:
-                    return f"{base_points:,.0f} ({weighted_points:,.0f})"
-                else:
-                    return f"{base_points:,.0f}"
-
-            df_players["Display_Points"] = df_players.apply(format_points, axis=1)
-
-            def calculate_weighted_points_value(row):
-                base_points = row["points"]
-                multiplier = 1
-                if row.get("is_captain") in (True, 1):
-                    multiplier += 1
-                if row.get("is_underdog") in (True, 1):
-                    multiplier += 1
-                return base_points * multiplier
-
-            df_players["Calculated_Total_Points"] = df_players.apply(
-                calculate_weighted_points_value, axis=1
-            )
-
-            df_players["flag_url"] = df_players["nation"].apply(get_flag_url)
-
-            df_players = df_players.sort_values(
-                by="Calculated_Total_Points", ascending=False
-            ).reset_index(drop=True)
-
-            def highlight_row(row):
-
-                if row["points"] > 0:
-                    color = "red" if row["eliminated"] else "green"
-                else:
-                    color = "red" if row["eliminated"] else ""
-
-                if row.get("is_captain") in (True, 1):
-                    return [
-                        f"color: black; font-weight: bold; background-color: #d1e7f7"
-                    ] * len(row)
-
-                return [f"color: {color}"] * len(row)
-
-            df_players = df_players.sort_values(
-                by=["points", "price"], ascending=[False, False]
-            ).reset_index(drop=True)
-            st.dataframe(
-                df_players[
-                    [
-                        "seed",
-                        "name",
-                        "price",
-                        "flag_url",
-                        "points",
-                        "Display_Points",
-                        "Role",
-                        "eliminated",
-                    ]
-                ].style.apply(highlight_row, axis=1),
-                column_config={
-                    "seed": st.column_config.NumberColumn(
-                        "Seed", format="%.0f", width="tiny"
-                    ),
-                    "name": st.column_config.Column("Player Name", width="medium"),
-                    "price": st.column_config.NumberColumn(
-                        "Price (Mio)", format="%.1f", width="small"
-                    ),
-                    "flag_url": st.column_config.ImageColumn("Nation", width=50),
-                    "points": None,
-                    "Display_Points": st.column_config.Column("Points", width="tiny"),
-                    "Role": st.column_config.Column("Role", width="medium"),
-                    "eliminated": None,
-                },
-                width="stretch",
-                column_order=[
-                    "seed",
-                    "flag_url",
-                    "name",
-                    "price",
-                    "Display_Points",
-                    "Role",
-                ],
-                hide_index=True,
-            )
 
             st.markdown("---")
             st.subheader("🏆 Champion Pick")
@@ -655,6 +549,114 @@ if page == "🏆 Overview":
                 )
             else:
                 st.info("No Champion Pick found for this team.")
+
+            df_players = pd.DataFrame(players)
+
+            def get_player_role(row):
+                role = ""
+                is_captain = row.get("is_captain")
+                is_underdog = row.get("is_underdog")
+                if is_captain in (True, 1):
+                    role += "👑 CAPTAIN (x2)"
+                if is_underdog in (True, 1):
+                    if role:
+                        role += " / 🐕 UNDERDOG (x2)"
+                    else:
+                        role += "🐕 UNDERDOG (x2)"
+                return role
+
+            df_players["Role"] = df_players.apply(get_player_role, axis=1)
+
+            def format_points(row):
+                base_points = row["points"]
+                multiplier = 1
+                if row.get("is_captain") in (True, 1):
+                    multiplier += 1
+                if row.get("is_underdog") in (True, 1):
+                    multiplier += 1
+                weighted_points = base_points * multiplier
+                if multiplier > 1:
+                    return f"{base_points:,.0f} ({weighted_points:,.0f})"
+                else:
+                    return f"{base_points:,.0f}"
+
+            df_players["Display_Points"] = df_players.apply(format_points, axis=1)
+
+            def calculate_weighted_points_value(row):
+                base_points = row["points"]
+                multiplier = 1
+                if row.get("is_captain") in (True, 1):
+                    multiplier += 1
+                if row.get("is_underdog") in (True, 1):
+                    multiplier += 1
+                return base_points * multiplier
+
+            df_players["Calculated_Total_Points"] = df_players.apply(
+                calculate_weighted_points_value, axis=1
+            )
+
+            df_players["flag_url"] = df_players["nation"].apply(get_flag_url)
+
+            df_players = df_players.sort_values(
+                by="Calculated_Total_Points", ascending=False
+            ).reset_index(drop=True)
+
+            def highlight_row(row):
+
+                if row["points"] > 0:
+                    color = "red" if row["eliminated"] else "green"
+                else:
+                    color = "red" if row["eliminated"] else ""
+
+                if row.get("is_captain") in (True, 1):
+                    return [
+                        f"color: black; font-weight: bold; background-color: #d1e7f7"
+                    ] * len(row)
+
+                return [f"color: {color}"] * len(row)
+
+            df_players = df_players.sort_values(
+                by=["points", "price"], ascending=[False, False]
+            ).reset_index(drop=True)
+            st.markdown("---")
+            st.dataframe(
+                df_players[
+                    [
+                        "seed",
+                        "name",
+                        "price",
+                        "flag_url",
+                        "points",
+                        "Display_Points",
+                        "Role",
+                        "eliminated",
+                    ]
+                ].style.apply(highlight_row, axis=1),
+                column_config={
+                    "seed": st.column_config.NumberColumn(
+                        "Seed", format="%.0f", width="tiny"
+                    ),
+                    "name": st.column_config.Column("Player Name", width="medium"),
+                    "price": st.column_config.NumberColumn(
+                        "Price (Mio)", format="%.1f", width="small"
+                    ),
+                    "flag_url": st.column_config.ImageColumn("Nation", width=50),
+                    "points": None,
+                    "Display_Points": st.column_config.Column("Points", width="tiny"),
+                    "Role": st.column_config.Column("Role", width="medium"),
+                    "eliminated": None,
+                },
+                width="stretch",
+                column_order=[
+                    "seed",
+                    "flag_url",
+                    "name",
+                    "price",
+                    "Display_Points",
+                    "Role",
+                ],
+                hide_index=True,
+            )
 
             st.markdown("---")
             st.button("⬅️ Back to Leaderboard", on_click=back_to_overview)
