@@ -444,7 +444,7 @@ if page == "🏆 Overview":
                 f"{BASE_URL}/teams/{team_id}/total_points"
             ).json()
             total_team_points = total_team_points_data.get("total_points", 0)
-            user_data = requests.get(f"{BASE_URL}/auth/{user_id}/username")
+            user_data = requests.get(f"{BASE_URL}/auth/{user_id}/username").json()
             username = user_data["username"]
 
         except Exception as e:
