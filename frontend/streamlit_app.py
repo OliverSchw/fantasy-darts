@@ -419,9 +419,10 @@ if page == "🏆 Overview":
     if "current_page" not in st.session_state:
         st.session_state.current_page = "overview"
 
-    def go_to_team(team_id, team_name):
+    def go_to_team(team_id, team_name, user_id):
         st.session_state.selected_team_id = team_id
         st.session_state.selected_team_name = team_name
+        st.session_state.selected_team_user_id = user_id
         st.session_state.current_page = "team_detail"
 
     def back_to_overview():
@@ -432,6 +433,7 @@ if page == "🏆 Overview":
     if st.session_state.current_page == "team_detail":
         team_id = st.session_state.selected_team_id
         team_name = st.session_state.selected_team_name
+        user_id = st.session_state.selected_team_user_id
 
         try:
             players = requests.get(f"{BASE_URL}/teams/{team_id}/players").json()
@@ -442,6 +444,8 @@ if page == "🏆 Overview":
                 f"{BASE_URL}/teams/{team_id}/total_points"
             ).json()
             total_team_points = total_team_points_data.get("total_points", 0)
+            user_data = requests.get(f"{BASE_URL}/auth/{user_id}/username")
+            username = user_data["username"]
 
         except Exception as e:
             st.error(
@@ -449,7 +453,7 @@ if page == "🏆 Overview":
             )
             st.stop()
 
-        st.title(f"🎯 Team: {team_name}")
+        st.title(f"🎯 Team: **{team_name}** | Owner: *{username}*")
 
         st.markdown("---")
         total_points = total_team_points  # df_players["Calculated_Total_Points"].sum() + champion_points
@@ -706,8 +710,9 @@ if page == "🏆 Overview":
 
                 selected_row = df_lb[df_lb["team_name"] == team_selection].iloc[0]
                 team_id = selected_row["team_id"]
+                user_id = selected_row["user_id"]
 
-                go_to_team(team_id, team_selection)
+                go_to_team(team_id, team_selection, user_id)
                 st.rerun()
 
         else:

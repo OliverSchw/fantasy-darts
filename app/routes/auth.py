@@ -228,3 +228,22 @@ def get_active_team_id(user_id: int, db: Session = Depends(get_db)):
         "user_id": user_id,
         "active_team_id": user.active_team_id,
     }
+
+
+def get_username_by_id(user_id: int, db: Session = Depends(get_db)) -> str:
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with ID {user_id} not found",
+        )
+
+    return user.username
+
+
+@router.get("/{user_id}/username")
+def get_username_route(user_id: int, db: Session = Depends(get_db)):
+    """Gibt den Benutzernamen anhand der ID zurück."""
+    username = get_username_by_id(user_id=user_id, db=db)
+
+    return {"user_id": user_id, "username": username}
