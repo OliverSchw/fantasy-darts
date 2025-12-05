@@ -216,7 +216,9 @@ def delete_team(team_id: int, db: Session = Depends(get_db)):
     team = db.query(models.Team).filter(models.Team.id == team_id).first()
     if not team:
         return {"detail": "Team not found"}, 404
-
+    db.query(models.User).filter(models.User.active_team_id == team_id).update(
+        {"active_team_id": None}, synchronize_session=False
+    )
     # Lösche zugehörige TeamPlayer
     db.query(models.TeamPlayer).filter(models.TeamPlayer.team_id == team_id).delete()
     db.delete(team)
