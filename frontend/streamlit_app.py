@@ -2048,7 +2048,7 @@ elif page == "🧩 Your Teams":
                 ### 💰 Budget
                 - **Total:** {TOTAL_BUDGET:,.2f} 
                 - **Used:** {total_spent:,.2f} 
-                - **Remaining:** <span style="color:{'red' if remaining_budget < 0 else 'green'}">{remaining_budget:,.2f}</span>
+                - **Remaining:** <span style="color:{'red' if remaining_budget < 0.0 else 'green'}">{remaining_budget:,.2f}</span>
                 """,
                 unsafe_allow_html=True,
             )
@@ -2100,7 +2100,7 @@ elif page == "🧩 Your Teams":
             else:
                 st.info("No players selected yet.")
 
-            if selected_count == 15 and remaining_budget >= 0:
+            if selected_count == 15 and remaining_budget >= 0.0:
                 st.markdown("---")
                 st.subheader("⭐ Select Playmaker & Underdog")
 
@@ -2225,7 +2225,7 @@ elif page == "🧩 Your Teams":
 
             can_save = (
                 (selected_count == 15)
-                and (remaining_budget >= 0)
+                and (remaining_budget >= 0.0)
                 and can_select_roles
                 and can_select_champion
             )
@@ -2332,7 +2332,7 @@ elif page == "🧩 Your Teams":
                 ### 💰 Budget
                 - **Total:** {TOTAL_BUDGET:,.2f}  
                 - **Used:** {total_spent:,.2f}  
-                - **Remaining:** <span style="color:{'red' if remaining_budget < 0 else 'green'}">{remaining_budget:,.2f}</span>
+                - **Remaining:** <span style="color:{'red' if remaining_budget < 0.0 else 'green'}">{remaining_budget:,.2f}</span>
                 """,
                 unsafe_allow_html=True,
             )
