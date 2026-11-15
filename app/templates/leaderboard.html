@@ -52,10 +52,10 @@
       {% for m in open_ms[:8] %}
         <li>
           <span class="t">{{ m.scheduled_at | hm }}<small>{{ rules.tournament.round_names[m.round - 1] }}</small></span>
-          <div class="tmatch">
-            {{ bracket_side(state.bracket.side(m, 0), state.players, state.my_player_ids) }}
-            {{ bracket_side(state.bracket.side(m, 1), state.players, state.my_player_ids) }}
-          </div>
+          <a class="tmatch" href="/matches/{{ m.id }}">
+            {{ bracket_side(state.bracket.side(m, 0), state.players, state.my_player_ids, link=False) }}
+            {{ bracket_side(state.bracket.side(m, 1), state.players, state.my_player_ids, link=False) }}
+          </a>
         </li>
       {% endfor %}
     </ul>
@@ -70,8 +70,10 @@
       {% set w = m.winner_id %}{% set l = m.p2_id if w == m.p1_id else m.p1_id %}
       {% set ws = m.sets_p1 if w == m.p1_id else m.sets_p2 %}{% set ls = m.sets_p2 if w == m.p1_id else m.sets_p1 %}
       <li class="{% if w in state.my_player_ids or l in state.my_player_ids %}mine{% endif %}">
-        <small>{{ rules.tournament.round_names[m.round - 1] }}</small>
-        <span>{{ player_name(state.players[w]) }} <strong>{{ ws }}–{{ ls }}</strong> {{ player_name(state.players[l]) }}</span>
+        <a href="/matches/{{ m.id }}">
+          <small>{{ rules.tournament.round_names[m.round - 1] }}</small>
+          <span>{{ player_name(state.players[w], link=False) }} <strong>{{ ws }}–{{ ls }}</strong> {{ player_name(state.players[l], link=False) }}</span>
+        </a>
       </li>
     {% endfor %}
   </ul>

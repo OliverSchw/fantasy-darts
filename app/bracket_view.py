@@ -152,3 +152,23 @@ class Bracket:
             return PlayerStatus("alive", m.round, m)  # sollte durch Weiterreichen nicht vorkommen
         opp_idx = 1 if m.p1_id == pid else 0
         return PlayerStatus("alive", m.round, m, self.side(m, opp_idx))
+
+    # ------------------------------------------------------------ Nachbarn im Baum
+
+    def feeder(self, m: Match, idx: int) -> Match | None:
+        """Das Match, dessen Sieger auf Seite idx (0/1) von m spielt."""
+        return self.by_pos.get((m.round - 1, 2 * m.slot + idx))
+
+    def next_match(self, m: Match) -> Match | None:
+        return self.by_pos.get((m.round + 1, m.slot // 2))
+
+    def path(self, pid: int, before_round: int) -> list[Match]:
+        """Bisherige Matches eines Spielers vor dieser Runde (für 'Weg ins Match')."""
+        return sorted((m for m in self.by_pos.values()
+                       if m.round < before_round and m.is_played and pid in (m.p1_id, m.p2_id)),
+                      key=lambda m: m.round)
+
+    def section_of_match(self, m: Match) -> str:
+        if self.n <= 3 or m.round > self.split_round:
+            return "finals"
+        return str(m.slot // 2 ** (self.split_round - m.round) + 1)

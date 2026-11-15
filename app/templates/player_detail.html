@@ -25,10 +25,10 @@
   <article class="next-match">
     <small>Next: {{ rules.tournament.round_names[status.round_no - 1] }} · first to {{ rules.tournament.sets_to_win[status.round_no - 1] }}
       {% if status.match.scheduled_at %} · <strong>{{ status.match.scheduled_at | when }}</strong>{% endif %}</small>
-    <div class="tmatch">
-      {{ bracket_side(state.bracket.side(status.match, 0), state.players, state.my_player_ids) }}
-      {{ bracket_side(state.bracket.side(status.match, 1), state.players, state.my_player_ids) }}
-    </div>
+    <a class="tmatch" href="/matches/{{ status.match.id }}">
+      {{ bracket_side(state.bracket.side(status.match, 0), state.players, state.my_player_ids, link=False) }}
+      {{ bracket_side(state.bracket.side(status.match, 1), state.players, state.my_player_ids, link=False) }}
+    </a>
     {% if section %}<a href="/bracket?section={{ section }}" class="small-link">Show in bracket →</a>{% endif %}
   </article>
 {% endif %}
@@ -65,7 +65,7 @@
   {% set opp = state.players[h.opponent] %}
   <article class="history">
     <header>
-      <span><strong>{{ "W" if h.won else "L" }}</strong> {{ h.score }} vs {{ player_name(opp, state.score(opp.id)) }}</span>
+      <a href="/matches/{{ h.match.id }}" class="hist-link"><strong>{{ "W" if h.won else "L" }}</strong> {{ h.score }} vs {{ player_name(opp, state.score(opp.id), link=False) }}</a>
       <span class="pts">+{{ h.points | pts }}</span>
     </header>
     <small>{{ rules.tournament.round_names[h.match.round - 1] }}{% for label, v in h.parts %} · {{ label }} <strong>{{ v | pts }}</strong>{% endfor %}</small>

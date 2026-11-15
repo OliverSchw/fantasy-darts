@@ -36,7 +36,7 @@ def result_form(match_id: int, request: Request, state: State = Depends(get_stat
     m = _match(state, match_id)
     if m.p1_id is None or m.p2_id is None:
         flash(request, "Both players of this match are not known yet.", "error")
-        return redirect(f"/bracket?round={m.round}")
+        return redirect(f"/matches/{m.id}")
     return render(request, "result_form.html", state, m=m)
 
 
@@ -65,7 +65,7 @@ async def result_save(match_id: int, request: Request, state: State = Depends(ge
         flash(request, str(e), "error")
         return redirect(f"/bracket/match/{m.id}")
     flash(request, "Result saved.")
-    return redirect(f"/bracket?round={m.round}")
+    return redirect(f"/bracket?section={state.bracket.section_of_match(m)}")
 
 
 @router.post("/bracket/match/{match_id}/delete")
@@ -78,7 +78,7 @@ def result_delete(match_id: int, request: Request, state: State = Depends(get_st
     except BracketError as e:
         state.db.rollback()
         flash(request, str(e), "error")
-    return redirect(f"/bracket?round={m.round}")
+    return redirect(f"/matches/{m.id}")
 
 
 # ------------------------------------------------------------ Admin-Seite

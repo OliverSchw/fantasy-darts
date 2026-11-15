@@ -190,3 +190,33 @@ def test_builder_contains_draw_positions(client, db, season, rules, make_user):
     assert (pos[first.p1_id], pos[first.p2_id]) == (0, 1)
     # Bitlänge von pos_a XOR pos_b = Runde des Aufeinandertreffens: Pos 0 und 2 -> Runde 2
     assert (0 ^ 2).bit_length() == 2 and (0 ^ 127).bit_length() == 7
+
+
+def test_match_page_for_everyone(client, db, season, rules, make_user):
+    m0 = _m(db, season, 1, 0)
+    m1 = _m(db, season, 1, 1)
+    save_result(db, rules, m0, 3, 1, {"s171": 2}, {"f161": 1})
+    r2 = _m(db, season, 2, 0)
+
+    # nicht eingeloggt: Match-Seite mit Stats, Punkten und Links
+    r = client.get(f"/matches/{m0.id}")
+    assert r.status_code == 200
+    assert "Fantasy points" in r.text and "+52" in r.text and "+15" in r.text  # 30+20+2 / 10+5
+    assert f"/matches/{r2.id}" in r.text  # "Next"-Link
+    assert "Enter result" not in r.text and "Edit result" not in r.text
+
+    # offenes Match der 2. Runde: eine Seite steht, andere ist "A / B" mit Link aufs Vor-Match
+    r = client.get(f"/matches/{r2.id}")
+    assert r.status_code == 200 and f"/matches/{m1.id}" in r.text and "Road to this match" in r.text
+
+    # Baum verlinkt die Matches jetzt für alle
+    assert f'href="/matches/{m0.id}"' in client.get("/bracket?section=1").text
+    assert client.get("/matches/999999").status_code == 404
+
+
+def test_admin_sees_edit_button_on_match_page(client, db, season, make_user):
+    make_user("boss", admin=True)
+    _login(client, "boss")
+    m0 = _m(db, season, 1, 0)
+    r = client.get(f"/matches/{m0.id}")
+    assert f"/bracket/match/{m0.id}" in r.text and "Enter result" in r.text

@@ -19,12 +19,11 @@
 <div class="matches">
   {% for mv in matches %}
     {% set m = mv.match %}
-    {% set clickable = user and user.is_admin and m.p1_id and m.p2_id %}
-    <{{ "a" if clickable else "div" }} class="match tmatch {% if m.is_played %}played{% endif %}" {% if clickable %}href="/bracket/match/{{ m.id }}"{% endif %}>
-      {{ bracket_side(mv.sides[0], state.players, state.my_player_ids, link=not clickable) }}
-      {{ bracket_side(mv.sides[1], state.players, state.my_player_ids, link=not clickable) }}
-      {% if clickable %}<span class="edit-hint">{{ "Edit" if m.is_played else "Enter result" }} ›</span>{% endif %}
-    </{{ "a" if clickable else "div" }}>
+    <a class="match tmatch {% if m.is_played %}played{% endif %}" href="/matches/{{ m.id }}">
+      {{ bracket_side(mv.sides[0], state.players, state.my_player_ids, link=False) }}
+      {{ bracket_side(mv.sides[1], state.players, state.my_player_ids, link=False) }}
+      {% if m.scheduled_at and not m.is_played %}<div class="ttime">🕒 {{ m.scheduled_at | when }}</div>{% endif %}
+    </a>
   {% endfor %}
 </div>
 {% endblock %}

@@ -207,3 +207,35 @@ def schedule(request: Request, state: State = Depends(get_state), mine: bool = F
         days = [(d, ms) for d, ms in days if ms]
     unscheduled = sum(1 for m in state.matches if not m.scheduled_at and not m.is_played)
     return render(request, "schedule.html", state, days=days, mine=mine, unscheduled=unscheduled)
+
+
+@router.get("/matches/{match_id}")
+def match_detail(match_id: int, request: Request, state: State = Depends(get_state)):
+    m = state.db.get(models.Match, match_id)
+    if m is None or m.season_id != state.season.id:
+        raise HTTPException(404)
+    br = state.bracket
+    m = br.by_pos[(m.round, m.slot)]  # gleiche Instanz wie im Baum
+    picks = _pick_counts(state)[0] if state.locked else Counter()
+    sides = []
+    for idx in (0, 1):
+        side = br.side(m, idx)
+        info = {"side": side, "feeder": br.feeder(m, idx), "path": [], "parts": [], "points": 0, "stats": {}}
+        if side.pid is not None:
+            info["path"] = br.path(side.pid, m.round)
+            if m.is_played:
+                first = idx == 0
+                sets_for, sets_against = (m.sets_p1, m.sets_p2) if first else (m.sets_p2, m.sets_p1)
+                info["stats"] = (m.stats_p1 if first else m.stats_p2) or {}
+                info["parts"] = side_breakdown(state.rules, m.round, m.winner_id == side.pid,
+                                               sets_for, sets_against, info["stats"])
+                info["points"] = sum(v for _, v in info["parts"])
+            info["picked"] = picks[side.pid]
+            info["mine"] = side.pid in state.my_player_ids
+        sides.append(info)
+    nxt = br.next_match(m)
+    nxt_other = None
+    if nxt is not None:
+        nxt_other = br.side(nxt, 1 if m.slot % 2 == 0 else 0)
+    return render(request, "match_detail.html", state, m=m, sides=sides, nxt=nxt, nxt_other=nxt_other,
+                  n_teams=len(state.active_teams), section=br.section_of_match(m))

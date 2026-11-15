@@ -28,10 +28,10 @@
           {% set s1, s2 = state.bracket.side(m, 0), state.bracket.side(m, 1) %}
           <li class="{% if m.is_played %}played{% endif %}">
             <span class="t">{{ m.scheduled_at | hm }}<small>{{ rules.tournament.round_names[m.round - 1] }}</small></span>
-            <div class="tmatch">
-              {{ bracket_side(s1, state.players, state.my_player_ids) }}
-              {{ bracket_side(s2, state.players, state.my_player_ids) }}
-            </div>
+            <a class="tmatch" href="/matches/{{ m.id }}">
+              {{ bracket_side(s1, state.players, state.my_player_ids, link=False) }}
+              {{ bracket_side(s2, state.players, state.my_player_ids, link=False) }}
+            </a>
           </li>
         {% endfor %}
       </ul>
