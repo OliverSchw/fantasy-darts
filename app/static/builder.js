@@ -17,6 +17,39 @@ document.addEventListener("alpine:init", () => {
     sort: "price_desc",
     onlySelected: false,
     submitting: false,
+    view: location.hash === "#draw" ? "draw" : "list",
+    draw: cfg.draw,
+    roundNames: cfg.draw.roundNames,
+    // Paare, die sich innerhalb eines Abschnitts treffen (bis einschl. dieser Runde), gelten als "früh"
+    clashMaxRound: Math.round(Math.log2(Math.max(cfg.draw.matchesPerSection, 1))) + 1,
+
+    sectionLabel(p) {
+      if (p.pos === null || p.pos === undefined) return "";
+      return this.draw.sections[Math.floor(p.pos / (2 * this.draw.matchesPerSection))] || "";
+    },
+    get drawSections() {
+      const per = this.draw.matchesPerSection;
+      return this.draw.sections.map((label, i) => {
+        const matches = this.draw.matches.slice(i * per, (i + 1) * per);
+        const count = matches.flat().filter((id) => this.isSel(id)).length;
+        return { label, matches, count };
+      });
+    },
+    // Runde, in der sich zwei Spieler treffen würden: Bitlänge von (pos_a XOR pos_b)
+    get clashes() {
+      const sel = this.selected.map((id) => this.byId[id]).filter((p) => p.pos !== null && p.pos !== undefined);
+      const out = [];
+      for (let i = 0; i < sel.length; i++) {
+        for (let j = i + 1; j < sel.length; j++) {
+          const round = 32 - Math.clz32(sel[i].pos ^ sel[j].pos);
+          if (round <= this.clashMaxRound) {
+            const [a, b] = sel[i].pos < sel[j].pos ? [sel[i], sel[j]] : [sel[j], sel[i]];
+            out.push({ a, b, round });
+          }
+        }
+      }
+      return out.sort((x, y) => x.round - y.round || x.a.pos - y.a.pos);
+    },
 
     init() {
       // Rollen zurücksetzen, wenn der Spieler abgewählt wird

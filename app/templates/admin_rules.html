@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Admin · Rules{% endblock %}
+{% block content %}
+{% include "_admin_nav.html" %}
+{% set t = r.team %}{% set sc = r.scoring %}{% set ro = state.locked %}
+
+{% if errors %}<div class="flash error" role="alert"><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+{% if ro %}
+  <p class="banner locked">🔒 Teams are locked, so the rules are read-only. Unlock teams under <a href="/admin">Overview</a> to change them.</p>
+{% else %}
+  <p class="muted">Changes apply immediately to all points – also for results already entered. Players see them on the <a href="/rules" target="_blank">rules page ↗</a>.</p>
+{% endif %}
+
+<form method="post" action="/admin/rules" class="rules-form">
+<fieldset {% if ro %}disabled{% endif %}>
+
+  <article>
+    <h3>General</h3>
+    <label>Name of the competition <input name="name" value="{{ r.name }}" maxlength="80"></label>
+    <label>Automatic team lock <small>({{ tz }}, empty = lock manually)</small>
+      <input type="datetime-local" name="lock_at" value="{{ lock_input }}">
+    </label>
+  </article>
+
+  <article>
+    <h3>Team</h3>
+    <div class="grid3">
+      <label>Budget (M) <input name="budget" value="{{ t.budget | num }}" inputmode="decimal" required></label>
+      <label>Players per team <input name="squad_size" value="{{ t.squad_size }}" inputmode="numeric" required></label>
+      <label>Teams per user <input name="max_teams_per_user" value="{{ t.max_teams_per_user }}" inputmode="numeric" required></label>
+    </div>
+    <h4>Roles</h4>
+    <div class="role-grid">
+      <span></span><small>Name</small><small>Max price (M)</small><small>Points ×</small>
+      <span class="role-tag pm">⭐</span>
+      <input name="pm_label" value="{{ t.playmaker.label }}" aria-label="Playmaker name">
+      <input name="pm_max_price" value="{{ t.playmaker.max_price | num }}" inputmode="decimal" aria-label="Playmaker max price">
+      <input name="pm_multiplier" value="{{ t.playmaker.multiplier | num }}" inputmode="decimal" aria-label="Playmaker multiplier">
+      <span class="role-tag ud">🐕</span>
+      <input name="ud_label" value="{{ t.underdog.label }}" aria-label="Underdog name">
+      <input name="ud_max_price" value="{{ t.underdog.max_price | num }}" inputmode="decimal" aria-label="Underdog max price">
+      <input name="ud_multiplier" value="{{ t.underdog.multiplier | num }}" inputmode="decimal" aria-label="Underdog multiplier">
+    </div>
+    <label>Champion pick bonus <small>(if the picked player wins the tournament)</small>
+      <input name="champion_bonus" value="{{ t.champion_pick.bonus | num }}" inputmode="decimal">
+    </label>
+  </article>
+
+  <article>
+    <h3>Points per match</h3>
+    <div class="grid2">
+      <label>Per set won <input name="per_set_won" value="{{ sc.per_set_won | num }}" inputmode="decimal"></label>
+      <label>Winner: per set of margin <small>(3–1 → 2×)</small><input name="per_set_margin_winner" value="{{ sc.per_set_margin_winner | num }}" inputmode="decimal"></label>
+    </div>
+
+    <h4>Stats <small>(entered per player with every result)</small></h4>
+    <div class="stat-rows">
+      {% for s in sc.stats %}
+        <div class="stat-edit">
+          <input type="hidden" name="stat_key_{{ loop.index0 }}" value="{{ s.key }}">
+          <input name="stat_label_{{ loop.index0 }}" value="{{ s.label }}" aria-label="Stat name">
+          <input name="stat_points_{{ loop.index0 }}" value="{{ s.points | num }}" inputmode="decimal" aria-label="Points for {{ s.label }}">
+          <label class="del"><input type="checkbox" name="stat_delete_{{ loop.index0 }}" value="1"> remove</label>
+        </div>
+      {% endfor %}
+      <div class="stat-edit new">
+        <input name="new_stat_label" placeholder="＋ New stat, e.g. 180s" aria-label="New stat name">
+        <input name="new_stat_points" placeholder="pts" inputmode="decimal" aria-label="Points for new stat">
+        <span></span>
+      </div>
+    </div>
+  </article>
+
+  <article>
+    <h3>Rounds</h3>
+    <div class="table-wrap">
+      <table class="compact rounds-table">
+        <thead><tr><th>Round</th><th class="num">First to (sets)</th><th class="num">Win bonus</th></tr></thead>
+        <tbody>
+          {% for name in r.tournament.round_names %}
+            {% set i = loop.index0 %}
+            <tr>
+              <td><input name="round_name_{{ i }}" value="{{ name }}" aria-label="Round name"></td>
+              <td><input name="sets_to_win_{{ i }}" value="{{ r.tournament.sets_to_win[i] }}" inputmode="numeric" aria-label="Sets to win"></td>
+              <td><input name="round_bonus_{{ i }}" value="{{ (sc.round_win_bonus[i] if sc.round_win_bonus else 0) | num }}" inputmode="decimal" aria-label="Win bonus"></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="muted">The number of rounds comes from the draw and can't be changed here.</p>
+  </article>
+
+  <button type="submit">Save rules</button>
+</fieldset>
+</form>
+
+{% if custom and not ro %}
+  <form method="post" action="/admin/rules/reset" x-data="{ sure: false }" class="reset-form">
+    <button type="button" class="outline secondary small" x-show="!sure" @click="sure = true">Reset to season defaults…</button>
+    <button type="submit" class="danger small" x-show="sure" x-cloak>Really reset all rules</button>
+  </form>
+{% endif %}
+{% endblock %}
+{% block scripts %}<script defer src="/static/vendor/alpine.min.js"></script>{% endblock %}

@@ -17,6 +17,7 @@ from ..auth import optional_user
 from ..bracket_view import Bracket, PlayerStatus
 from ..db import get_db
 from ..flags import flag_code
+from ..config_store import invite_code, season_rules
 from ..rules import Rules, current_rules
 from ..scoring import PlayerScore, TeamScore, champion_id, player_scores, team_score
 from ..season import get_season, is_locked, season_matches, season_players
@@ -35,16 +36,47 @@ def _fmt_price(value: float) -> str:
 
 templates.env.filters["pts"] = _fmt_points
 templates.env.filters["price"] = _fmt_price
+templates.env.filters["num"] = lambda v: f"{v:g}"  # für Formularfelder: 1000 statt 1.000
 templates.env.globals["flag_code"] = flag_code
 
 
-def local_date(dt: datetime | None) -> date | None:
-    """Datum in der lokalen Zeitzone. SQLite liefert naive Zeiten -> als UTC behandeln."""
+def local_dt(dt: datetime | None) -> datetime | None:
+    """Zeit in der lokalen Zeitzone. SQLite liefert naive Zeiten -> als UTC behandeln."""
     if dt is None:
         return None
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(ZoneInfo(get_settings().timezone)).date()
+    return dt.astimezone(ZoneInfo(get_settings().timezone))
+
+
+def local_date(dt: datetime | None) -> date | None:
+    ldt = local_dt(dt)
+    return ldt.date() if ldt else None
+
+
+def today() -> date:
+    return datetime.now(ZoneInfo(get_settings().timezone)).date()
+
+
+def _fmt_when(dt: datetime | None) -> str:
+    """'Thu 11.12. 19:30' bzw. 'today 19:30' / 'tomorrow 13:00'."""
+    ldt = local_dt(dt)
+    if ldt is None:
+        return ""
+    delta = (ldt.date() - today()).days
+    day = {0: "today", 1: "tomorrow", -1: "yesterday"}.get(delta, ldt.strftime("%a %d.%m."))
+    return f"{day} {ldt:%H:%M}"
+
+
+def _fmt_day(d: date) -> str:
+    delta = (d - today()).days
+    prefix = {0: "Today · ", 1: "Tomorrow · ", -1: "Yesterday · "}.get(delta, "")
+    return prefix + d.strftime("%A, %d.%m.%Y")
+
+
+templates.env.filters["when"] = _fmt_when
+templates.env.filters["hm"] = lambda dt: f"{local_dt(dt):%H:%M}" if dt else ""
+templates.env.filters["day"] = _fmt_day
 
 
 def flash(request: Request, message: str, category: str = "ok") -> None:
@@ -149,6 +181,22 @@ class State:
                 r["move"] = prev_rank.get(r["team"].id, r["rank"]) - r["rank"]
         return rows
 
+    @cached_property
+    def scheduled(self) -> list[models.Match]:
+        """Matches mit Anstoßzeit, chronologisch."""
+        return sorted((m for m in self.matches if m.scheduled_at), key=lambda m: (local_dt(m.scheduled_at), m.slot))
+
+    def schedule_by_day(self) -> list[tuple[date, list[models.Match]]]:
+        days: dict[date, list[models.Match]] = {}
+        for m in self.scheduled:
+            days.setdefault(local_date(m.scheduled_at), []).append(m)
+        return sorted(days.items())
+
+    def next_matchday(self) -> tuple[date, list[models.Match]] | None:
+        """Heute, sonst der nächste Tag mit angesetzten Matches."""
+        upcoming = [(d, ms) for d, ms in self.schedule_by_day() if d >= today()]
+        return upcoming[0] if upcoming else None
+
     def latest_results(self, limit: int = 6) -> list[models.Match]:
         played = [m for m in self.matches if m.is_played and m.updated_at]
         played.sort(key=lambda m: m.updated_at, reverse=True)
@@ -158,7 +206,8 @@ class State:
 def get_state(
     db: Session = Depends(get_db), user: models.User | None = Depends(optional_user)
 ) -> State:
-    return State(db=db, season=get_season(db), rules=current_rules(), user=user)
+    season = get_season(db)
+    return State(db=db, season=season, rules=season_rules(db, season), user=user)
 
 
 def render(request: Request, template: str, state: State | None = None, status_code: int = 200, **ctx):
@@ -169,6 +218,7 @@ def render(request: Request, template: str, state: State | None = None, status_c
         "rules": state.rules if state else current_rules(),
         "state": state,
         "path": request.url.path,
-        "invite_enabled": bool(get_settings().invite_code),
+        "today": today(),
+        "invite_enabled": bool(invite_code(state.db)) if state else bool(get_settings().invite_code),
     }
     return templates.TemplateResponse(request, template, {**base, **ctx}, status_code=status_code)

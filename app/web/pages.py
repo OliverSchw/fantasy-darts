@@ -190,3 +190,20 @@ def insights(request: Request, state: State = Depends(get_state)):
 @router.get("/rules")
 def rules_page(request: Request, state: State = Depends(get_state)):
     return render(request, "rules.html", state)
+
+
+@router.get("/schedule")
+def schedule(request: Request, state: State = Depends(get_state), mine: bool = False):
+    days = state.schedule_by_day()
+    if mine and state.my_player_ids:
+        bracket = state.bracket
+
+        def involves_mine(m: models.Match) -> bool:
+            sides = (bracket.side(m, 0), bracket.side(m, 1))
+            ids = {s.pid for s in sides if s.pid} | {c for s in sides for c in s.candidates}
+            return bool(ids & state.my_player_ids)
+
+        days = [(d, [m for m in ms if involves_mine(m)]) for d, ms in days]
+        days = [(d, ms) for d, ms in days if ms]
+    unscheduled = sum(1 for m in state.matches if not m.scheduled_at and not m.is_played)
+    return render(request, "schedule.html", state, days=days, mine=mine, unscheduled=unscheduled)

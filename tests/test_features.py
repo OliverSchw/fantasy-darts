@@ -173,3 +173,20 @@ def test_player_page_lists_own_teams_before_lock(client, db, season, rules, make
     client.post("/my/new", data=form)
     r = client.get(f"/players/{form['player_ids'][0]}")
     assert "In your teams" in r.text and "Meins" in r.text
+
+
+def test_builder_contains_draw_positions(client, db, season, rules, make_user):
+    import json
+    import re
+
+    make_user("olli")
+    _login(client, "olli")
+    html = client.get("/my/new").text
+    cfg = json.loads(re.search(r'<script id="builder-data" type="application/json">(.*?)</script>', html, re.S).group(1))
+    assert len(cfg["draw"]["matches"]) == 64 and cfg["draw"]["matchesPerSection"] == 8
+    assert cfg["draw"]["sections"][0] == "Littler"
+    pos = {p["id"]: p["pos"] for p in cfg["players"]}
+    first = _m(db, season, 1, 0)
+    assert (pos[first.p1_id], pos[first.p2_id]) == (0, 1)
+    # Bitlänge von pos_a XOR pos_b = Runde des Aufeinandertreffens: Pos 0 und 2 -> Runde 2
+    assert (0 ^ 2).bit_length() == 2 and (0 ^ 127).bit_length() == 7

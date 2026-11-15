@@ -18,28 +18,78 @@
   <!-- 1. Spieler -->
   <section>
     <h3>1 · Pick {{ t.squad_size }} players</h3>
-    <div class="filters">
-      <input type="search" placeholder="Search player or nation…" x-model="q" aria-label="Search">
-      <select x-model="sort" aria-label="Sort">
-        <option value="price_desc">Price ↓</option>
-        <option value="price_asc">Price ↑</option>
-        <option value="name">Name</option>
-      </select>
-      <label class="only-sel"><input type="checkbox" x-model="onlySelected"> Selected only</label>
+    <div class="view-toggle">
+      <button type="button" :class="{ active: view === 'list' }" @click="view = 'list'">☰ List</button>
+      <button type="button" :class="{ active: view === 'draw' }" @click="view = 'draw'">🌳 Draw</button>
+      <a href="/bracket" target="_blank" rel="noopener" class="small-link">Full bracket ↗</a>
     </div>
-    <ul class="pick-list">
-      <template x-for="p in visible" :key="p.id">
-        <li>
-          <button type="button" class="pick" :class="{ on: isSel(p.id) }" :disabled="!isSel(p.id) && !canAdd(p)" @click="toggle(p.id)">
-            <span class="check" x-text="isSel(p.id) ? '✓' : '+'"></span>
-            <img class="flag" :src="p.flag ? '/static/flags/' + p.flag + '.svg' : ''" x-show="p.flag" alt="">
-            <span class="nm" x-text="p.name"></span>
-            <small class="seed" x-show="p.seed && p.seed <= 32" x-text="'(' + p.seed + ')'"></small>
-            <span class="pr" x-text="p.price.toFixed(1)"></span>
-          </button>
-        </li>
+
+    <!-- Listenansicht -->
+    <div x-show="view === 'list'">
+      <div class="filters">
+        <input type="search" placeholder="Search player or nation…" x-model="q" aria-label="Search">
+        <select x-model="sort" aria-label="Sort">
+          <option value="price_desc">Price ↓</option>
+          <option value="price_asc">Price ↑</option>
+          <option value="name">Name</option>
+        </select>
+        <label class="only-sel"><input type="checkbox" x-model="onlySelected"> Selected only</label>
+      </div>
+      <ul class="pick-list">
+        <template x-for="p in visible" :key="p.id">
+          <li>
+            <button type="button" class="pick" :class="{ on: isSel(p.id) }" :disabled="!isSel(p.id) && !canAdd(p)" @click="toggle(p.id)">
+              <span class="check" x-text="isSel(p.id) ? '✓' : '+'"></span>
+              <img class="flag" :src="p.flag ? '/static/flags/' + p.flag + '.svg' : ''" x-show="p.flag" alt="">
+              <span class="nm" x-text="p.name"></span>
+              <small class="seed" x-show="p.seed && p.seed <= 32" x-text="'(' + p.seed + ')'"></small>
+              <small class="sec" x-show="p.pos !== null" x-text="sectionLabel(p)"></small>
+              <span class="pr" x-text="p.price.toFixed(1)"></span>
+            </button>
+          </li>
+        </template>
+      </ul>
+    </div>
+
+    <!-- Auslosungs-Ansicht: Paarungen der 1. Runde, gruppiert wie im Turnierbaum -->
+    <div x-show="view === 'draw'" x-cloak class="draw">
+      <p class="muted legend">First-round pairings. Closer together = they meet earlier. Tap a player to pick them.</p>
+      <template x-for="sec in drawSections" :key="sec.label">
+        <div class="draw-sec">
+          <div class="draw-head">
+            <strong x-text="sec.label"></strong>
+            <small x-text="sec.count ? sec.count + ' picked' : ''"></small>
+          </div>
+          <template x-for="(m, mi) in sec.matches" :key="mi">
+            <div class="draw-match" :class="{ 'gap-r2': mi % 2 === 0 && mi > 0, 'gap-r3': mi % 4 === 0 && mi > 0 }">
+              <template x-for="pid in m" :key="pid">
+                <button type="button" class="pick compact" :class="{ on: isSel(pid) }"
+                        :disabled="!isSel(pid) && !canAdd(byId[pid])" @click="toggle(pid)">
+                  <img class="flag" :src="'/static/flags/' + byId[pid].flag + '.svg'" x-show="byId[pid].flag" alt="">
+                  <span class="nm" x-text="byId[pid].name"></span>
+                  <span class="pr" x-text="byId[pid].price.toFixed(1)"></span>
+                </button>
+              </template>
+            </div>
+          </template>
+        </div>
       </template>
-    </ul>
+    </div>
+
+    <!-- Draw-Check: wer aus dem eigenen Team trifft früh aufeinander? -->
+    <div class="draw-check" x-show="selected.length > 1">
+      <strong>Draw check</strong>
+      <p class="muted" x-show="clashes.length === 0" x-text="'None of your players meet before the ' + (roundNames[clashMaxRound] || 'final') + ' 👍'"></p>
+      <ul x-show="clashes.length > 0">
+        <template x-for="c in clashes" :key="c.a.id + '-' + c.b.id">
+          <li :class="'r' + c.round">
+            <span class="rnd" x-text="roundNames[c.round - 1]"></span>
+            <span x-text="c.a.name + ' vs ' + c.b.name"></span>
+          </li>
+        </template>
+      </ul>
+      <p class="muted" x-show="clashes.length > 0">At most one of each pair can get past that round.</p>
+    </div>
   </section>
 
   <!-- 2. Rollen -->
@@ -90,7 +140,7 @@
   <a href="/my" class="secondary">Cancel</a>
 </form>
 
-<script id="builder-data" type="application/json">{{ {"players": players_json, "initial": initial, "budget": t.budget, "squadSize": t.squad_size, "pmMax": t.playmaker.max_price, "udMax": t.underdog.max_price} | tojson }}</script>
+<script id="builder-data" type="application/json">{{ {"players": players_json, "initial": initial, "budget": t.budget, "squadSize": t.squad_size, "pmMax": t.playmaker.max_price, "udMax": t.underdog.max_price, "draw": draw_json} | tojson }}</script>
 {% endblock %}
 {% block scripts %}
 <script src="/static/builder.js"></script>

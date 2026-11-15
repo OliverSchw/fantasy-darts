@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% from "_macros.html" import bracket_side %}
+{% block title %}Schedule{% endblock %}
+{% block content %}
+<div class="title-row">
+  <h1>Schedule</h1>
+  {% if state.my_player_ids %}
+    <div class="view-toggle">
+      <a href="/schedule" role="button" class="small {% if mine %}outline{% endif %}">All</a>
+      <a href="/schedule?mine=1" role="button" class="small {% if not mine %}outline{% endif %}">My players</a>
+    </div>
+  {% endif %}
+</div>
+
+{% if not days %}
+  <article class="empty">
+    <p>{% if mine %}None of your players has a scheduled match.{% else %}No match times yet.{% endif %}</p>
+    <a href="/bracket" class="small-link">Show the bracket →</a>
+  </article>
+{% else %}
+  {% set next = state.next_matchday() %}
+  {% if next and days|length > 1 %}<p><a href="#d-{{ next[0].isoformat() }}" class="small-link">↓ Jump to {{ next[0] | day }}</a></p>{% endif %}
+  {% for d, matches in days %}
+    <section class="sched-day" id="d-{{ d.isoformat() }}">
+      <h3>{{ d | day }}</h3>
+      <ul class="sched">
+        {% for m in matches %}
+          {% set s1, s2 = state.bracket.side(m, 0), state.bracket.side(m, 1) %}
+          <li class="{% if m.is_played %}played{% endif %}">
+            <span class="t">{{ m.scheduled_at | hm }}<small>{{ rules.tournament.round_names[m.round - 1] }}</small></span>
+            <div class="tmatch">
+              {{ bracket_side(s1, state.players, state.my_player_ids) }}
+              {{ bracket_side(s2, state.players, state.my_player_ids) }}
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endfor %}
+{% endif %}
+{% if unscheduled and not mine %}<p class="muted">{{ unscheduled }} open match{{ "es" if unscheduled != 1 }} without a time yet.</p>{% endif %}
+{% endblock %}

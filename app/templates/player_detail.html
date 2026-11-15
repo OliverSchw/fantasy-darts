@@ -23,7 +23,8 @@
 
 {% if status.state == "alive" and status.opponent %}
   <article class="next-match">
-    <small>Next: {{ rules.tournament.round_names[status.round_no - 1] }} · first to {{ rules.tournament.sets_to_win[status.round_no - 1] }}</small>
+    <small>Next: {{ rules.tournament.round_names[status.round_no - 1] }} · first to {{ rules.tournament.sets_to_win[status.round_no - 1] }}
+      {% if status.match.scheduled_at %} · <strong>{{ status.match.scheduled_at | when }}</strong>{% endif %}</small>
     <div class="tmatch">
       {{ bracket_side(state.bracket.side(status.match, 0), state.players, state.my_player_ids) }}
       {{ bracket_side(state.bracket.side(status.match, 1), state.players, state.my_player_ids) }}

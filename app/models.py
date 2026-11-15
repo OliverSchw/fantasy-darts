@@ -75,6 +75,8 @@ class Match(Base):
     stats_p1: Mapped[dict] = mapped_column(JSON, default=dict)
     stats_p2: Mapped[dict] = mapped_column(JSON, default=dict)
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Geplante Anstoßzeit (vom Admin oder später automatisch eingetragen)
+    scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     p1: Mapped[Player | None] = relationship(foreign_keys=[p1_id])
     p2: Mapped[Player | None] = relationship(foreign_keys=[p2_id])
@@ -123,3 +125,12 @@ class TeamPlayer(Base):
 
     team_id: Mapped[int] = mapped_column(ForeignKey("teams.id", ondelete="CASCADE"), primary_key=True)
     player_id: Mapped[int] = mapped_column(ForeignKey("players.id"), primary_key=True)
+
+
+class AppSetting(Base):
+    """Einstellungen, die der Admin in der Oberfläche ändert (Einladungscode, Regel-Anpassungen ...)."""
+
+    __tablename__ = "app_settings"
+
+    key: Mapped[str] = mapped_column(String(80), primary_key=True)
+    value: Mapped[dict | list | str | None] = mapped_column(JSON, nullable=True)

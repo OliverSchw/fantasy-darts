@@ -1,11 +1,18 @@
 """Admin: Ergebnisse eintragen, Teams sperren, User verwalten."""
 
+import json
+import secrets
+from datetime import date
+
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi.responses import Response
 from sqlalchemy import func, select
 
 from .. import models
 from ..auth import hash_password, require_admin
+from ..backup import export_backup, players_csv, results_csv, teams_csv
 from ..bracket import BracketError, delete_result, save_result
+from ..config_store import INVITE_KEY, get_setting, invite_code, rules_customized, set_setting
 from ..settings import get_settings
 from .account import MIN_PASSWORD
 from .common import State, flash, get_state, redirect, render
@@ -79,6 +86,33 @@ def result_delete(match_id: int, request: Request, state: State = Depends(get_st
 
 @router.get("/admin")
 def admin_page(request: Request, state: State = Depends(get_state), admin: models.User = Depends(require_admin)):
+    return render(request, "admin.html", state, invite_code=invite_code(state.db),
+                  invite_from_env=bool(get_settings().invite_code) and not get_setting(state.db, INVITE_KEY),
+                  rules_custom=rules_customized(state.db, state.season))
+
+
+@router.post("/admin/invite")
+def set_invite(request: Request, action: str = Form(...), code: str = Form(""),
+               state: State = Depends(get_state), admin: models.User = Depends(require_admin)):
+    if action == "generate":
+        set_setting(state.db, INVITE_KEY, secrets.token_urlsafe(6).replace("-", "").replace("_", "")[:8].lower())
+        flash(request, "New invite code created. Old links no longer work.")
+    elif action == "set":
+        code = code.strip()
+        if not 4 <= len(code) <= 40:
+            flash(request, "Invite code must be 4-40 characters.", "error")
+        else:
+            set_setting(state.db, INVITE_KEY, code)
+            flash(request, "Invite code saved.")
+    elif action == "disable":
+        set_setting(state.db, INVITE_KEY, None)
+        flash(request, "Self-registration via invite code is off."
+              + (" (INVITE_CODE in the environment is still active.)" if get_settings().invite_code else ""))
+    return redirect("/admin")
+
+
+@router.get("/admin/users")
+def admin_users(request: Request, state: State = Depends(get_state), admin: models.User = Depends(require_admin)):
     users = state.db.scalars(select(models.User).order_by(func.lower(models.User.username))).all()
     team_counts = dict(
         state.db.execute(
@@ -87,8 +121,7 @@ def admin_page(request: Request, state: State = Depends(get_state), admin: model
             .group_by(models.Team.user_id)
         ).all()
     )
-    return render(request, "admin.html", state, users=users, team_counts=team_counts,
-                  invite_code=get_settings().invite_code)
+    return render(request, "admin_users.html", state, users=users, team_counts=team_counts)
 
 
 @router.post("/admin/lock")
@@ -115,7 +148,7 @@ def create_user(request: Request, username: str = Form(...), password: str = For
         state.db.add(models.User(username=username, password_hash=hash_password(password), is_admin=is_admin))
         state.db.commit()
         flash(request, f"User “{username}” created.")
-    return redirect("/admin")
+    return redirect("/admin/users")
 
 
 def _other_user(state: State, user_id: int, admin: models.User) -> models.User:
@@ -134,7 +167,7 @@ def toggle_admin(user_id: int, request: Request, state: State = Depends(get_stat
     user.is_admin = not user.is_admin
     state.db.commit()
     flash(request, f"“{user.username}” is {'now' if user.is_admin else 'no longer'} an admin.")
-    return redirect("/admin")
+    return redirect("/admin/users")
 
 
 @router.post("/admin/users/{user_id}/password")
@@ -149,7 +182,7 @@ def reset_password(user_id: int, request: Request, password: str = Form(...),
         user.password_hash = hash_password(password)
         state.db.commit()
         flash(request, f"Password for “{user.username}” changed.")
-    return redirect("/admin")
+    return redirect("/admin/users")
 
 
 @router.post("/admin/users/{user_id}/delete")
@@ -160,4 +193,23 @@ def delete_user(user_id: int, request: Request, state: State = Depends(get_state
     state.db.delete(user)
     state.db.commit()
     flash(request, f"User “{name}” and their teams deleted.")
-    return redirect("/admin")
+    return redirect("/admin/users")
+
+
+# ------------------------------------------------------------ Export & Backup
+
+_CSV_EXPORTS = {"teams": teams_csv, "results": results_csv, "players": players_csv}
+
+
+@router.get("/admin/export/{kind}")
+def export(kind: str, state: State = Depends(get_state), admin: models.User = Depends(require_admin)):
+    stamp = f"{state.season.key}_{date.today().isoformat()}"
+    if kind == "backup":
+        body = json.dumps(export_backup(state.db, state.season), ensure_ascii=False, indent=1)
+        return Response(body, media_type="application/json",
+                        headers={"Content-Disposition": f'attachment; filename="fantasy-darts_backup_{stamp}.json"'})
+    if kind not in _CSV_EXPORTS:
+        raise HTTPException(404)
+    body = _CSV_EXPORTS[kind](state.db, state.season, state.rules)
+    return Response(body, media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="fantasy-darts_{kind}_{stamp}.csv"'})

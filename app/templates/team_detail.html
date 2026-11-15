@@ -44,6 +44,7 @@
               {% if st.opponent.pid %}{{ state.players[st.opponent.pid].name }}
               {% elif st.opponent.candidates %}{{ surname(state.players[st.opponent.candidates[0]]) }} / {{ surname(state.players[st.opponent.candidates[1]]) }}
               {% else %}TBD{% endif %}
+              {% if st.match.scheduled_at %} · <strong>{{ st.match.scheduled_at | when }}</strong>{% endif %}
             {% endif %}
           </small>
         </td>

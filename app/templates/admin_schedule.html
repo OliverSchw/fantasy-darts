@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% from "_macros.html" import bracket_side %}
+{% block title %}Admin · Schedule{% endblock %}
+{% block content %}
+{% include "_admin_nav.html" %}
+
+<nav class="round-tabs" aria-label="Rounds">
+  {% for name in rules.tournament.round_names %}
+    {% set r = loop.index %}
+    <a href="/admin/schedule?round={{ r }}" {% if r == rnd %}aria-current="page"{% endif %}>
+      {{ name }}<small>{{ counts[r] }}/{{ rules.matches_in_round(r) }}</small>
+    </a>
+  {% endfor %}
+</nav>
+<p class="muted">Times in {{ tz }}. You can schedule matches before the players are known – everyone sees “A / B” until then.</p>
+
+<form method="post" action="/admin/schedule?round={{ rnd }}" x-data="scheduleFill">
+  <details class="fill-helper">
+    <summary>⚡ Fill empty times automatically</summary>
+    <div class="grid-form fill-form">
+      <label>First match <input type="datetime-local" x-model="start"></label>
+      <label>Every … minutes <input type="number" min="5" step="5" x-model.number="step"></label>
+      <button type="button" class="outline small" @click="fill()">Fill empty fields in order</button>
+    </div>
+    <small class="muted">Goes through the matches top to bottom and only fills fields that are still empty. Then check and save.</small>
+  </details>
+
+  <ul class="sched admin">
+    {% for mv in matches %}
+      {% set m = mv.match %}
+      <li class="{% if m.is_played %}played{% endif %}">
+        <div class="tmatch">
+          {{ bracket_side(mv.sides[0], state.players, [], link=False) }}
+          {{ bracket_side(mv.sides[1], state.players, [], link=False) }}
+        </div>
+        <input type="datetime-local" name="time_{{ m.id }}" value="{{ values[m.id] }}" class="time-input" aria-label="Start time">
+      </li>
+    {% endfor %}
+  </ul>
+  <button type="submit">Save times</button>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+  document.addEventListener("alpine:init", () => {
+    Alpine.data("scheduleFill", () => ({
+      start: "", step: 60,
+      fill() {
+        if (!this.start) return;
+        let t = new Date(this.start);
+        const pad = (n) => String(n).padStart(2, "0");
+        for (const el of this.$root.querySelectorAll(".time-input")) {
+          if (el.value) continue;
+          el.value = `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}T${pad(t.getHours())}:${pad(t.getMinutes())}`;
+          t = new Date(t.getTime() + this.step * 60000);
+        }
+      },
+    }));
+  });
+</script>
+<script defer src="/static/vendor/alpine.min.js"></script>
+{% endblock %}

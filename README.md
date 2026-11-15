@@ -30,6 +30,11 @@ seasons/
 tests/
 ```
 
+**Regeln & Punkte** kann der Admin unter *Admin → Rules & points* direkt in der App ändern
+(solange die Teams nicht gesperrt sind). `rules.toml` ist nur die Vorlage für eine neue Saison.
+Spieler (Name, Nation, Preis, Seed) bearbeitet der Admin unter *Admin → Players*, inklusive
+Nachrücker in der Auslosung. Mitspieler melden sich per Einladungslink selbst an (*Admin → Overview*).
+
 **Punkte werden nie gespeichert**, sondern bei jedem Aufruf aus den Matches + `rules.toml`
 berechnet. Regeln ändern → Punkte stimmen sofort, auch rückwirkend.
 
@@ -97,3 +102,17 @@ weil die kostenlose Render-Postgres nach 30 Tagen gelöscht wird.
 - **Ergebnisse:** *Bracket* → Runde wählen → Match antippen → Sätze + Stats eintragen.
   Der Sieger rückt automatisch in die nächste Runde. Korrigieren geht jederzeit. Den Sieger
   ändern kann man nur, solange das Folgematch noch kein Ergebnis hat.
+
+## Backup & Export
+
+- **Wo liegen die Daten?** In Produktion in der Postgres-DB (Neon), unabhängig von der App –
+  Abstürze oder Redeploys löschen nichts. Jede Aktion wird sofort gespeichert. Auf Vercel
+  verweigert die App den Start ohne `DATABASE_URL`, damit nie versehentlich SQLite auf einem
+  flüchtigen Dateisystem benutzt wird.
+- **CSV-Export** (öffnet sich direkt in Excel): *Admin → Export & backup* – Teams, Ergebnisse, Spieler.
+- **Komplett-Backup** (JSON, inkl. User mit Passwort-Hashes – vertraulich behandeln):
+  ```bash
+  python -m app.cli backup                        # oder auf der Admin-Seite herunterladen
+  python -m app.cli restore-backup <datei>.json   # in eine DB ohne diese Saison einspielen
+  ```
+  Tipp: Während des Turniers ab und zu ein Backup ziehen, z. B. nach jedem Spieltag.

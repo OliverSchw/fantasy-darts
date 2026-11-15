@@ -38,6 +38,7 @@
                     <{{ "a" if clickable else "div" }} class="tmatch {% if m.is_played %}played{% endif %}" {% if clickable %}href="/bracket/match/{{ m.id }}" title="{{ 'Edit result' if m.is_played else 'Enter result' }}"{% endif %}>
                       {{ bracket_side(mv.sides[0], state.players, state.my_player_ids, link=not clickable) }}
                       {{ bracket_side(mv.sides[1], state.players, state.my_player_ids, link=not clickable) }}
+                      {% if m.scheduled_at and not m.is_played %}<div class="ttime">🕒 {{ m.scheduled_at | when }}</div>{% endif %}
                     </{{ "a" if clickable else "div" }}>
                   </div>
                 {% endfor %}

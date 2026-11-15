@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from .. import auth, models
 from ..db import get_db
-from ..settings import get_settings
+from ..config_store import invite_code
 from .common import State, flash, get_state, redirect, render
 
 router = APIRouter()
@@ -19,8 +19,8 @@ def _safe_next(url: str | None) -> str:
 
 
 @router.get("/login")
-def login_form(request: Request, next: str | None = None):
-    return render(request, "login.html", next=_safe_next(next))
+def login_form(request: Request, next: str | None = None, db: Session = Depends(get_db)):
+    return render(request, "login.html", next=_safe_next(next), invite_enabled=bool(invite_code(db)))
 
 
 @router.post("/login")
@@ -34,7 +34,8 @@ def login(
     user = db.scalar(select(models.User).where(func.lower(models.User.username) == username.strip().lower()))
     if user is None or not auth.verify_password(password, user.password_hash):
         return render(request, "login.html", status_code=401, next=_safe_next(next),
-                      error="Wrong username or password.", username=username)
+                      error="Wrong username or password.", username=username,
+                      invite_enabled=bool(invite_code(db)))
     auth.login(request, user)
     return redirect(_safe_next(next))
 
@@ -75,16 +76,16 @@ def change_password(
 # ------------------------------------------------------------ Registrierung mit Einladungscode
 
 
-def _invite_code() -> str:
-    code = get_settings().invite_code
+def _invite_code(db: Session) -> str:
+    code = invite_code(db)
     if not code:
         raise HTTPException(404)
     return code
 
 
 @router.get("/register")
-def register_form(request: Request, code: str = ""):
-    _invite_code()
+def register_form(request: Request, code: str = "", db: Session = Depends(get_db)):
+    _invite_code(db)
     return render(request, "register.html", code=code)
 
 
@@ -96,7 +97,7 @@ def register(
     code: str = Form(...),
     db: Session = Depends(get_db),
 ):
-    expected = _invite_code()
+    expected = _invite_code(db)
     username = username.strip()
     error = None
     if not hmac.compare_digest(code.strip().encode(), expected.encode()):

@@ -46,11 +46,22 @@ async def _read_form(request: Request) -> TeamInput:
 def _builder(request: Request, state: State, team: models.Team | None, data: TeamInput | None, errors=()):
     if data is None and team is not None:
         data = TeamInput(team.name, team.player_ids, team.playmaker_id, team.underdog_id, team.champion_pick_id)
+    # Position in der Auslosung (0..127): Spieler i und j treffen in Runde bit_length(i ^ j) aufeinander.
+    draw = [(m.p1_id, m.p2_id) for m in state.matches if m.round == 1]
+    pos = {pid: 2 * i + side for i, pair in enumerate(draw) for side, pid in enumerate(pair) if pid is not None}
     players = sorted(state.players.values(), key=lambda p: (-p.price, p.name))
     players_json = [
-        {"id": p.id, "name": p.name, "nation": p.nation, "flag": flag_code(p.nation), "price": p.price, "seed": p.seed}
+        {"id": p.id, "name": p.name, "nation": p.nation, "flag": flag_code(p.nation), "price": p.price,
+         "seed": p.seed, "pos": pos.get(p.id)}
         for p in players
     ]
+    sections = [s for s in state.bracket.sections() if s.key != "finals"]
+    draw_json = {
+        "matches": draw,
+        "sections": [s.label for s in sections],
+        "matchesPerSection": len(draw) // max(len(sections), 1),
+        "roundNames": state.rules.tournament.round_names,
+    }
     initial = {
         "name": data.name if data else "",
         "selected": data.player_ids if data else [],
@@ -58,7 +69,7 @@ def _builder(request: Request, state: State, team: models.Team | None, data: Tea
         "underdog": data.underdog_id if data else None,
         "champion": data.champion_pick_id if data else None,
     }
-    return render(request, "team_builder.html", state, team=team, players_json=players_json,
+    return render(request, "team_builder.html", state, team=team, players_json=players_json, draw_json=draw_json,
                   initial=initial, errors=list(errors), status_code=400 if errors else 200)
 
 

@@ -1,6 +1,7 @@
 """Zentrale Konfiguration über Umgebungsvariablen (bzw. eine lokale .env-Datei)."""
 
 import logging
+import os
 import secrets
 from functools import lru_cache
 from pathlib import Path
@@ -48,6 +49,10 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     s = Settings()
+    if os.environ.get("VERCEL") and s.sqlalchemy_url.startswith("sqlite"):
+        # Auf Vercel ist das Dateisystem nicht dauerhaft - mit SQLite wären alle Daten beim nächsten Deploy weg.
+        raise RuntimeError("DATABASE_URL ist nicht gesetzt. Auf Vercel muss eine Postgres-Datenbank (z.B. Neon) "
+                           "konfiguriert sein, sonst gehen Daten verloren.")
     if not s.secret_key:
         log.warning("SECRET_KEY ist nicht gesetzt - verwende zufälligen Schlüssel (Logins überleben keinen Neustart).")
         s.secret_key = secrets.token_urlsafe(32)

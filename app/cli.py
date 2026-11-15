@@ -5,21 +5,27 @@
     python -m app.cli create-user olli --admin        # fragt nach dem Passwort
     python -m app.cli import-legacy-users sqlite:///alt.db   # User aus der alten Version übernehmen
     python -m app.cli check-rules wm2027              # rules.toml prüfen
+    python -m app.cli backup                          # Komplett-Backup der aktiven Saison als JSON
+    python -m app.cli restore-backup backup.json      # Backup in eine (neue) Datenbank einspielen
 
 Gegen die Produktionsdatenbank: vorher DATABASE_URL setzen (bzw. in .env eintragen).
 """
 
 import argparse
 import getpass
+import json
 import sys
+from datetime import date
 
 from sqlalchemy import create_engine, func, select, text
 
 from . import models
 from .auth import hash_password
 from .db import SessionLocal, create_tables
+from .backup import export_backup, restore_backup
 from .rules import load_rules
-from .season import import_season
+from .season import get_season, import_season
+from .settings import get_settings
 
 
 def cmd_import_season(args):
@@ -63,6 +69,26 @@ def cmd_check_rules(args):
     print(f"OK: {r.name} - {r.tournament.num_rounds} Runden, Budget {r.team.budget}, {len(r.scoring.stats)} Stats")
 
 
+def cmd_backup(args):
+    key = args.season or get_settings().season
+    with SessionLocal() as db:
+        data = export_backup(db, get_season(db, key))
+    out = args.out or f"fantasy-darts_backup_{key}_{date.today().isoformat()}.json"
+    with open(out, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=1)
+    print(f"Backup geschrieben: {out} ({len(data['teams'])} Teams, "
+          f"{sum(1 for m in data['matches'] if m['winner_id'])} Ergebnisse, {len(data['users'])} User)")
+
+
+def cmd_restore_backup(args):
+    create_tables()
+    with open(args.file, encoding="utf-8") as f:
+        data = json.load(f)
+    with SessionLocal() as db:
+        season = restore_backup(db, data)
+    print(f"Saison '{season.key}' wiederhergestellt: {len(data['teams'])} Teams, {len(data['users'])} User.")
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="python -m app.cli")
     sub = p.add_subparsers(required=True)
@@ -86,10 +112,19 @@ def main(argv=None):
     s.add_argument("key")
     s.set_defaults(func=cmd_check_rules)
 
+    s = sub.add_parser("backup")
+    s.add_argument("--season", help="Saison-Key (Standard: aktive Saison)")
+    s.add_argument("--out", help="Zieldatei")
+    s.set_defaults(func=cmd_backup)
+
+    s = sub.add_parser("restore-backup")
+    s.add_argument("file")
+    s.set_defaults(func=cmd_restore_backup)
+
     args = p.parse_args(argv)
     try:
         args.func(args)
-    except ValueError as e:
+    except (ValueError, OSError) as e:
         sys.exit(f"Fehler: {e}")
 
 

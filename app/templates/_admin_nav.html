@@ -1,0 +1,6 @@
+<h1>Admin</h1>
+<nav class="round-tabs admin-tabs" aria-label="Admin">
+  {% for href, label in [("/admin", "Overview"), ("/admin/users", "Users"), ("/admin/schedule", "Schedule"), ("/admin/players", "Players"), ("/admin/rules", "Rules & points")] %}
+    <a href="{{ href }}" {% if path == href or (href != "/admin" and path.startswith(href)) %}aria-current="page"{% endif %}>{{ label }}</a>
+  {% endfor %}
+</nav>

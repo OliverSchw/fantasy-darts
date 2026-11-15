@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Admin{% endblock %}
 {% block content %}
-<h1>Admin</h1>
+{% include "_admin_nav.html" %}
 
 <article>
-  <h3>Team lock</h3>
+  <h3>🔒 Team lock</h3>
   <form method="post" action="/admin/lock">
     <label>
       <input type="checkbox" role="switch" name="locked" value="true" {% if state.season.teams_locked %}checked{% endif %} onchange="this.form.submit()">
@@ -12,51 +12,47 @@
     </label>
     <noscript><button type="submit">Save</button></noscript>
   </form>
-  {% if rules.lock_at %}<p class="muted">Automatic lock: {{ rules.lock_at.strftime("%d.%m.%Y %H:%M %Z") }} (set in rules.toml)</p>{% endif %}
+  {% if rules.lock_at %}<p class="muted">Automatic lock: {{ rules.lock_at.strftime("%d.%m.%Y %H:%M") }} – change it under <a href="/admin/rules">Rules &amp; points</a>.</p>{% endif %}
   <p class="muted">Results are entered in the <a href="/bracket">bracket</a> – tap a match.</p>
 </article>
 
 <article>
-  <h3>New user</h3>
-  {% if invite_enabled %}
-    <p class="muted">Self-registration is on. Share this link: <code>{{ request.base_url }}register?code={{ invite_code }}</code></p>
+  <h3>✉️ Invite code</h3>
+  {% if invite_code %}
+    {% set link = request.base_url ~ "register?code=" ~ invite_code %}
+    <p>Self-registration is <strong>on</strong>. Send this link to your players – they pick their own username and password:</p>
+    <div class="copy-row" x-data="{ copied: false }">
+      <input type="text" readonly value="{{ link }}" @focus="$el.select()" aria-label="Invite link">
+      <button type="button" class="small" @click="navigator.clipboard.writeText($el.previousElementSibling.value); copied = true; setTimeout(() => copied = false, 1500)" x-text="copied ? 'Copied ✓' : 'Copy'">Copy</button>
+    </div>
+    <p class="muted">Code: <code>{{ invite_code }}</code>{% if invite_from_env %} (from the INVITE_CODE environment variable){% endif %}</p>
   {% else %}
-    <p class="muted">Tip: set <code>INVITE_CODE</code> in the environment to let people register themselves.</p>
+    <p>Self-registration is <strong>off</strong> – only admins can create users (under <a href="/admin/users">Users</a>).</p>
   {% endif %}
-  <form method="post" action="/admin/users" class="grid-form">
-    <input name="username" placeholder="Username" autocapitalize="none" required>
-    <input name="password" type="text" placeholder="Start password (min. 6)" minlength="6" required>
-    <label><input type="checkbox" name="is_admin" value="true"> Admin</label>
-    <button type="submit">Create</button>
+  <form method="post" action="/admin/invite" class="grid-form invite-form">
+    <input name="code" placeholder="Own code, e.g. bullseye26" maxlength="40" autocapitalize="none">
+    <button name="action" value="set" class="outline small">Set code</button>
+    <button name="action" value="generate" class="outline small">{{ "New random code" if invite_code else "Turn on (random code)" }}</button>
+    {% if invite_code and not invite_from_env %}<button name="action" value="disable" class="outline secondary small">Turn off</button>{% endif %}
   </form>
 </article>
 
 <article>
-  <h3>Users ({{ users|length }})</h3>
-  {% for u in users %}
-    <details class="user-row">
-      <summary>
-        <strong>{{ u.username }}</strong>
-        {% if u.is_admin %}<mark class="badge">Admin</mark>{% endif %}
-        <small class="muted">{{ team_counts.get(u.id, 0) }} team(s)</small>
-      </summary>
-      <div class="user-actions" x-data="{ sure: false }">
-        <form method="post" action="/admin/users/{{ u.id }}/password" class="inline">
-          <input name="password" type="text" placeholder="New password" minlength="6" required>
-          <button class="outline small">Set password</button>
-        </form>
-        {% if u.id != user.id %}
-          <form method="post" action="/admin/users/{{ u.id }}/admin" class="inline">
-            <button class="outline small">{{ "Remove admin" if u.is_admin else "Make admin" }}</button>
-          </form>
-          <button type="button" class="outline secondary small" x-show="!sure" @click="sure = true">Delete…</button>
-          <form method="post" action="/admin/users/{{ u.id }}/delete" class="inline" x-show="sure" x-cloak>
-            <button class="danger small">Delete {{ u.username }} and all teams</button>
-          </form>
-        {% endif %}
-      </div>
-    </details>
-  {% endfor %}
+  <h3>⚙️ Rules</h3>
+  <p class="muted">{% if rules_custom %}Rules were changed in the admin area.{% else %}Using the default rules from the season file.{% endif %}
+    <a href="/admin/rules">Edit rules &amp; points →</a></p>
+</article>
+
+<article>
+  <h3>💾 Export &amp; backup</h3>
+  <div class="btn-row left">
+    <a href="/admin/export/teams" role="button" class="outline small" download>Teams (CSV)</a>
+    <a href="/admin/export/results" role="button" class="outline small" download>Results (CSV)</a>
+    <a href="/admin/export/players" role="button" class="outline small" download>Players (CSV)</a>
+    <a href="/admin/export/backup" role="button" class="small" download>Full backup (JSON)</a>
+  </div>
+  <p class="muted">CSV files open directly in Excel. The full backup can be restored into a new database with
+    <code>python -m app.cli restore-backup &lt;file&gt;</code>. It contains password hashes – keep it private.</p>
 </article>
 {% endblock %}
 {% block scripts %}<script defer src="/static/vendor/alpine.min.js"></script>{% endblock %}

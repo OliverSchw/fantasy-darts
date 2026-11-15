@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% from "_macros.html" import flag %}
+{% block title %}Admin · {{ p.name if p else "New player" }}{% endblock %}
+{% block content %}
+{% include "_admin_nav.html" %}
+
+<h3>{% if p %}{{ flag(p.nation) }} {{ p.name }}{% else %}New player{% endif %}</h3>
+{% if errors %}<div class="flash error" role="alert"><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+
+<form method="post" action="{{ '/admin/players/' ~ p.id if p else '/admin/players/new' }}">
+  <label>Name <input name="name" value="{{ data.name }}" maxlength="80" required></label>
+  <label>Nation
+    <input name="nation" value="{{ data.nation }}" list="nations" placeholder="e.g. England">
+    <small>Pick from the list to get a flag.</small>
+  </label>
+  <datalist id="nations">{% for n in nations %}<option value="{{ n }}">{% endfor %}</datalist>
+  <div class="grid">
+    <label>Price (M) <input name="price" value="{{ data.price }}" inputmode="decimal" required {% if p and state.locked %}readonly{% endif %}></label>
+    <label>Seed <input name="seed" value="{{ data.seed or '' }}" inputmode="numeric" placeholder="none"></label>
+  </div>
+  {% if p and state.locked %}<p class="muted">Teams are locked, so the price can't be changed.</p>{% endif %}
+  <button type="submit">{{ "Save" if p else "Create player" }}</button>
+  <a href="/admin/players" class="secondary">Cancel</a>
+</form>
+
+{% if p %}
+  <article>
+    <h3>Replace in the draw</h3>
+    {% if not r1 %}
+      <p class="muted">{{ p.name }} is not in the draw.</p>
+    {% elif r1.is_played %}
+      <p class="muted">The first-round match already has a result – no replacement possible.</p>
+    {% elif not replacements %}
+      <p class="muted">For a late replacement, first <a href="/admin/players/new">create the new player</a>, then come back here.</p>
+    {% else %}
+      <p class="muted">For a withdrawal: the chosen player takes over {{ p.name }}'s first-round spot.
+        {% if n_teams %}<strong>{{ n_teams }} team(s)</strong> have {{ p.name }} – they keep them and get no further points.{% endif %}</p>
+      <form method="post" action="/admin/players/{{ p.id }}/replace" class="grid-form replace-form">
+        <select name="replacement_id" required>
+          <option value="">– replacement player –</option>
+          {% for x in replacements %}<option value="{{ x.id }}">{{ x.name }} ({{ x.price | price }})</option>{% endfor %}
+        </select>
+        <button class="outline small">Replace</button>
+      </form>
+    {% endif %}
+  </article>
+{% endif %}
+{% endblock %}

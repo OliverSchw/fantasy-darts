@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import move, player_name %}
+{% from "_macros.html" import move, player_name, bracket_side %}
 {% block title %}Ranking{% endblock %}
 {% block content %}
 <div class="title-row">
@@ -42,6 +42,27 @@
   {% if not state.locked %}<p class="muted">Other teams become visible once teams are locked.</p>{% endif %}
 {% endif %}
 
+{% set nxt = state.next_matchday() %}
+{% if nxt %}
+  {% set d, ms = nxt %}
+  {% set open_ms = ms | rejectattr("is_played") | list %}
+  {% if open_ms %}
+    <h3>{{ "Today" if d == today else d | day }}</h3>
+    <ul class="sched compact">
+      {% for m in open_ms[:8] %}
+        <li>
+          <span class="t">{{ m.scheduled_at | hm }}<small>{{ rules.tournament.round_names[m.round - 1] }}</small></span>
+          <div class="tmatch">
+            {{ bracket_side(state.bracket.side(m, 0), state.players, state.my_player_ids) }}
+            {{ bracket_side(state.bracket.side(m, 1), state.players, state.my_player_ids) }}
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+    <a href="/schedule" class="small-link">Full schedule{% if open_ms|length > 8 %} (+{{ open_ms|length - 8 }} more){% endif %} →</a>
+  {% endif %}
+{% endif %}
+
 {% if latest %}
   <h3>Latest results</h3>
   <ul class="results">
@@ -56,4 +77,5 @@
   </ul>
   <a href="/bracket" class="small-link">Full bracket →</a>
 {% endif %}
+<p class="muted rules-link"><a href="/rules">📖 How points work</a></p>
 {% endblock %}

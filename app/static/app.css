@@ -366,3 +366,79 @@ table.cmp3 .better { font-weight: 800; color: var(--fd-green); }
 .cmp-list .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .cmp-list .pts { font-weight: 700; font-variant-numeric: tabular-nums; }
 .cmp-list mark.role, table.cmp3 mark.role { font-size: 0.6rem; padding: 0 0.3rem; margin-left: 0.15rem; }
+
+/* --- Team-Builder: Auslosungs-Ansicht --------------------------------- */
+.view-toggle { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.7rem; }
+.view-toggle button { width: auto; margin: 0; padding: 0.35rem 0.9rem; font-size: 0.85rem; background: transparent; color: #2b3a33; border: 1px solid #c9d3cd; }
+.view-toggle button.active { background: var(--pico-primary); border-color: var(--pico-primary); color: #fff; }
+.view-toggle .small-link { margin-left: auto; }
+button.pick .sec { font-size: 0.68rem; color: var(--pico-muted-color); white-space: nowrap; }
+.draw { max-height: 65vh; overflow-y: auto; border: 1px solid var(--pico-muted-border-color); border-radius: var(--pico-border-radius); padding: 0.5rem; }
+.draw .legend { margin: 0 0 0.4rem; }
+.draw-sec { margin-bottom: 0.9rem; }
+.draw-head { display: flex; justify-content: space-between; align-items: baseline; position: sticky; top: -0.5rem; background: var(--pico-background-color); padding: 0.3rem 0.1rem; z-index: 1; }
+.draw-head small { color: var(--fd-gold); font-weight: 700; }
+.draw-match { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--pico-muted-border-color); border-radius: 6px; overflow: hidden; margin-top: 0.2rem; }
+.draw-match.gap-r2 { margin-top: 0.45rem; }
+.draw-match.gap-r3 { margin-top: 0.9rem; }
+.draw-match button.pick.compact { min-height: 2.4rem; padding: 0.35rem 0.5rem; gap: 0.35rem; font-size: 0.8rem; }
+.draw-match button.pick.compact + button.pick.compact { border-left: 1px solid var(--pico-muted-border-color); }
+.draw-match button.pick.compact .pr { font-size: 0.75rem; }
+.draw-check { margin-top: 0.8rem; padding: 0.6rem 0.8rem; border-radius: var(--pico-border-radius); background: var(--pico-card-sectioning-background-color); font-size: 0.88rem; }
+.draw-check p { margin: 0.2rem 0 0; }
+.draw-check ul { list-style: none; padding: 0; margin: 0.3rem 0 0; }
+.draw-check li { list-style: none; display: flex; gap: 0.5rem; padding: 0.15rem 0; margin: 0; }
+.draw-check .rnd { flex: none; min-width: 6.5rem; font-weight: 700; font-size: 0.78rem; }
+.draw-check li.r1 .rnd { color: var(--fd-red); }
+.draw-check li.r2 .rnd { color: #c76a00; }
+.btn-row.left { justify-content: flex-start; margin-bottom: 0.6rem; }
+
+/* --- Admin: Unterseiten, Einladung, Spieler, Regeln ------------------- */
+.admin-tabs { margin-bottom: 1rem; }
+.copy-row { display: flex; gap: 0.4rem; align-items: center; margin-bottom: 0.4rem; }
+.copy-row input { margin: 0; font-size: 0.85rem; }
+.copy-row button { width: auto; margin: 0; flex: none; }
+@media (min-width: 640px) { .invite-form { grid-template-columns: 1fr auto auto auto; } }
+.invite-form button { width: auto; }
+.replace-form { grid-template-columns: 1fr auto; }
+.replace-form > * { margin: 0; }
+.rules-form fieldset { border: 0; padding: 0; margin: 0; }
+.rules-form article { padding: 0.9rem 1rem; }
+.rules-form h3 { font-size: 1.05rem; margin-bottom: 0.6rem; }
+.rules-form h4 { font-size: 0.95rem; margin: 0.6rem 0 0.4rem; }
+.rules-form label { font-size: 0.88rem; }
+.rules-form input { margin-bottom: 0.6rem; }
+.grid2, .grid3 { display: grid; gap: 0 0.6rem; grid-template-columns: 1fr; }
+@media (min-width: 560px) { .grid2 { grid-template-columns: 1fr 1fr; } .grid3 { grid-template-columns: 1fr 1fr 1fr; } }
+.role-grid { display: grid; grid-template-columns: 1.8rem 1.4fr 1fr 0.8fr; gap: 0.3rem 0.4rem; align-items: center; margin-bottom: 0.6rem; }
+.role-grid input { margin: 0; }
+.role-grid small { font-size: 0.72rem; }
+.role-tag { text-align: center; }
+.stat-edit { display: grid; grid-template-columns: 1fr 5rem 5.5rem; gap: 0.4rem; align-items: center; margin-bottom: 0.35rem; }
+.stat-edit input { margin: 0; }
+.stat-edit .del { font-size: 0.78rem; margin: 0; white-space: nowrap; }
+.rounds-table input { margin: 0; padding: 0.35rem 0.5rem; }
+.rounds-table td:not(:first-child) input { width: 5rem; text-align: center; margin-left: auto; display: block; }
+.reset-form { margin-top: 1rem; }
+form + article { margin-top: 1.5rem; }
+
+/* --- Spielplan -------------------------------------------------------- */
+.sched-day h3 { font-size: 1rem; margin: 1.2rem 0 0.5rem; position: sticky; top: calc(2.9rem + env(safe-area-inset-top, 0px)); background: var(--pico-background-color); padding: 0.3rem 0; z-index: 2; }
+.sched { list-style: none; padding: 0; margin: 0 0 0.6rem; }
+.sched li { list-style: none; display: grid; grid-template-columns: 3.6rem 1fr; gap: 0.6rem; align-items: center; margin: 0 0 0.45rem; }
+.sched li.played { opacity: 0.75; }
+.sched .t { font-weight: 700; font-variant-numeric: tabular-nums; display: flex; flex-direction: column; line-height: 1.2; }
+.sched .t small { font-weight: 400; font-size: 0.65rem; }
+.sched .bside { font-size: 0.85rem; }
+.sched.compact .bside { font-size: 0.8rem; min-height: 1.5rem; }
+.sched.admin li { grid-template-columns: 1fr 12.5rem; }
+.sched.admin .time-input { margin: 0; padding: 0.35rem 0.5rem; font-size: 0.85rem; }
+@media (max-width: 520px) { .sched.admin li { grid-template-columns: 1fr; gap: 0.25rem; margin-bottom: 0.9rem; } }
+.ttime { font-size: 0.68rem; color: var(--pico-muted-color); padding: 0.1rem 0.45rem 0.2rem; border-top: 1px dashed var(--pico-muted-border-color); }
+.fill-helper { margin-bottom: 1rem; }
+.fill-helper summary { font-size: 0.9rem; }
+.fill-form { grid-template-columns: 1fr; margin-top: 0.5rem; }
+@media (min-width: 640px) { .fill-form { grid-template-columns: 1fr 9rem auto; align-items: end; } }
+.fill-form button { width: auto; }
+.title-row .view-toggle a { margin: 0; width: auto; }
+.rules-link { margin-top: 1.5rem; }
