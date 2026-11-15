@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% from "_macros.html" import player_name %}
+{% block title %}Result{% endblock %}
+{% block content %}
+{% set target = rules.tournament.sets_to_win[m.round - 1] %}
+<hgroup>
+  <h1>{{ rules.tournament.round_names[m.round - 1] }}</h1>
+  <p>First to {{ target }} sets</p>
+</hgroup>
+
+<form method="post" class="result-form">
+  <div class="result-grid">
+    <div></div>
+    <div class="hdr">{{ player_name(state.players[m.p1_id]) }}</div>
+    <div class="hdr">{{ player_name(state.players[m.p2_id]) }}</div>
+
+    <label for="sets_p1">Sets</label>
+    <input id="sets_p1" name="sets_p1" type="number" inputmode="numeric" min="0" max="{{ target }}" value="{{ m.sets_p1 }}" required>
+    <input name="sets_p2" type="number" inputmode="numeric" min="0" max="{{ target }}" value="{{ m.sets_p2 }}" required aria-label="Sets player 2">
+
+    {% for stat in rules.scoring.stats %}
+      <label for="p1_{{ stat.key }}">{{ stat.label }} <small>({{ stat.points | pts }} pts)</small></label>
+      <input id="p1_{{ stat.key }}" name="p1_{{ stat.key }}" type="number" inputmode="numeric" min="0" value="{{ (m.stats_p1 or {}).get(stat.key, 0) }}">
+      <input name="p2_{{ stat.key }}" type="number" inputmode="numeric" min="0" value="{{ (m.stats_p2 or {}).get(stat.key, 0) }}" aria-label="{{ stat.label }} player 2">
+    {% endfor %}
+  </div>
+  <button type="submit">Save result</button>
+</form>
+
+{% if m.is_played %}
+  <form method="post" action="/bracket/match/{{ m.id }}/delete" x-data="{ sure: false }">
+    <button type="button" class="secondary outline" x-show="!sure" @click="sure = true">Delete result…</button>
+    <button type="submit" class="danger" x-show="sure" x-cloak>Really delete this result</button>
+  </form>
+{% endif %}
+<a href="/bracket?round={{ m.round }}">← Back to bracket</a>
+{% endblock %}
+{% block scripts %}<script defer src="/static/vendor/alpine.min.js"></script>{% endblock %}

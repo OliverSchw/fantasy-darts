@@ -1,0 +1,42 @@
+{% macro flag(nation) -%}
+  {%- set code = flag_code(nation) -%}
+  {%- if code -%}<img class="flag" src="/static/flags/{{ code }}.svg" alt="{{ nation }}" title="{{ nation }}" loading="lazy">{%- endif -%}
+{%- endmacro %}
+
+{% macro surname(p) -%}{{ p.name.split(" ", 1)[-1] }}{%- endmacro %}
+
+{# Spielername mit Flagge, Seed, Status-Farbe; verlinkt auf die Spielerseite #}
+{% macro player_name(p, score=None, link=True, mine=False) -%}
+  {%- set cls = "champ" if score and score.is_champion else ("out" if score and score.eliminated else "") -%}
+  <span class="pname {{ cls }}{% if mine %} mine{% endif %}">
+    {{- flag(p.nation) }} {% if link %}<a href="/players/{{ p.id }}">{{ p.name }}</a>{% else %}{{ p.name }}{% endif %}
+    {%- if p.seed and p.seed <= 32 %} <small class="seed">({{ p.seed }})</small>{% endif %}
+    {%- if score and score.is_champion %} 🏆{% endif -%}
+  </span>
+{%- endmacro %}
+
+{# Eine Seite eines Matches im Turnierbaum: Spieler, mögliche Gegner ("A / B") oder TBD #}
+{% macro bracket_side(side, players, mine_ids, link=True) -%}
+  {%- if side.pid -%}
+    {%- set p = players[side.pid] -%}
+    <div class="bside {% if side.won %}win{% elif side.lost %}lose{% endif %} {% if side.pid in mine_ids %}mine{% endif %}">
+      <span class="bn">{{ flag(p.nation) }} {% if link %}<a href="/players/{{ p.id }}">{{ p.name }}</a>{% else %}{{ p.name }}{% endif %}{% if p.seed and p.seed <= 32 %} <small class="seed">{{ p.seed }}</small>{% endif %}</span>
+      <span class="sets">{% if side.won or side.lost %}{{ side.sets }}{% endif %}</span>
+    </div>
+  {%- elif side.candidates -%}
+    {%- set a = players[side.candidates[0]] -%}{%- set b = players[side.candidates[1]] -%}
+    <div class="bside maybe {% if a.id in mine_ids or b.id in mine_ids %}mine{% endif %}" title="Winner of {{ a.name }} vs {{ b.name }}">
+      <span class="bn">{{ surname(a) }} / {{ surname(b) }}</span>
+    </div>
+  {%- else -%}
+    <div class="bside tbd"><span class="bn">TBD</span></div>
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro move(n) -%}
+  {%- if n is none -%}
+  {%- elif n > 0 -%}<span class="move up" title="up {{ n }} since last matchday">▲{{ n }}</span>
+  {%- elif n < 0 -%}<span class="move down" title="down {{ -n }} since last matchday">▼{{ -n }}</span>
+  {%- else -%}<span class="move same" title="no change">–</span>
+  {%- endif -%}
+{%- endmacro %}

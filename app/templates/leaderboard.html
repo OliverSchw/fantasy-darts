@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% from "_macros.html" import move, player_name %}
+{% block title %}Ranking{% endblock %}
+{% block content %}
+<div class="title-row">
+  <hgroup>
+    <h1>Ranking</h1>
+    <p>{{ rules.name }}</p>
+  </hgroup>
+  {% if state.locked %}
+    <div class="btn-row">
+      <a href="/insights" role="button" class="outline small">📊 Insights</a>
+      <a href="/compare" role="button" class="outline small">⚖️ Compare</a>
+    </div>
+  {% endif %}
+</div>
+
+{% if user and not state.my_team and not state.locked %}
+  <article class="cta">
+    <p>You don't have an active team yet.</p>
+    <a href="/my/new" role="button">Build your team</a>
+  </article>
+{% endif %}
+
+{% if not rows %}
+  <article class="empty"><p>No teams yet.</p></article>
+{% else %}
+  <ol class="ranking">
+    {% for r in rows %}
+      {% set t = r.team %}
+      {% set mine = user and t.user_id == user.id %}
+      <li class="{% if mine %}mine{% endif %} {% if r.rank <= 3 %}top{{ r.rank }}{% endif %}">
+        <span class="rank">{{ r.rank }}</span>
+        <span class="who">
+          {% if state.can_view_team(t) %}<a href="/teams/{{ t.id }}">{{ t.name }}</a>{% else %}{{ t.name }}{% endif %}
+          <small>{{ t.user.username }} · {{ r.alive }}/{{ rules.team.squad_size }} still in</small>
+        </span>
+        <span class="pts">{{ r.points | pts }}{{ move(r.get("move")) }}</span>
+      </li>
+    {% endfor %}
+  </ol>
+  {% if not state.locked %}<p class="muted">Other teams become visible once teams are locked.</p>{% endif %}
+{% endif %}
+
+{% if latest %}
+  <h3>Latest results</h3>
+  <ul class="results">
+    {% for m in latest %}
+      {% set w = m.winner_id %}{% set l = m.p2_id if w == m.p1_id else m.p1_id %}
+      {% set ws = m.sets_p1 if w == m.p1_id else m.sets_p2 %}{% set ls = m.sets_p2 if w == m.p1_id else m.sets_p1 %}
+      <li class="{% if w in state.my_player_ids or l in state.my_player_ids %}mine{% endif %}">
+        <small>{{ rules.tournament.round_names[m.round - 1] }}</small>
+        <span>{{ player_name(state.players[w]) }} <strong>{{ ws }}–{{ ls }}</strong> {{ player_name(state.players[l]) }}</span>
+      </li>
+    {% endfor %}
+  </ul>
+  <a href="/bracket" class="small-link">Full bracket →</a>
+{% endif %}
+{% endblock %}

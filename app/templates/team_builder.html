@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}{{ "Edit team" if team else "New team" }}{% endblock %}
+{% block content %}
+{% set t = rules.team %}
+<h1>{{ "Edit team" if team else "New team" }}</h1>
+
+{% if errors %}
+  <div class="flash error" role="alert"><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+{% endif %}
+
+<form method="post" x-data="teamBuilder" @submit="submitting = true" class="builder">
+  <div class="summary" :class="{ over: remaining < -0.001 }">
+    <div><strong x-text="selected.length"></strong>/{{ t.squad_size }} players</div>
+    <div><strong x-text="remaining.toFixed(1)"></strong> M left</div>
+    <progress :value="Math.min(spent, budget)" max="{{ t.budget }}"></progress>
+  </div>
+
+  <!-- 1. Spieler -->
+  <section>
+    <h3>1 · Pick {{ t.squad_size }} players</h3>
+    <div class="filters">
+      <input type="search" placeholder="Search player or nation…" x-model="q" aria-label="Search">
+      <select x-model="sort" aria-label="Sort">
+        <option value="price_desc">Price ↓</option>
+        <option value="price_asc">Price ↑</option>
+        <option value="name">Name</option>
+      </select>
+      <label class="only-sel"><input type="checkbox" x-model="onlySelected"> Selected only</label>
+    </div>
+    <ul class="pick-list">
+      <template x-for="p in visible" :key="p.id">
+        <li>
+          <button type="button" class="pick" :class="{ on: isSel(p.id) }" :disabled="!isSel(p.id) && !canAdd(p)" @click="toggle(p.id)">
+            <span class="check" x-text="isSel(p.id) ? '✓' : '+'"></span>
+            <img class="flag" :src="p.flag ? '/static/flags/' + p.flag + '.svg' : ''" x-show="p.flag" alt="">
+            <span class="nm" x-text="p.name"></span>
+            <small class="seed" x-show="p.seed && p.seed <= 32" x-text="'(' + p.seed + ')'"></small>
+            <span class="pr" x-text="p.price.toFixed(1)"></span>
+          </button>
+        </li>
+      </template>
+    </ul>
+  </section>
+
+  <!-- 2. Rollen -->
+  <section>
+    <h3>2 · Roles</h3>
+    <label>{{ t.playmaker.label }} <small>(≤ {{ t.playmaker.max_price | price }} M, ×{{ t.playmaker.multiplier | pts }})</small>
+      <select name="playmaker_id" x-model.number="playmaker" required>
+        <option value="">– choose from your team –</option>
+        <template x-for="p in eligible({{ t.playmaker.max_price }})" :key="p.id">
+          <option :value="p.id" x-text="p.name + ' · ' + p.price.toFixed(1)" :selected="p.id === playmaker"></option>
+        </template>
+      </select>
+    </label>
+    <label>{{ t.underdog.label }} <small>(≤ {{ t.underdog.max_price | price }} M, ×{{ t.underdog.multiplier | pts }})</small>
+      <select name="underdog_id" x-model.number="underdog" required>
+        <option value="">– choose from your team –</option>
+        <template x-for="p in eligible({{ t.underdog.max_price }})" :key="p.id">
+          <option :value="p.id" x-text="p.name + ' · ' + p.price.toFixed(1)" :selected="p.id === underdog"></option>
+        </template>
+      </select>
+    </label>
+    <label>Champion pick <small>(any player, +{{ t.champion_pick.bonus | pts }} if they win)</small>
+      <select name="champion_pick_id" x-model.number="champion" required>
+        <option value="">– who wins the tournament? –</option>
+        <template x-for="p in byPrice" :key="p.id">
+          <option :value="p.id" x-text="p.name" :selected="p.id === champion"></option>
+        </template>
+      </select>
+    </label>
+  </section>
+
+  <!-- 3. Name -->
+  <section>
+    <h3>3 · Name</h3>
+    <input name="name" x-model="name" maxlength="40" placeholder="Team name" required>
+  </section>
+
+  <template x-for="id in selected" :key="id"><input type="hidden" name="player_ids" :value="id"></template>
+
+  <ul class="checklist">
+    <li :class="selected.length === squadSize ? 'ok' : ''">{{ t.squad_size }} players</li>
+    <li :class="remaining >= -0.001 ? 'ok' : 'bad'">Within budget</li>
+    <li :class="playmakerOk ? 'ok' : ''">{{ t.playmaker.label }}</li>
+    <li :class="underdogOk ? 'ok' : ''">{{ t.underdog.label }}</li>
+    <li :class="champion ? 'ok' : ''">Champion pick</li>
+  </ul>
+  <button type="submit" :disabled="!valid || submitting" :aria-busy="submitting">Save team</button>
+  <a href="/my" class="secondary">Cancel</a>
+</form>
+
+<script id="builder-data" type="application/json">{{ {"players": players_json, "initial": initial, "budget": t.budget, "squadSize": t.squad_size, "pmMax": t.playmaker.max_price, "udMax": t.underdog.max_price} | tojson }}</script>
+{% endblock %}
+{% block scripts %}
+<script src="/static/builder.js"></script>
+<script defer src="/static/vendor/alpine.min.js"></script>
+{% endblock %}

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{% block title %}Fantasy Darts{% endblock %} · Fantasy Darts</title>
+  <meta name="theme-color" content="#0f5132">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/static/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Fantasy Darts">
+  <link rel="stylesheet" href="/static/vendor/pico.min.css">
+  <link rel="stylesheet" href="/static/app.css">
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a href="/" class="brand"><img src="/static/icons/icon-192.png" alt="" width="28" height="28"> Fantasy Darts</a>
+      <nav class="topnav">
+        {% set items = [("/", "Ranking"), ("/my", "My Teams"), ("/bracket", "Bracket"), ("/players", "Players"), ("/insights", "Insights"), ("/rules", "Rules")] %}
+        {% for href, label in items %}
+          <a href="{{ href }}" {% if (href == "/" and path == "/") or (href != "/" and path.startswith(href)) %}aria-current="page"{% endif %}>{{ label }}</a>
+        {% endfor %}
+      </nav>
+      <div class="usermenu">
+        {% if user %}
+          <details class="dropdown">
+            <summary>{{ user.username }}</summary>
+            <ul dir="rtl">
+              <li><a href="/account">Account</a></li>
+              {% if user.is_admin %}<li><a href="/admin">Admin</a></li>{% endif %}
+              <li><form method="post" action="/logout"><button type="submit" class="linklike">Log out</button></form></li>
+            </ul>
+          </details>
+        {% else %}
+          <a href="/login" role="button" class="outline small">Log in</a>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    {% if state and state.locked %}
+      <p class="banner locked">🔒 Teams are locked{% if rules.lock_at and not state.season.teams_locked %} since {{ rules.lock_at.strftime("%d.%m. %H:%M") }}{% endif %}.</p>
+    {% elif state and rules.lock_at %}
+      <p class="banner">⏰ Teams lock on {{ rules.lock_at.strftime("%d.%m.%Y at %H:%M") }}.</p>
+    {% endif %}
+    {% for cat, msg in flashes %}
+      <p class="flash {{ cat }}" role="status">{{ msg }}</p>
+    {% endfor %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <nav class="tabbar" aria-label="Main">
+    {% set tabs = [("/", "🏆", "Ranking"), ("/my", "🧩", "My Teams"), ("/bracket", "📅", "Bracket"), ("/players", "🎯", "Players"), ("/rules", "📖", "Rules")] %}
+    {% for href, icon, label in tabs %}
+      <a href="{{ href }}" {% if (href == "/" and path == "/") or (href != "/" and path.startswith(href)) %}aria-current="page"{% endif %}>
+        <span class="ico">{{ icon }}</span><span>{{ label }}</span>
+      </a>
+    {% endfor %}
+  </nav>
+
+  <script>
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

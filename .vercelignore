@@ -1,0 +1,7 @@
+.venv
+venv_fd
+tests
+*.db
+.env
+.devcontainer
+players_2025_old.csv

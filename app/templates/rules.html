@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Rules{% endblock %}
+{% block content %}
+{% set t = rules.team %}
+{% set sc = rules.scoring %}
+<h1>Rules</h1>
+
+<article>
+  <h3>Your team</h3>
+  <ul>
+    <li>Pick exactly <strong>{{ t.squad_size }} players</strong> with a budget of <strong>{{ t.budget | price }} M</strong>.</li>
+    <li><strong>{{ t.playmaker.label }}</strong>: one of your players costing at most {{ t.playmaker.max_price | price }} M – scores <strong>×{{ t.playmaker.multiplier | pts }}</strong>.</li>
+    <li><strong>{{ t.underdog.label }}</strong>: one of your players costing at most {{ t.underdog.max_price | price }} M – scores <strong>×{{ t.underdog.multiplier | pts }}</strong>.</li>
+    <li>If the same player is both, the bonuses add up (×{{ (1 + t.playmaker.multiplier - 1 + t.underdog.multiplier - 1) | pts }}).</li>
+    <li><strong>Champion pick</strong>: any player of the tournament. If they win it all: <strong>+{{ t.champion_pick.bonus | pts }}</strong> points.</li>
+    <li>You can build up to {{ t.max_teams_per_user }} teams, but only your <strong>active team</strong> counts in the ranking.</li>
+    <li>Teams can be changed until they are locked{% if rules.lock_at %} ({{ rules.lock_at.strftime("%d.%m.%Y %H:%M") }}){% endif %}. After that everyone can see all teams.</li>
+  </ul>
+</article>
+
+<article>
+  <h3>Points per match</h3>
+  <div class="table-wrap">
+  <table class="compact">
+    <tbody>
+      {% if sc.per_set_won %}<tr><td>Every set won</td><td class="num">{{ sc.per_set_won | pts }}</td></tr>{% endif %}
+      {% if sc.per_set_margin_winner %}<tr><td>Winner: per set of difference (e.g. 3–1 → 2)</td><td class="num">{{ sc.per_set_margin_winner | pts }}</td></tr>{% endif %}
+      {% for stat in sc.stats %}<tr><td>{{ stat.label }} (each)</td><td class="num">{{ stat.points | pts }}</td></tr>{% endfor %}
+      {% for b in sc.round_win_bonus %}{% if b %}<tr><td>Winning the {{ rules.tournament.round_names[loop.index0] }}</td><td class="num">{{ b | pts }}</td></tr>{% endif %}{% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% set example_win = 3 * sc.per_set_won + 2 * sc.per_set_margin_winner %}
+  <p class="muted">Example: a 3–1 win scores {{ example_win | pts }} points for the winner and {{ sc.per_set_won | pts }} for the loser (plus stats).</p>
+</article>
+
+<article>
+  <h3>Tournament</h3>
+  <div class="table-wrap">
+  <table class="compact">
+    <thead><tr><th>Round</th><th class="num">First to</th></tr></thead>
+    <tbody>
+      {% for name in rules.tournament.round_names %}<tr><td>{{ name }}</td><td class="num">{{ rules.tournament.sets_to_win[loop.index0] }} sets</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+</article>
+{% endblock %}

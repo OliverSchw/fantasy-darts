@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Admin{% endblock %}
+{% block content %}
+<h1>Admin</h1>
+
+<article>
+  <h3>Team lock</h3>
+  <form method="post" action="/admin/lock">
+    <label>
+      <input type="checkbox" role="switch" name="locked" value="true" {% if state.season.teams_locked %}checked{% endif %} onchange="this.form.submit()">
+      Teams locked (manual)
+    </label>
+    <noscript><button type="submit">Save</button></noscript>
+  </form>
+  {% if rules.lock_at %}<p class="muted">Automatic lock: {{ rules.lock_at.strftime("%d.%m.%Y %H:%M %Z") }} (set in rules.toml)</p>{% endif %}
+  <p class="muted">Results are entered in the <a href="/bracket">bracket</a> – tap a match.</p>
+</article>
+
+<article>
+  <h3>New user</h3>
+  {% if invite_enabled %}
+    <p class="muted">Self-registration is on. Share this link: <code>{{ request.base_url }}register?code={{ invite_code }}</code></p>
+  {% else %}
+    <p class="muted">Tip: set <code>INVITE_CODE</code> in the environment to let people register themselves.</p>
+  {% endif %}
+  <form method="post" action="/admin/users" class="grid-form">
+    <input name="username" placeholder="Username" autocapitalize="none" required>
+    <input name="password" type="text" placeholder="Start password (min. 6)" minlength="6" required>
+    <label><input type="checkbox" name="is_admin" value="true"> Admin</label>
+    <button type="submit">Create</button>
+  </form>
+</article>
+
+<article>
+  <h3>Users ({{ users|length }})</h3>
+  {% for u in users %}
+    <details class="user-row">
+      <summary>
+        <strong>{{ u.username }}</strong>
+        {% if u.is_admin %}<mark class="badge">Admin</mark>{% endif %}
+        <small class="muted">{{ team_counts.get(u.id, 0) }} team(s)</small>
+      </summary>
+      <div class="user-actions" x-data="{ sure: false }">
+        <form method="post" action="/admin/users/{{ u.id }}/password" class="inline">
+          <input name="password" type="text" placeholder="New password" minlength="6" required>
+          <button class="outline small">Set password</button>
+        </form>
+        {% if u.id != user.id %}
+          <form method="post" action="/admin/users/{{ u.id }}/admin" class="inline">
+            <button class="outline small">{{ "Remove admin" if u.is_admin else "Make admin" }}</button>
+          </form>
+          <button type="button" class="outline secondary small" x-show="!sure" @click="sure = true">Delete…</button>
+          <form method="post" action="/admin/users/{{ u.id }}/delete" class="inline" x-show="sure" x-cloak>
+            <button class="danger small">Delete {{ u.username }} and all teams</button>
+          </form>
+        {% endif %}
+      </div>
+    </details>
+  {% endfor %}
+</article>
+{% endblock %}
+{% block scripts %}<script defer src="/static/vendor/alpine.min.js"></script>{% endblock %}

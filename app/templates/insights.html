@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% from "_macros.html" import player_name %}
+{% block title %}Insights{% endblock %}
+
+{% macro bar(count, total) -%}
+  {%- set pct = (100 * count / total) if total else 0 -%}
+  <span class="bar"><span style="width: {{ pct | round(1) }}%"></span></span><span class="pct">{{ pct | round | int }}%</span>
+{%- endmacro %}
+
+{% block content %}
+<hgroup>
+  <h1>Insights</h1>
+  <p>{{ n_teams }} active teams</p>
+</hgroup>
+
+<div class="insight-grid">
+  <article>
+    <h3>🏆 Champion picks</h3>
+    <ul class="bars">
+      {% for pid, n in champs %}
+        {% set p = state.players[pid] %}
+        <li><span class="lbl">{{ player_name(p, state.score(pid)) }}</span>{{ bar(n, n_teams) }}</li>
+      {% endfor %}
+    </ul>
+  </article>
+
+  <article>
+    <h3>👥 Most picked</h3>
+    <ul class="bars">
+      {% for pid, n in squads %}
+        <li><span class="lbl">{{ player_name(state.players[pid], state.score(pid)) }}</span>{{ bar(n, n_teams) }}</li>
+      {% endfor %}
+    </ul>
+  </article>
+
+  <article>
+    <h3>⭐ {{ rules.team.playmaker.label }}s</h3>
+    <ul class="bars">
+      {% for pid, n in pms %}<li><span class="lbl">{{ player_name(state.players[pid], state.score(pid)) }}</span>{{ bar(n, n_teams) }}</li>{% endfor %}
+    </ul>
+    <h3>🐕 {{ rules.team.underdog.label }}s</h3>
+    <ul class="bars">
+      {% for pid, n in uds %}<li><span class="lbl">{{ player_name(state.players[pid], state.score(pid)) }}</span>{{ bar(n, n_teams) }}</li>{% endfor %}
+    </ul>
+  </article>
+
+  <article>
+    <h3>🔥 Top scorers</h3>
+    {% if not top %}<p class="muted">No results yet.</p>{% endif %}
+    <ol class="plain">
+      {% for p in top %}<li>{{ player_name(p, state.score(p.id)) }} <span class="pts">{{ state.score(p.id).points | pts }}</span></li>{% endfor %}
+    </ol>
+  </article>
+
+  <article>
+    <h3>💰 Best value <small>(points per M)</small></h3>
+    {% if not value %}<p class="muted">No results yet.</p>{% endif %}
+    <ol class="plain">
+      {% for p in value %}<li>{{ player_name(p, state.score(p.id)) }} <span class="pts">{{ (state.score(p.id).points / p.price) | round(1) }}</span></li>{% endfor %}
+    </ol>
+  </article>
+
+  <article>
+    <h3>💪 Most players still in</h3>
+    <ol class="plain">
+      {% for t, n in teams_alive %}<li><a href="/teams/{{ t.id }}">{{ t.name }}</a> <span class="pts">{{ n }}/{{ rules.team.squad_size }}</span></li>{% endfor %}
+    </ol>
+    {% if never %}
+      <h3>🙈 Nobody picked them</h3>
+      <ol class="plain">
+        {% for p in never %}<li>{{ player_name(p, state.score(p.id)) }} <span class="pts">{{ state.score(p.id).points | pts }}</span></li>{% endfor %}
+      </ol>
+    {% endif %}
+  </article>
+</div>
+{% endblock %}

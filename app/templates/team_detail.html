@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% from "_macros.html" import player_name, flag, surname %}
+{% block title %}{{ team.name }}{% endblock %}
+{% block content %}
+<div class="title-row">
+  <hgroup>
+    <h1>{{ team.name }}</h1>
+    <p>by {{ team.user.username }}{% if not team.is_active %} · <em>not active</em>{% endif %}</p>
+  </hgroup>
+  {% if user %}
+    {% if state.my_team and state.my_team.id != team.id %}
+      <a href="/compare?a={{ state.my_team.id }}&b={{ team.id }}" role="button" class="outline small">⚖️ Compare</a>
+    {% else %}
+      <a href="/compare?a={{ team.id }}" role="button" class="outline small">⚖️ Compare</a>
+    {% endif %}
+  {% endif %}
+</div>
+
+<div class="stat-row three">
+  <div class="stat"><span>{{ score.total | pts }}</span><small>points</small></div>
+  <div class="stat"><span>{{ n_alive }}/{{ rules.team.squad_size }}</span><small>still in</small></div>
+  {% set pick = state.players[team.champion_pick_id] %}
+  <div class="stat"><span class="pick">{{ player_name(pick, state.score(pick.id)) }}</span><small>champion pick{% if score.champion_bonus %} · +{{ score.champion_bonus | pts }} ✅{% endif %}</small></div>
+</div>
+{% if overlap %}<p class="muted"><span class="dot"></span> {{ overlap | length }} player{{ "s" if overlap|length != 1 }} also in your team</p>{% endif %}
+
+<div class="table-wrap">
+<table class="striped compact">
+  <thead><tr><th>Player</th><th class="num">Price</th><th class="num">Points</th></tr></thead>
+  <tbody>
+    {% for line in score.lines %}
+      {% set p = state.players[line.player_id] %}
+      {% set st = state.status(p.id) %}
+      <tr>
+        <td>
+          {{ player_name(p, state.score(p.id), mine=p.id in overlap) }}
+          {% if p.id == team.playmaker_id %}<mark class="role pm">{{ rules.team.playmaker.label }}</mark>{% endif %}
+          {% if p.id == team.underdog_id %}<mark class="role ud">{{ rules.team.underdog.label }}</mark>{% endif %}
+          <br><small class="status">
+            {% if st.state == "champion" %}🏆 Champion
+            {% elif st.state == "out" %}out in {{ rules.tournament.round_names[st.round_no - 1] }}
+            {% elif st.state == "alive" and st.opponent %}
+              {{ rules.tournament.round_names[st.round_no - 1] }} vs
+              {% if st.opponent.pid %}{{ state.players[st.opponent.pid].name }}
+              {% elif st.opponent.candidates %}{{ surname(state.players[st.opponent.candidates[0]]) }} / {{ surname(state.players[st.opponent.candidates[1]]) }}
+              {% else %}TBD{% endif %}
+            {% endif %}
+          </small>
+        </td>
+        <td class="num">{{ p.price | price }}</td>
+        <td class="num"><strong>{{ line.points | pts }}</strong>{% if line.multiplier != 1 %}<br><small>{{ line.base_points | pts }} ×{{ line.multiplier | pts }}</small>{% endif %}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+<a href="/" class="secondary">← Back to ranking</a>
+{% endblock %}

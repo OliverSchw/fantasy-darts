@@ -1,0 +1,65 @@
+# =====================================================================
+#  Spielregeln für diese Saison
+#  Alles, was mit Budget, Rollen und Punkten zu tun hat, steht HIER.
+#  Änderungen wirken sofort (nach Neustart / Redeploy) und die Punkte
+#  werden immer live aus den gespeicherten Matches berechnet.
+# =====================================================================
+
+name = "PDC World Darts Championship 2026"
+
+# Optional: ab diesem Zeitpunkt sind Teams automatisch gesperrt
+# (zusätzlich kann der Admin jederzeit manuell sperren).
+# Format: ISO-8601 mit Zeitzone, z.B. "2025-12-11T19:00:00+01:00"
+# Leer lassen = nur manuelles Sperren.
+lock_at = ""
+
+[team]
+budget = 225.0              # Mio, die jedes Team ausgeben darf
+squad_size = 15             # genau so viele Spieler pro Team
+max_teams_per_user = 5      # wie viele Teams ein User anlegen darf (nur eins ist aktiv)
+
+[team.playmaker]
+label = "Playmaker"
+max_price = 35.0            # darf höchstens so viel kosten
+multiplier = 2              # Punkte werden mit diesem Faktor gewertet
+
+[team.underdog]
+label = "Underdog"
+max_price = 20.0
+multiplier = 2
+# Ist ein Spieler Playmaker UND Underdog, addieren sich die Boni:
+# 1 + (2-1) + (2-1) = x3
+
+[team.champion_pick]
+bonus = 50                  # Punkte, wenn der getippte Weltmeister gewinnt
+
+[tournament]
+# Eine Runde pro Eintrag, von der ersten bis zum Finale.
+# Die Anzahl muss zur Auslosung passen (64 Paarungen -> 7 Runden).
+round_names = ["Round 1", "Round 2", "Round 3", "Round 4", "Quarter-Finals", "Semi-Finals", "Final"]
+sets_to_win = [3, 3, 4, 4, 5, 6, 7]
+
+[scoring]
+per_set_won = 10            # jeder gewonnene Satz
+per_set_margin_winner = 10  # Sieger bekommt zusätzlich (Sätze gewonnen - verloren) x diesen Wert
+# Extra-Bonus für einen Sieg in der jeweiligen Runde (gleiche Reihenfolge wie round_names).
+# Hier: 100 Punkte für den Weltmeister.
+round_win_bonus = [0, 0, 0, 0, 0, 0, 100]
+
+# Statistiken, die beim Ergebnis-Eintragen pro Spieler gezählt werden.
+# Einfach Einträge hinzufügen/entfernen/Punkte ändern. "key" nie nachträglich
+# ändern, wenn schon Ergebnisse gespeichert sind.
+[[scoring.stats]]
+key = "s171"
+label = "171+ scores"
+points = 1
+
+[[scoring.stats]]
+key = "f161"
+label = "161+ checkouts"
+points = 5
+
+[[scoring.stats]]
+key = "ninedarter"
+label = "Nine-darters"
+points = 100

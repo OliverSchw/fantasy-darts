@@ -1,115 +1,125 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Boolean
-from sqlalchemy.orm import relationship
-from .database import Base
+"""Datenbankmodell.
+
+Wichtig: Punkte werden NICHT gespeichert. Sie werden immer aus den Matches und
+den Regeln (rules.toml) berechnet - dadurch kann nichts mehr "aus dem Takt" geraten.
+"""
+
+from datetime import datetime, timezone
+
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Index, Integer, String, UniqueConstraint, text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from .db import Base
 
 
-class Player(Base):
-    __tablename__ = "players"
-    id = Column(Integer, primary_key=True)
-    name = Column(String)
-    price = Column(Float)
-    nation = Column(String)
-    seed = Column(Integer, nullable=True)
-    points = Column(Float, default=0)
-    eliminated = Column(Boolean, default=False)
-    champion = Column(Boolean, default=False)
-
-    team_players = relationship("TeamPlayer", back_populates="player")
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 class User(Base):
     __tablename__ = "users"
-    id = Column(Integer, primary_key=True)
-    username = Column(String, unique=True)
-    password_hash = Column(String)
-    is_admin = Column(Boolean, default=False)
 
-    active_team_id = Column(
-        Integer, ForeignKey("teams.id", ondelete="SET NULL"), nullable=True, unique=True
-    )
-    active_team = relationship("Team", foreign_keys=[active_team_id], uselist=False)
-    teams = relationship(
-        "Team",
-        back_populates="user",
-        foreign_keys="[Team.user_id]",
-    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    username: Mapped[str] = mapped_column(String(40), unique=True)
+    password_hash: Mapped[str] = mapped_column(String(100))
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+    teams: Mapped[list["Team"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+
+
+class Season(Base):
+    """Eine Saison = ein Turnier. Die Regeln liegen in seasons/<key>/rules.toml."""
+
+    __tablename__ = "seasons"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    key: Mapped[str] = mapped_column(String(40), unique=True)
+    teams_locked: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class Player(Base):
+    __tablename__ = "players"
+    __table_args__ = (UniqueConstraint("season_id", "name"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    season_id: Mapped[int] = mapped_column(ForeignKey("seasons.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(80))
+    nation: Mapped[str] = mapped_column(String(60), default="")
+    price: Mapped[float] = mapped_column(Float)
+    seed: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+class Match(Base):
+    """Ein Match im Turnierbaum, adressiert über (round, slot).
+
+    round 1..N, slot 0..(Matches in der Runde - 1).
+    Der Sieger von (r, s) spielt in (r+1, s // 2), als p1 wenn s gerade ist, sonst p2.
+    """
+
+    __tablename__ = "matches"
+    __table_args__ = (UniqueConstraint("season_id", "round", "slot"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    season_id: Mapped[int] = mapped_column(ForeignKey("seasons.id", ondelete="CASCADE"), index=True)
+    round: Mapped[int] = mapped_column(Integer)
+    slot: Mapped[int] = mapped_column(Integer)
+
+    p1_id: Mapped[int | None] = mapped_column(ForeignKey("players.id"), nullable=True)
+    p2_id: Mapped[int | None] = mapped_column(ForeignKey("players.id"), nullable=True)
+    winner_id: Mapped[int | None] = mapped_column(ForeignKey("players.id"), nullable=True)
+
+    sets_p1: Mapped[int] = mapped_column(Integer, default=0)
+    sets_p2: Mapped[int] = mapped_column(Integer, default=0)
+    # Zusatzstatistiken als {stat_key: anzahl}. Welche Stats es gibt, steht in rules.toml.
+    stats_p1: Mapped[dict] = mapped_column(JSON, default=dict)
+    stats_p2: Mapped[dict] = mapped_column(JSON, default=dict)
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    p1: Mapped[Player | None] = relationship(foreign_keys=[p1_id])
+    p2: Mapped[Player | None] = relationship(foreign_keys=[p2_id])
+
+    @property
+    def is_played(self) -> bool:
+        return self.winner_id is not None
 
 
 class Team(Base):
     __tablename__ = "teams"
-    id = Column(Integer, primary_key=True)
-    name = Column(String)
-    points = Column(Float, default=0)
-    # user_id = Column(Integer, ForeignKey("users.id"))
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
-    user = relationship("User", back_populates="teams", foreign_keys=[user_id])
-    team_players = relationship(
-        "TeamPlayer",
-        back_populates="team",
-        # NEU: Kaskadiert die Löschung an die TeamPlayer-Einträge
-        cascade="all, delete-orphan",
+    __table_args__ = (
+        UniqueConstraint("season_id", "name"),
+        # Pro User und Saison darf höchstens ein Team aktiv sein.
+        Index(
+            "uq_one_active_team",
+            "season_id",
+            "user_id",
+            unique=True,
+            sqlite_where=text("is_active"),
+            postgresql_where=text("is_active"),
+        ),
     )
-    champion_id = Column(Integer, ForeignKey("players.id"))
-    team_champion_guess = relationship(
-        "Player", foreign_keys=[champion_id], uselist=False
-    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    season_id: Mapped[int] = mapped_column(ForeignKey("seasons.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(40))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    playmaker_id: Mapped[int] = mapped_column(ForeignKey("players.id"))
+    underdog_id: Mapped[int] = mapped_column(ForeignKey("players.id"))
+    champion_pick_id: Mapped[int] = mapped_column(ForeignKey("players.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+    user: Mapped[User] = relationship(back_populates="teams")
+    members: Mapped[list["TeamPlayer"]] = relationship(cascade="all, delete-orphan", lazy="selectin")
+
+    @property
+    def player_ids(self) -> list[int]:
+        return [m.player_id for m in self.members]
 
 
 class TeamPlayer(Base):
     __tablename__ = "team_players"
-    team_id = Column(Integer, ForeignKey("teams.id"), primary_key=True)
-    player_id = Column(Integer, ForeignKey("players.id"), primary_key=True)
-    is_captain = Column(Boolean, default=False)
-    is_underdog = Column(Boolean, default=False)
-    # champion = Column(Boolean, default=False)
 
-    team = relationship("Team", back_populates="team_players")
-    player = relationship("Player", back_populates="team_players")
-
-
-class Match(Base):
-    __tablename__ = "matches"
-
-    id = Column(Integer, primary_key=True, index=True)
-    match_id = Column(String, unique=True, index=True)
-    is_final = Column(Boolean, default=False)
-
-    # Nur IDs speichern
-    p1_id = Column(Integer, ForeignKey("players.id"), nullable=False)
-    p2_id = Column(Integer, ForeignKey("players.id"), nullable=False)
-    winner_id = Column(Integer, ForeignKey("players.id"), nullable=True)
-
-    # Stats
-    sets_p1 = Column(Integer, default=0)
-    sets_p2 = Column(Integer, default=0)
-    # legs_p1 = Column(Integer, default=0)
-    # legs_p2 = Column(Integer, default=0)
-    # average_p1 = Column(Float, default=0.0)
-    # average_p2 = Column(Float, default=0.0)
-    # checkout_pct_p1 = Column(Float, default=0.0)
-    # checkout_pct_p2 = Column(Float, default=0.0)
-    p161finishes_p1 = Column(Integer, default=0)
-    p161finishes_p2 = Column(Integer, default=0)
-    p171s_p1 = Column(Integer, default=0)
-    p171s_p2 = Column(Integer, default=0)
-    ninedarter_p1 = Column(Integer, default=0)
-    ninedarter_p2 = Column(Integer, default=0)
-
-
-class Config(Base):
-    """
-    Datenbankmodell für globale Konfigurationseinstellungen.
-    Wird verwendet, um den globalen 'teams_locked' Status zu speichern.
-    """
-
-    __tablename__ = "global_config"  # Der Name der Datenbanktabelle
-
-    # Muss ein Primary Key sein
-    id = Column(Integer, primary_key=True, index=True)
-
-    # Der Schlüssel der Einstellung (z.B. 'teams_locked')
-    key = Column(String, unique=True, index=True, nullable=False)
-
-    # Der Wert der Einstellung (Boolean ist ideal für True/False Status)
-    # Wenn Sie kompliziertere Werte speichern wollen, nutzen Sie String und JSON Serialisierung.
-    value = Column(Boolean, default=False, nullable=False)
+    team_id: Mapped[int] = mapped_column(ForeignKey("teams.id", ondelete="CASCADE"), primary_key=True)
+    player_id: Mapped[int] = mapped_column(ForeignKey("players.id"), primary_key=True)

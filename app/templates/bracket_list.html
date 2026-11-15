@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% from "_macros.html" import bracket_side %}
+{% block title %}Bracket{% endblock %}
+{% block content %}
+<div class="title-row">
+  <h1>Bracket</h1>
+  <a href="/bracket" class="small-link">Tree view</a>
+</div>
+<nav class="round-tabs" aria-label="Rounds">
+  {% for name in rules.tournament.round_names %}
+    {% set r = loop.index %}
+    <a href="/bracket?view=list&round={{ r }}" {% if r == rnd %}aria-current="page"{% endif %}>
+      {{ name }}<small>{{ played[r] or 0 }}/{{ rules.matches_in_round(r) }}</small>
+    </a>
+  {% endfor %}
+</nav>
+<p class="muted">Best of {{ rules.tournament.sets_to_win[rnd - 1] * 2 - 1 }} sets · first to {{ rules.tournament.sets_to_win[rnd - 1] }}</p>
+
+<div class="matches">
+  {% for mv in matches %}
+    {% set m = mv.match %}
+    {% set clickable = user and user.is_admin and m.p1_id and m.p2_id %}
+    <{{ "a" if clickable else "div" }} class="match tmatch {% if m.is_played %}played{% endif %}" {% if clickable %}href="/bracket/match/{{ m.id }}"{% endif %}>
+      {{ bracket_side(mv.sides[0], state.players, state.my_player_ids, link=not clickable) }}
+      {{ bracket_side(mv.sides[1], state.players, state.my_player_ids, link=not clickable) }}
+      {% if clickable %}<span class="edit-hint">{{ "Edit" if m.is_played else "Enter result" }} ›</span>{% endif %}
+    </{{ "a" if clickable else "div" }}>
+  {% endfor %}
+</div>
+{% endblock %}

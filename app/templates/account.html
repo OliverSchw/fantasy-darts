@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Account{% endblock %}
+{% block content %}
+<article class="narrow">
+  <h1>{{ user.username }}</h1>
+  <h3>Change password</h3>
+  <form method="post" action="/account/password">
+    <label>Current password <input name="current" type="password" autocomplete="current-password" required></label>
+    <label>New password <input name="new" type="password" autocomplete="new-password" minlength="6" required></label>
+    <label>Repeat new password <input name="repeat" type="password" autocomplete="new-password" minlength="6" required></label>
+    <button type="submit">Change password</button>
+  </form>
+  <form method="post" action="/logout"><button type="submit" class="secondary outline">Log out</button></form>
+</article>
+{% endblock %}

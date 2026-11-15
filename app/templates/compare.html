@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% from "_macros.html" import player_name, flag %}
+{% block title %}Compare{% endblock %}
+
+{% macro mult(team, pid) -%}
+  {%- if pid == team.playmaker_id %}<mark class="role pm" title="{{ rules.team.playmaker.label }}">{{ rules.team.playmaker.label[:1] }}</mark>{% endif -%}
+  {%- if pid == team.underdog_id %}<mark class="role ud" title="{{ rules.team.underdog.label }}">{{ rules.team.underdog.label[:1] }}</mark>{% endif -%}
+{%- endmacro %}
+
+{% macro team_option_list(selected) -%}
+  {%- for t in options %}<option value="{{ t.id }}" {% if t.id == selected %}selected{% endif %}>{{ t.name }} ({{ t.user.username }})</option>{% endfor -%}
+{%- endmacro %}
+
+{% block content %}
+<h1>Compare teams</h1>
+
+<form method="get" class="cmp-pick">
+  <select name="a" onchange="this.form.submit()" aria-label="First team">{{ team_option_list(ta.id) }}</select>
+  <a href="/compare?a={{ tb.id }}&b={{ ta.id }}" class="swap" title="Swap" aria-label="Swap teams">⇄</a>
+  <select name="b" onchange="this.form.submit()" aria-label="Second team">{{ team_option_list(tb.id) }}</select>
+  <noscript><button type="submit">Compare</button></noscript>
+</form>
+
+{% set diff = sa.total - sb.total %}
+<div class="cmp-head">
+  <a class="cmp-team {% if diff > 0 %}lead{% endif %}" href="/teams/{{ ta.id }}">
+    <strong>{{ ta.name }}</strong><small>{{ ta.user.username }}</small>
+    <span class="big">{{ sa.total | pts }}</span><small>{{ alive[ta.id] }}/{{ rules.team.squad_size }} still in</small>
+  </a>
+  <div class="cmp-diff">
+    {% if diff == 0 %}<span>=</span>{% else %}<span>{{ "+" if diff > 0 else "−" }}{{ diff | abs | pts }}</span>{% endif %}
+  </div>
+  <a class="cmp-team {% if diff < 0 %}lead{% endif %}" href="/teams/{{ tb.id }}">
+    <strong>{{ tb.name }}</strong><small>{{ tb.user.username }}</small>
+    <span class="big">{{ sb.total | pts }}</span><small>{{ alive[tb.id] }}/{{ rules.team.squad_size }} still in</small>
+  </a>
+</div>
+
+<article class="cmp-summary">
+  <table class="compact cmp3">
+    <tbody>
+      <tr><td class="num">{{ summary.shared_a | pts }}</td><th>Shared players ({{ shared | length }})</th><td class="num">{{ summary.shared_b | pts }}</td></tr>
+      <tr><td class="num">{{ summary.only_a | pts }}</td><th>Different players ({{ only_a | length }})</th><td class="num">{{ summary.only_b | pts }}</td></tr>
+      <tr><td class="num">{{ sa.champion_bonus | pts }}</td><th>Champion pick</th><td class="num">{{ sb.champion_bonus | pts }}</td></tr>
+      <tr class="total"><td class="num">{{ sa.total | pts }}</td><th>Total</th><td class="num">{{ sb.total | pts }}</td></tr>
+    </tbody>
+  </table>
+</article>
+
+<h3>Champion picks</h3>
+<div class="cmp-cols">
+  {% for t in (ta, tb) %}
+    {% set p = state.players[t.champion_pick_id] %}
+    <div class="cmp-cell">{{ player_name(p, state.score(p.id)) }}</div>
+  {% endfor %}
+</div>
+
+{% if only_a or only_b %}
+  <h3>Different players</h3>
+  <div class="cmp-cols">
+    {% for team, lines in ((ta, only_a), (tb, only_b)) %}
+      <ul class="cmp-list">
+        {% for line in lines %}
+          {% set p = state.players[line.player_id] %}
+          <li>
+            <span class="nm">{{ player_name(p, state.score(p.id)) }} {{ mult(team, p.id) }}</span>
+            <span class="pts">{{ line.points | pts }}</span>
+          </li>
+        {% else %}
+          <li class="muted">–</li>
+        {% endfor %}
+      </ul>
+    {% endfor %}
+  </div>
+{% endif %}
+
+{% if shared %}
+  <h3>Shared players</h3>
+  <div class="table-wrap">
+    <table class="striped compact cmp3">
+      <tbody>
+        {% for pid in shared %}
+          {% set p = state.players[pid] %}
+          {% set a_pts, b_pts = la[pid].points, lb[pid].points %}
+          <tr>
+            <td class="num {% if a_pts > b_pts %}better{% endif %}">{{ a_pts | pts }} {{ mult(ta, pid) }}</td>
+            <th>{{ player_name(p, state.score(pid)) }}</th>
+            <td class="num {% if b_pts > a_pts %}better{% endif %}">{{ mult(tb, pid) }} {{ b_pts | pts }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endif %}
+{% endblock %}

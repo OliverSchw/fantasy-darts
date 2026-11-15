@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% from "_macros.html" import flag, player_name, bracket_side %}
+{% block title %}{{ p.name }}{% endblock %}
+{% block content %}
+{% set s = state.score(p.id) %}
+<hgroup>
+  <h1>{{ flag(p.nation) }} {{ p.name }}</h1>
+  <p>{{ p.nation }}{% if p.seed %} · Seed {{ p.seed }}{% endif %} · {{ p.price | price }} M</p>
+</hgroup>
+
+<div class="stat-row three">
+  <div class="stat"><span>{{ s.points | pts }}</span><small>points</small></div>
+  <div class="stat">
+    {% if status.state == "champion" %}<span class="ok">🏆 Champion</span>
+    {% elif status.state == "out" %}<span class="bad">Out</span><small>{{ rules.tournament.round_names[status.round_no - 1] }}</small>
+    {% elif status.state == "alive" %}<span class="ok">Still in</span><small>{{ rules.tournament.round_names[status.round_no - 1] }}</small>
+    {% else %}<span>–</span><small>not in the draw</small>{% endif %}
+  </div>
+  {% if squad_share is not none %}
+    <div class="stat"><span>{{ squad_share }}%</span><small>picked in teams</small></div>
+  {% endif %}
+</div>
+
+{% if status.state == "alive" and status.opponent %}
+  <article class="next-match">
+    <small>Next: {{ rules.tournament.round_names[status.round_no - 1] }} · first to {{ rules.tournament.sets_to_win[status.round_no - 1] }}</small>
+    <div class="tmatch">
+      {{ bracket_side(state.bracket.side(status.match, 0), state.players, state.my_player_ids) }}
+      {{ bracket_side(state.bracket.side(status.match, 1), state.players, state.my_player_ids) }}
+    </div>
+    {% if section %}<a href="/bracket?section={{ section }}" class="small-link">Show in bracket →</a>{% endif %}
+  </article>
+{% endif %}
+
+{% if teams %}
+  <h3>{{ "In these teams" if state.locked else "In your teams" }}</h3>
+  <ul class="chips">
+    {% for t in teams %}
+      <li><a href="/teams/{{ t.id }}">{{ t.name }}</a>
+        {% if t.playmaker_id == p.id %}<mark class="role pm">{{ rules.team.playmaker.label }}</mark>{% endif %}
+        {% if t.underdog_id == p.id %}<mark class="role ud">{{ rules.team.underdog.label }}</mark>{% endif %}
+        {% if t.champion_pick_id == p.id %}<mark class="role ch">Champion pick</mark>{% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+{% endif %}
+
+{% if history %}
+  <h3>Tournament stats</h3>
+  <div class="stat-grid">
+    <div><span>{{ totals.won }}–{{ totals.lost }}</span><small>won–lost</small></div>
+    <div><span>{{ totals.sets_for }}–{{ totals.sets_against }}</span><small>sets</small></div>
+    {% for stat in rules.scoring.stats %}
+      <div><span>{{ totals.stats[stat.key] }}</span><small>{{ stat.label }}</small></div>
+    {% endfor %}
+    <div><span>{{ (s.points / history|length) | round(1) | pts }}</span><small>points / match</small></div>
+    <div><span>{{ (s.points / (p.price or 1)) | round(1) | pts }}</span><small>points / M</small></div>
+  </div>
+{% endif %}
+
+<h3>Matches</h3>
+{% if not history %}<p class="muted">No matches played yet.</p>{% endif %}
+{% for h in history %}
+  {% set opp = state.players[h.opponent] %}
+  <article class="history">
+    <header>
+      <span><strong>{{ "W" if h.won else "L" }}</strong> {{ h.score }} vs {{ player_name(opp, state.score(opp.id)) }}</span>
+      <span class="pts">+{{ h.points | pts }}</span>
+    </header>
+    <small>{{ rules.tournament.round_names[h.match.round - 1] }}{% for label, v in h.parts %} · {{ label }} <strong>{{ v | pts }}</strong>{% endfor %}</small>
+  </article>
+{% endfor %}
+
+
+{% endblock %}

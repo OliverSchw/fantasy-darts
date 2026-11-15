@@ -1,4 +1,9 @@
 venv_fd/
-*.pyc
+.venv/
 __pycache__/
+*.pyc
 .env
+*.db
+.vercel/
+.pytest_cache/
+players_2025_old.csv

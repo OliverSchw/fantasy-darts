@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% from "_macros.html" import bracket_side, flag %}
+{% block title %}Bracket{% endblock %}
+{% block content %}
+{% set is_admin = user and user.is_admin %}
+<div class="title-row">
+  <h1>Bracket</h1>
+  <a href="/bracket?view=list" class="small-link">List view</a>
+</div>
+
+<nav class="round-tabs section-tabs" aria-label="Sections">
+  {% for s in sections %}
+    <a href="/bracket?section={{ s.key }}" {% if s.key == current.key %}aria-current="page"{% endif %}>
+      {% if s.key == "finals" %}🏆 Finals{% else %}{{ s.label }}{% endif %}
+      {% if mine_by_section[s.key] %}<small class="mine-count" title="your players still in this section">● {{ mine_by_section[s.key] }}</small>{% endif %}
+    </a>
+  {% endfor %}
+</nav>
+{% if state.my_player_ids %}<p class="muted legend"><span class="dot"></span> players of your active team · “A / B” = winner of that match</p>
+{% else %}<p class="muted legend">“A / B” = winner of that match plays here</p>{% endif %}
+
+<div class="tree-scroll">
+  <div class="tree">
+    {% for col in current.columns %}
+      <div class="tcol {% if col.first %}first{% endif %} {% if col.last %}last{% endif %} {% if not col.round_no %}champ-col{% endif %}">
+        <div class="tcol-head">
+          {{ col.title }}
+          {% if col.round_no %}<small>first to {{ rules.tournament.sets_to_win[col.round_no - 1] }}</small>{% endif %}
+        </div>
+        <div class="tcol-body">
+          {% if col.round_no %}
+            {% for group in col.groups %}
+              <div class="tgroup {% if group|length == 1 %}single{% endif %}">
+                {% for mv in group %}
+                  {% set m = mv.match %}
+                  <div class="tslot">
+                    {% set clickable = is_admin and m.p1_id and m.p2_id %}
+                    <{{ "a" if clickable else "div" }} class="tmatch {% if m.is_played %}played{% endif %}" {% if clickable %}href="/bracket/match/{{ m.id }}" title="{{ 'Edit result' if m.is_played else 'Enter result' }}"{% endif %}>
+                      {{ bracket_side(mv.sides[0], state.players, state.my_player_ids, link=not clickable) }}
+                      {{ bracket_side(mv.sides[1], state.players, state.my_player_ids, link=not clickable) }}
+                    </{{ "a" if clickable else "div" }}>
+                  </div>
+                {% endfor %}
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="tgroup single"><div class="tslot">
+              <div class="tmatch champion">
+                {% if current.champion and current.champion.pid %}
+                  {% set p = state.players[current.champion.pid] %}
+                  <div class="bside win"><span class="bn">🏆 {{ flag(p.nation) }} <a href="/players/{{ p.id }}">{{ p.name }}</a></span></div>
+                {% else %}
+                  <div class="bside tbd"><span class="bn">🏆 ?</span></div>
+                {% endif %}
+              </div>
+            </div></div>
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+{% if current.key != "finals" %}
+  {% set idx = sections | map(attribute="key") | list %}
+  {% set i = idx.index(current.key) %}
+  <div class="pager">
+    {% if i > 0 %}<a href="/bracket?section={{ sections[i-1].key }}">← {{ sections[i-1].label }}</a>{% else %}<span></span>{% endif %}
+    <a href="/bracket?section={{ sections[i+1].key }}">{{ "🏆 Finals" if sections[i+1].key == "finals" else sections[i+1].label }} →</a>
+  </div>
+{% endif %}
+{% endblock %}

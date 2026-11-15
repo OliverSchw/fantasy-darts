@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% from "_macros.html" import player_name %}
+{% block title %}Players{% endblock %}
+{% block content %}
+<h1>Players</h1>
+<div x-data="{ q: '' }">
+  <input type="search" placeholder="Search player or nation…" x-model="q" aria-label="Search">
+  <div class="table-wrap">
+  <table class="striped compact rowlinks">
+    <thead>
+      <tr><th>Player</th><th class="num">Price</th>{% if state.locked %}<th class="num" title="Share of active teams that picked this player">Picked</th>{% endif %}<th class="num">Points</th></tr>
+    </thead>
+    <tbody>
+      {% for p in rows %}
+        {% set s = state.score(p.id) %}
+        <tr data-s="{{ (p.name ~ ' ' ~ p.nation) | lower }}" x-show="!q || $el.dataset.s.includes(q.toLowerCase())">
+          <td>{{ player_name(p, s) }}</td>
+          <td class="num">{{ p.price | price }}</td>
+          {% if state.locked %}<td class="num">{% if n_teams %}{{ (100 * picks[p.id] / n_teams) | round | int }}%{% endif %}</td>{% endif %}
+          <td class="num"><strong>{{ s.points | pts }}</strong></td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script defer src="/static/vendor/alpine.min.js"></script>{% endblock %}
