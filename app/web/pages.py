@@ -5,6 +5,7 @@ from collections import Counter
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from .. import models
+from ..auth import require_user
 from ..scoring import side_breakdown
 from ..teams import user_teams
 from .common import State, get_state, render
@@ -30,6 +31,18 @@ def team_detail(team_id: int, request: Request, state: State = Depends(get_state
     overlap = set() if is_mine else state.my_player_ids & set(team.player_ids)
     n_alive = sum(1 for pid in team.player_ids if not state.score(pid).eliminated)
     return render(request, "team_detail.html", state, team=team, score=score, overlap=overlap, n_alive=n_alive)
+
+
+@router.get("/users/{user_id}")
+def user_profile(user_id: int, request: Request, state: State = Depends(get_state),
+                 viewer: models.User = Depends(require_user)):
+    """Profil eines Mitspielers: großes Bild, aktives Team mit Platz. Nur für eingeloggte User (wegen Fotos)."""
+    person = state.db.get(models.User, user_id)
+    if person is None:
+        raise HTTPException(404)
+    row = next((r for r in state.leaderboard() if r["team"].user_id == person.id), None)
+    return render(request, "user_profile.html", state, person=person, row=row,
+                  n_ranked=len(state.active_teams))
 
 
 def _pick_counts(state: State) -> tuple[Counter, Counter, Counter, Counter]:

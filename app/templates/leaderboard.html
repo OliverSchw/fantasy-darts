@@ -31,10 +31,10 @@
       {% set mine = user and t.user_id == user.id %}
       <li class="{% if mine %}mine{% endif %} {% if r.rank <= 3 %}top{{ r.rank }}{% endif %}">
         <span class="rank">{{ r.rank }}</span>
-        {{ avatar(t.user, user) }}
+        {% if user %}<a href="/users/{{ t.user_id }}" class="avatar-link" aria-label="Profile of {{ t.user.username }}">{{ avatar(t.user, user) }}</a>{% else %}{{ avatar(t.user, user) }}{% endif %}
         <span class="who">
           {% if state.can_view_team(t) %}<a href="/teams/{{ t.id }}">{{ t.name }}</a>{% else %}{{ t.name }}{% endif %}
-          <small>{{ t.user.username }} · {{ r.alive }}/{{ rules.team.squad_size }} still in</small>
+          <small>{% if user %}<a href="/users/{{ t.user_id }}" class="user-link">{{ t.user.username }}</a>{% else %}{{ t.user.username }}{% endif %} · {{ r.alive }}/{{ rules.team.squad_size }} still in</small>
         </span>
         <span class="pts">{{ r.points | pts }}{{ move(r.get("move")) }}</span>
       </li>

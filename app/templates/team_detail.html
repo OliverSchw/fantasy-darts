@@ -5,7 +5,7 @@
 <div class="title-row">
   <hgroup>
     <h1>{{ team.name }}</h1>
-    <p class="byline">{{ avatar(team.user, user, "xs") }} by {{ team.user.username }}{% if not team.is_active %} · <em>not active</em>{% endif %}</p>
+    <p class="byline"><a href="/users/{{ team.user_id }}" class="user-link">{{ avatar(team.user, user, "sm") }} by {{ team.user.username }}</a>{% if not team.is_active %} · <em>not active</em>{% endif %}</p>
   </hgroup>
   {% if user %}
     {% if state.my_team and state.my_team.id != team.id %}

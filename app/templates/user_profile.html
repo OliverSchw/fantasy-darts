@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar %}
+{% block title %}{{ person.username }}{% endblock %}
+{% block content %}
+<article class="narrow">
+  <div class="profile-head">
+    {{ avatar(person, user, "xl") }}
+    <h1>{{ person.username }}</h1>
+  </div>
+
+  {% if row %}
+    {% set t = row.team %}
+    <div class="stat-grid profile-stats">
+      <div><span>{{ row.rank }}<small class="of"> / {{ n_ranked }}</small></span><small>Rank</small></div>
+      <div><span>{{ row.points | pts }}</span><small>Points</small></div>
+      <div><span>{{ row.alive }}/{{ rules.team.squad_size }}</span><small>Still in</small></div>
+    </div>
+    <p class="profile-team">Team:
+      {% if state.can_view_team(t) %}<a href="/teams/{{ t.id }}"><strong>{{ t.name }}</strong></a>
+      {% else %}<strong>{{ t.name }}</strong> <small class="muted">– visible once teams are locked</small>{% endif %}
+    </p>
+  {% else %}
+    <p class="muted center">{{ person.username }} has no active team yet.</p>
+  {% endif %}
+
+  {% if person.id == user.id %}
+    <a href="/account" role="button" class="outline admin-link">✏️ Change picture or password</a>
+  {% endif %}
+</article>
+<a href="/" class="secondary">← Back to ranking</a>
+{% endblock %}
