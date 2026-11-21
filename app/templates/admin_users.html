@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Admin · Members{% endblock %}
+{% from "_macros.html" import avatar %}
 {% block content %}
 {% include "_admin_nav.html" %}
 
@@ -68,6 +69,7 @@
   {% for u in users %}
     <details class="user-row">
       <summary>
+        {{ avatar(u, user, "sm") }}
         <strong>{{ u.username }}</strong>
         {% if u.is_admin %}<mark class="badge">Admin</mark>{% endif %}
         <small class="muted">{{ team_counts.get(u.id, 0) }} team(s){% if invite_note.get(u.id) %} · invited as “{{ invite_note[u.id] }}”{% endif %}</small>
@@ -77,6 +79,11 @@
           <input name="password" type="text" placeholder="New password" minlength="6" required aria-label="New password">
           <button class="outline small">Set password</button>
         </form>
+        {% if u.avatar_version %}
+          <form method="post" action="/admin/users/{{ u.id }}/avatar/delete" class="inline">
+            <button class="outline secondary small">Remove picture</button>
+          </form>
+        {% endif %}
         {% if u.id != user.id %}
           <form method="post" action="/admin/users/{{ u.id }}/admin" class="inline">
             <button class="outline small">{{ "Remove admin" if u.is_admin else "Make admin" }}</button>

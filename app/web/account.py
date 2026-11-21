@@ -1,12 +1,14 @@
 import hmac
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import Response
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .. import auth, models
+from ..avatars import MAX_UPLOAD, AvatarError, delete_avatar, save_avatar
 from ..db import get_db
 from ..config_store import invite_code
 from .common import State, flash, get_state, redirect, render
@@ -73,6 +75,45 @@ def change_password(
         db.commit()
         flash(request, "Password changed.")
     return redirect("/account")
+
+
+# ------------------------------------------------------------ Profilbild
+
+
+@router.post("/account/avatar")
+async def upload_avatar(
+    request: Request,
+    image: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user: models.User = Depends(auth.require_user),
+):
+    data = await image.read(MAX_UPLOAD + 1)
+    try:
+        save_avatar(db, user, data)
+        flash(request, "Profile picture saved.")
+    except AvatarError as e:
+        db.rollback()
+        flash(request, str(e), "error")
+    return redirect("/account")
+
+
+@router.post("/account/avatar/delete")
+def remove_avatar(request: Request, db: Session = Depends(get_db), user: models.User = Depends(auth.require_user)):
+    delete_avatar(db, user)
+    flash(request, "Profile picture removed.")
+    return redirect("/account")
+
+
+@router.get("/avatars/{user_id}")
+def avatar_image(user_id: int, db: Session = Depends(get_db), viewer: models.User = Depends(auth.require_user)):
+    """Nur für eingeloggte Mitspieler. Die URL enthält ?v=<version>, deshalb darf lange gecacht werden."""
+    avatar = db.get(models.Avatar, user_id)
+    if avatar is None:
+        raise HTTPException(404)
+    return Response(avatar.image, media_type="image/webp", headers={
+        "Cache-Control": "private, max-age=31536000, immutable",
+        "X-Content-Type-Options": "nosniff",
+    })
 
 
 # ------------------------------------------------------------ Registrierung

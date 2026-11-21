@@ -1,9 +1,34 @@
 {% extends "base.html" %}
+{% from "_macros.html" import avatar %}
 {% block title %}Account{% endblock %}
 {% block content %}
 <article class="narrow">
-  <h1>{{ user.username }}</h1>
+  <div class="profile-head">
+    {{ avatar(user, user, "lg") }}
+    <h1>{{ user.username }}</h1>
+  </div>
   {% if user.is_admin %}<a href="/admin" role="button" class="outline admin-link">⚙️ Admin area</a>{% endif %}
+
+  <h3>Profile picture</h3>
+  <p class="muted">Shown next to your team in the ranking – only to logged-in players.</p>
+  <form method="post" action="/account/avatar" enctype="multipart/form-data" x-data="avatarUpload" @submit="busy = true">
+    <div class="avatar-pick">
+      <template x-if="preview"><img class="avatar lg" :src="preview" alt="Preview"></template>
+      <label>
+        <input type="file" name="image" accept="image/*" required x-ref="file" @change="choose($event)">
+      </label>
+    </div>
+    <p class="muted small-note" x-show="preview" x-cloak>That's how it will look – tap “Save picture” to keep it.</p>
+    <div class="btn-row left">
+      <button type="submit" class="small" :disabled="busy || processing" x-text="busy ? 'Uploading…' : 'Save picture'">Save picture</button>
+    </div>
+  </form>
+  {% if user.avatar_version %}
+    <form method="post" action="/account/avatar/delete">
+      <button type="submit" class="outline secondary small">Remove picture</button>
+    </form>
+  {% endif %}
+
   <h3>Change password</h3>
   <form method="post" action="/account/password">
     <label>Current password <input name="current" type="password" autocomplete="current-password" required></label>
@@ -14,3 +39,4 @@
   <form method="post" action="/logout"><button type="submit" class="secondary outline">Log out</button></form>
 </article>
 {% endblock %}
+{% block scripts %}<script defer src="/static/avatar.js"></script><script defer src="/static/vendor/alpine.min.js"></script>{% endblock %}

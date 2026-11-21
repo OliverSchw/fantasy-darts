@@ -513,3 +513,19 @@ th[aria-sort=descending] .th-sort::after { content: " ▼"; opacity: 0.9; }
 th[aria-sort] .th-sort { color: var(--pico-primary); }
 .th-sort:focus-visible { outline: 2px solid var(--pico-primary); outline-offset: 2px; border-radius: 3px; }
 .sort-hint { font-size: 0.8rem; margin: -0.3rem 0 0.4rem; }
+/* --- Profilbilder ----------------------------------------------------- */
+.avatar { width: 2.2rem; height: 2.2rem; border-radius: 50%; object-fit: cover; flex: none; vertical-align: middle;
+  display: inline-flex; align-items: center; justify-content: center; background: var(--pico-muted-border-color); }
+.avatar.initials { background: hsl(var(--h, 150) 42% 42%); color: #fff; font-weight: 700; font-size: 0.95rem; line-height: 1; }
+.avatar.xs { width: 1.5rem; height: 1.5rem; font-size: 0.7rem; }
+.avatar.sm { width: 1.9rem; height: 1.9rem; font-size: 0.8rem; }
+.avatar.lg { width: 5.5rem; height: 5.5rem; font-size: 2.2rem; }
+.ranking li .avatar { margin-right: 0.15rem; }
+.usermenu summary .avatar { margin-right: 0.3rem; }
+.byline .avatar { margin-right: 0.15rem; }
+.profile-head { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+.profile-head h1 { margin: 0; }
+.avatar-pick { display: flex; align-items: center; gap: 1rem; }
+.avatar-pick label { flex: 1; margin: 0; }
+.avatar-pick input[type=file] { margin: 0; font-size: 0.85rem; }
+.small-note { font-size: 0.8rem; margin: 0.4rem 0; }

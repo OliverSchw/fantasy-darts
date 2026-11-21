@@ -10,6 +10,7 @@ from sqlalchemy import func, select
 
 from .. import models
 from ..auth import hash_password, require_admin
+from ..avatars import delete_avatar
 from ..backup import export_backup, players_csv, results_csv, teams_csv
 from ..bracket import BracketError, delete_result, save_result
 from ..config_store import INVITE_KEY, get_setting, invite_code, set_setting
@@ -238,6 +239,17 @@ def reset_password(user_id: int, request: Request, password: str = Form(...),
         user.password_hash = hash_password(password)
         state.db.commit()
         flash(request, f"Password for “{user.username}” changed.")
+    return redirect("/admin/users")
+
+
+@router.post("/admin/users/{user_id}/avatar/delete")
+def delete_user_avatar(user_id: int, request: Request, state: State = Depends(get_state),
+                       admin: models.User = Depends(require_admin)):
+    user = state.db.get(models.User, user_id)
+    if user is None:
+        raise HTTPException(404)
+    delete_avatar(state.db, user)
+    flash(request, f"Profile picture of “{user.username}” removed.")
     return redirect("/admin/users")
 
 

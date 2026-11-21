@@ -38,6 +38,11 @@ Nachrücker in der Auslosung. Mitspieler melden sich per persönlichem Einmal-Li
 Der Admin-Bereich hat fünf Tabs: **Overview** (Zahlen, To-do-Liste, Team-Sperre, Export),
 **Members** (Einladen, Mitglieder verwalten), **Schedule**, **Players** und **Rules**.
 
+**Profilbilder** lädt jede:r unter *Account* selbst hoch. Der Browser schneidet das Bild quadratisch zu,
+der Server verkleinert es auf 256×256 px (WebP, entfernt Metadaten wie GPS) und speichert es in der
+Datenbank – auf Vercel gibt es kein dauerhaftes Dateisystem. Fotos sehen nur eingeloggte Mitspieler,
+Gäste sehen einen Kreis mit dem Anfangsbuchstaben. Admins können Bilder unter *Admin → Members* entfernen.
+
 **Punkte werden nie gespeichert**, sondern bei jedem Aufruf aus den Matches + `rules.toml`
 berechnet. Regeln ändern → Punkte stimmen sofort, auch rückwirkend.
 
@@ -124,7 +129,7 @@ weil die kostenlose Render-Postgres nach 30 Tagen gelöscht wird.
   verweigert die App den Start ohne `DATABASE_URL`, damit nie versehentlich SQLite auf einem
   flüchtigen Dateisystem benutzt wird.
 - **CSV-Export** (öffnet sich direkt in Excel): *Admin → Overview → Export & backup* – Teams, Ergebnisse, Spieler.
-- **Komplett-Backup** (JSON, inkl. User mit Passwort-Hashes und Einladungslinks – vertraulich behandeln):
+- **Komplett-Backup** (JSON, inkl. User mit Passwort-Hashes, Profilbildern und Einladungslinks – vertraulich behandeln):
   ```bash
   python -m app.cli backup                        # oder auf der Admin-Seite herunterladen
   python -m app.cli restore-backup <datei>.json   # in eine DB ohne diese Saison einspielen

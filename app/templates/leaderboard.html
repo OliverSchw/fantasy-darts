@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import move, player_name, bracket_side %}
+{% from "_macros.html" import move, player_name, bracket_side, avatar %}
 {% block title %}Ranking{% endblock %}
 {% block content %}
 <div class="title-row">
@@ -31,6 +31,7 @@
       {% set mine = user and t.user_id == user.id %}
       <li class="{% if mine %}mine{% endif %} {% if r.rank <= 3 %}top{{ r.rank }}{% endif %}">
         <span class="rank">{{ r.rank }}</span>
+        {{ avatar(t.user, user) }}
         <span class="who">
           {% if state.can_view_team(t) %}<a href="/teams/{{ t.id }}">{{ t.name }}</a>{% else %}{{ t.name }}{% endif %}
           <small>{{ t.user.username }} · {{ r.alive }}/{{ rules.team.squad_size }} still in</small>

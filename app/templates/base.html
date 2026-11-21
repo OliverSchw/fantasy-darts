@@ -1,4 +1,4 @@
-<!doctype html>
+{% from "_macros.html" import avatar %}<!doctype html>
 <html lang="en" data-theme="light">
 <head>
   <meta charset="utf-8">
@@ -28,7 +28,7 @@
       <div class="usermenu">
         {% if user %}
           <details class="dropdown">
-            <summary>{{ user.username }}</summary>
+            <summary>{{ avatar(user, user, "xs") }} {{ user.username }}</summary>
             <ul dir="rtl">
               <li><a href="/account">Account</a></li>
               {% if user.is_admin %}<li><a href="/admin">Admin</a></li>{% endif %}

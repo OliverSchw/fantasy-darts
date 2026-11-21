@@ -6,7 +6,7 @@ den Regeln (rules.toml) berechnet - dadurch kann nichts mehr "aus dem Takt" gera
 
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Index, Integer, String, UniqueConstraint, text
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Index, Integer, LargeBinary, String, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -24,6 +24,9 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(100))
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    # Gesetzt, sobald ein Profilbild existiert. Steht in der Bild-URL, damit Browser-Caches bei
+    # einem neuen Bild sofort das neue laden (das Bild selbst liegt in "avatars").
+    avatar_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     teams: Mapped[list["Team"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
@@ -149,3 +152,13 @@ class Invite(Base):
     used_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     used_by: Mapped[User | None] = relationship()
+
+
+class Avatar(Base):
+    """Profilbild eines Users: 256x256 WebP, liegt in der DB (Vercel hat kein dauerhaftes Dateisystem)."""
+
+    __tablename__ = "avatars"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    image: Mapped[bytes] = mapped_column(LargeBinary)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
