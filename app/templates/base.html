@@ -31,7 +31,6 @@
             <summary>{{ user.username }}</summary>
             <ul dir="rtl">
               <li><a href="/account">Account</a></li>
-              <li><a href="/rules">Rules</a></li>
               {% if user.is_admin %}<li><a href="/admin">Admin</a></li>{% endif %}
               <li><form method="post" action="/logout"><button type="submit" class="linklike">Log out</button></form></li>
             </ul>
@@ -56,7 +55,7 @@
   </main>
 
   <nav class="tabbar" aria-label="Main">
-    {% set tabs = [("/", "🏆", "Ranking"), ("/my", "🧩", "My Teams"), ("/bracket", "🌳", "Bracket"), ("/schedule", "📅", "Schedule"), ("/players", "🎯", "Players")] %}
+    {% set tabs = [("/", "🏆", "Ranking"), ("/my", "🧩", "My Teams"), ("/bracket", "🌳", "Bracket"), ("/schedule", "📅", "Schedule"), ("/players", "🎯", "Players"), ("/rules", "📜", "Rules")] %}
     {% for href, icon, label in tabs %}
       <a href="{{ href }}" {% if (href == "/" and path == "/") or (href != "/" and path.startswith(href)) %}aria-current="page"{% endif %}>
         <span class="ico">{{ icon }}</span><span>{{ label }}</span>

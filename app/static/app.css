@@ -64,7 +64,9 @@ small { color: var(--pico-muted-color); }
 .tabbar a {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
   font-size: 0.7rem; text-decoration: none; color: var(--pico-muted-color);
+  min-width: 0; white-space: nowrap;
 }
+@media (max-width: 360px) { .tabbar a { font-size: 0.62rem; } }
 .tabbar .ico { font-size: 1.25rem; line-height: 1.3; filter: grayscale(1); opacity: .7; }
 .tabbar a[aria-current] { color: var(--pico-primary); font-weight: 600; }
 .tabbar a[aria-current] .ico { filter: none; opacity: 1; }
