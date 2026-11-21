@@ -478,3 +478,8 @@ a.tmatch:hover { border-color: var(--pico-primary); }
 .champ-line { font-size: 1.1rem; text-align: center; padding: 0.8rem; border: 2px solid var(--fd-gold); border-radius: var(--pico-border-radius); }
 .results li a { display: flex; flex-direction: column; color: inherit; text-decoration: none; }
 .hist-link { color: inherit; text-decoration: none; }
+@media (min-width: 640px) { .invite-link-form { grid-template-columns: 1fr auto; } }
+.invite-link-form button { width: auto; }
+.invite-item p { margin-bottom: 0.2rem; }
+.copy-row form { margin: 0; flex: none; }
+.used-invites { padding-left: 1.1rem; }

@@ -33,7 +33,7 @@ tests/
 **Regeln & Punkte** kann der Admin unter *Admin → Rules & points* direkt in der App ändern
 (solange die Teams nicht gesperrt sind). `rules.toml` ist nur die Vorlage für eine neue Saison.
 Spieler (Name, Nation, Preis, Seed) bearbeitet der Admin unter *Admin → Players*, inklusive
-Nachrücker in der Auslosung. Mitspieler melden sich per Einladungslink selbst an (*Admin → Overview*).
+Nachrücker in der Auslosung. Mitspieler melden sich per persönlichem Einmal-Link oder gemeinsamem Einladungscode selbst an (*Admin → Overview*).
 
 **Punkte werden nie gespeichert**, sondern bei jedem Aufruf aus den Matches + `rules.toml`
 berechnet. Regeln ändern → Punkte stimmen sofort, auch rückwirkend.
@@ -95,9 +95,17 @@ weil die kostenlose Render-Postgres nach 30 Tagen gelöscht wird.
 
 ## Admin-Ablauf während des Turniers
 
-- **Vor dem Start:** Entweder `INVITE_CODE` setzen und den Link von der *Admin*-Seite teilen
-  (dann melden sich alle selbst an), oder User unter *Admin* anlegen, Startpasswort weitergeben (jede:r kann es
-  unter *Account* ändern). Teams werden zum `lock_at`-Zeitpunkt automatisch gesperrt, oder
+- **Vor dem Start – Mitspieler einladen**, drei Wege:
+  - **Persönliche Einladungslinks** (empfohlen): *Admin → Personal invite links* → Notiz eintragen
+    (z. B. den Namen, nur für dich sichtbar) → *Create link* → Link kopieren und an genau diese Person
+    schicken. Jeder Link funktioniert für **genau eine** Registrierung, ein Code ist nicht nötig. Danach
+    steht er unter *Used* mit dem gewählten Usernamen und Datum. Benutzte oder gelöschte Links zeigen
+    „already used“. Offene Links lassen sich jederzeit löschen.
+  - **Gemeinsamer Einladungscode:** `INVITE_CODE` setzen oder auf der *Admin*-Seite einen Code
+    festlegen und den Link teilen. Damit können sich beliebig viele selbst anmelden, solange der Code aktiv ist.
+  - **Manuell:** User unter *Admin → Users* anlegen und das Startpasswort weitergeben (jede:r kann es
+    unter *Account* ändern).
+- **Teams sperren:** Teams werden zum `lock_at`-Zeitpunkt automatisch gesperrt, oder
   manuell über den Schalter unter *Admin*.
 - **Ergebnisse:** *Bracket* → Runde wählen → Match antippen → Sätze + Stats eintragen.
   Der Sieger rückt automatisch in die nächste Runde. Korrigieren geht jederzeit. Den Sieger

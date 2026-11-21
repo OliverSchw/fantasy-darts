@@ -134,3 +134,18 @@ class AppSetting(Base):
 
     key: Mapped[str] = mapped_column(String(80), primary_key=True)
     value: Mapped[dict | list | str | None] = mapped_column(JSON, nullable=True)
+
+
+class Invite(Base):
+    """Persönlicher Einladungslink: genau eine Registrierung, danach verbraucht."""
+
+    __tablename__ = "invites"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    token: Mapped[str] = mapped_column(String(40), unique=True)
+    note: Mapped[str] = mapped_column(String(60), default="")  # nur für den Admin sichtbar
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    used_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    used_by: Mapped[User | None] = relationship()
