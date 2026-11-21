@@ -108,3 +108,21 @@ def test_backup_includes_invites(db, season, make_user, tmp_path):
     with sessionmaker(bind=engine2, expire_on_commit=False)() as fresh:
         restore_backup(fresh, data)
         assert fresh.scalar(select(models.Invite)) is None
+
+
+def test_backup_includes_avatars(db, season, make_user, tmp_path):
+    from app.avatars import save_avatar
+    from io import BytesIO
+    from PIL import Image
+
+    olli = make_user("olli")
+    buf = BytesIO(); Image.new("RGB", (50, 50), (0, 128, 0)).save(buf, "PNG")
+    save_avatar(db, olli, buf.getvalue())
+    data = json.loads(json.dumps(export_backup(db, season)))
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'restore.db'}")
+    Base.metadata.create_all(engine)
+    with sessionmaker(bind=engine, expire_on_commit=False)() as fresh:
+        restore_backup(fresh, data)
+        u = fresh.scalar(select(models.User).where(models.User.username == "olli"))
+        assert u.avatar_version and fresh.get(models.Avatar, u.id).image == db.get(models.Avatar, olli.id).image

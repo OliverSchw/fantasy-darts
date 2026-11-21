@@ -37,6 +37,7 @@ def get_db() -> Iterator[Session]:
 # fügt aber keine Spalten zu bestehenden hinzu - das passiert hier (idempotent).
 ADDED_COLUMNS = [
     ("matches", "scheduled_at", {"sqlite": "DATETIME", "postgresql": "TIMESTAMP WITH TIME ZONE"}),
+    ("users", "avatar_version", {"sqlite": "INTEGER", "postgresql": "INTEGER"}),
 ]
 
 

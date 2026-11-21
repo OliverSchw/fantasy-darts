@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% from "_macros.html" import player_name, flag, surname %}
+{% from "_macros.html" import player_name, flag, surname, avatar %}
 {% block title %}{{ team.name }}{% endblock %}
 {% block content %}
 <div class="title-row">
   <hgroup>
     <h1>{{ team.name }}</h1>
-    <p>by {{ team.user.username }}{% if not team.is_active %} · <em>not active</em>{% endif %}</p>
+    <p class="byline">{{ avatar(team.user, user, "xs") }} by {{ team.user.username }}{% if not team.is_active %} · <em>not active</em>{% endif %}</p>
   </hgroup>
   {% if user %}
     {% if state.my_team and state.my_team.id != team.id %}

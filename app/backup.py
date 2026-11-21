@@ -1,5 +1,6 @@
 """Export (CSV für Excel) und Komplett-Backup/Wiederherstellung (JSON) einer Saison."""
 
+import base64
 import csv
 import io
 from datetime import datetime, timezone
@@ -93,12 +94,14 @@ def export_backup(db: Session, season: models.Season) -> dict:
     """
     players, matches, teams = _season_data(db, season)
     users = db.scalars(select(models.User).order_by(models.User.id)).all()
+    avatars = dict(db.execute(select(models.Avatar.user_id, models.Avatar.image)).all())
     return {
         "version": BACKUP_VERSION,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "season": {"key": season.key, "teams_locked": season.teams_locked,
                    "rules": get_setting(db, f"rules:{season.key}")},
-        "users": [{"id": u.id, "username": u.username, "password_hash": u.password_hash, "is_admin": u.is_admin}
+        "users": [{"id": u.id, "username": u.username, "password_hash": u.password_hash, "is_admin": u.is_admin,
+                   "avatar": base64.b64encode(avatars[u.id]).decode() if u.id in avatars else None}
                   for u in users],
         "players": [{"id": p.id, "name": p.name, "nation": p.nation, "price": p.price, "seed": p.seed}
                     for p in players.values()],
@@ -139,6 +142,9 @@ def restore_backup(db: Session, data: dict) -> models.Season:
             existing = models.User(username=u["username"], password_hash=u["password_hash"], is_admin=u["is_admin"])
             db.add(existing)
             db.flush()
+            if u.get("avatar"):  # ältere Backups haben keine Profilbilder
+                db.add(models.Avatar(user_id=existing.id, image=base64.b64decode(u["avatar"])))
+                existing.avatar_version = int(datetime.now(timezone.utc).timestamp())
         user_map[u["id"]] = existing.id
 
     season = models.Season(key=key, teams_locked=data["season"]["teams_locked"])

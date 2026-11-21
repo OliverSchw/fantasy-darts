@@ -8,3 +8,4 @@ pydantic-settings==2.16.3
 bcrypt==4.3.0
 psycopg[binary]==3.2.13
 tzdata==2025.3
+pillow==12.3.0

@@ -1,3 +1,12 @@
+{# Profilbild oder farbiger Kreis mit Anfangsbuchstaben. Fotos nur für eingeloggte Betrachter (viewer). #}
+{% macro avatar(u, viewer, size="") -%}
+  {%- if u.avatar_version and viewer -%}
+    <img class="avatar {{ size }}" src="/avatars/{{ u.id }}?v={{ u.avatar_version }}" alt="" loading="lazy">
+  {%- else -%}
+    <span class="avatar initials {{ size }}" style="--h: {{ (u.id * 67) % 360 }}" aria-hidden="true">{{ u.username[:1] | upper }}</span>
+  {%- endif -%}
+{%- endmacro %}
+
 {% macro flag(nation) -%}
   {%- set code = flag_code(nation) -%}
   {%- if code -%}<img class="flag" src="/static/flags/{{ code }}.svg" alt="{{ nation }}" title="{{ nation }}" loading="lazy">{%- endif -%}
