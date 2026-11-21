@@ -30,10 +30,13 @@ seasons/
 tests/
 ```
 
-**Regeln & Punkte** kann der Admin unter *Admin → Rules & points* direkt in der App ändern
+**Regeln & Punkte** kann der Admin unter *Admin → Rules* direkt in der App ändern
 (solange die Teams nicht gesperrt sind). `rules.toml` ist nur die Vorlage für eine neue Saison.
 Spieler (Name, Nation, Preis, Seed) bearbeitet der Admin unter *Admin → Players*, inklusive
-Nachrücker in der Auslosung. Mitspieler melden sich per persönlichem Einmal-Link oder gemeinsamem Einladungscode selbst an (*Admin → Overview*).
+Nachrücker in der Auslosung. Mitspieler melden sich per persönlichem Einmal-Link oder gemeinsamem Einladungscode selbst an (*Admin → Members*).
+
+Der Admin-Bereich hat fünf Tabs: **Overview** (Zahlen, To-do-Liste, Team-Sperre, Export),
+**Members** (Einladen, Mitglieder verwalten), **Schedule**, **Players** und **Rules**.
 
 **Punkte werden nie gespeichert**, sondern bei jedem Aufruf aus den Matches + `rules.toml`
 berechnet. Regeln ändern → Punkte stimmen sofort, auch rückwirkend.
@@ -96,20 +99,23 @@ weil die kostenlose Render-Postgres nach 30 Tagen gelöscht wird.
 ## Admin-Ablauf während des Turniers
 
 - **Vor dem Start – Mitspieler einladen**, drei Wege:
-  - **Persönliche Einladungslinks** (empfohlen): *Admin → Personal invite links* → Notiz eintragen
+  - **Persönliche Einladungslinks** (empfohlen): *Admin → Members* → Notiz eintragen
     (z. B. den Namen, nur für dich sichtbar) → *Create link* → Link kopieren und an genau diese Person
     schicken. Jeder Link funktioniert für **genau eine** Registrierung, ein Code ist nicht nötig. Danach
     steht er unter *Used* mit dem gewählten Usernamen und Datum. Benutzte oder gelöschte Links zeigen
     „already used“. Offene Links lassen sich jederzeit löschen.
-  - **Gemeinsamer Einladungscode:** `INVITE_CODE` setzen oder auf der *Admin*-Seite einen Code
+  - **Gemeinsamer Einladungscode:** `INVITE_CODE` setzen oder unter *Admin → Members → Shared invite code* einen Code
     festlegen und den Link teilen. Damit können sich beliebig viele selbst anmelden, solange der Code aktiv ist.
-  - **Manuell:** User unter *Admin → Users* anlegen und das Startpasswort weitergeben (jede:r kann es
+  - **Manuell:** unter *Admin → Members → Add member manually* anlegen und das Startpasswort weitergeben (jede:r kann es
     unter *Account* ändern).
 - **Teams sperren:** Teams werden zum `lock_at`-Zeitpunkt automatisch gesperrt, oder
-  manuell über den Schalter unter *Admin*.
+  manuell über den Schalter unter *Admin → Overview*. Die To-do-Liste dort zeigt, wer noch
+  kein Team hat.
 - **Ergebnisse:** *Bracket* → Runde wählen → Match antippen → Sätze + Stats eintragen.
   Der Sieger rückt automatisch in die nächste Runde. Korrigieren geht jederzeit. Den Sieger
   ändern kann man nur, solange das Folgematch noch kein Ergebnis hat.
+  Hast du unter *Schedule* Anstoßzeiten eingetragen, zeigt die To-do-Liste auf *Overview*, welche
+  Matches schon gespielt sein müssten und noch kein Ergebnis haben.
 
 ## Backup & Export
 
@@ -117,7 +123,7 @@ weil die kostenlose Render-Postgres nach 30 Tagen gelöscht wird.
   Abstürze oder Redeploys löschen nichts. Jede Aktion wird sofort gespeichert. Auf Vercel
   verweigert die App den Start ohne `DATABASE_URL`, damit nie versehentlich SQLite auf einem
   flüchtigen Dateisystem benutzt wird.
-- **CSV-Export** (öffnet sich direkt in Excel): *Admin → Export & backup* – Teams, Ergebnisse, Spieler.
+- **CSV-Export** (öffnet sich direkt in Excel): *Admin → Overview → Export & backup* – Teams, Ergebnisse, Spieler.
 - **Komplett-Backup** (JSON, inkl. User mit Passwort-Hashes – vertraulich behandeln):
   ```bash
   python -m app.cli backup                        # oder auf der Admin-Seite herunterladen

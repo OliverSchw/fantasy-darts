@@ -35,9 +35,9 @@ def test_admin_subpages_render(admin):
 
 
 def test_invite_code_lifecycle(admin, db):
-    assert "Self-registration is <strong>off</strong>" in admin.get("/admin").text
+    assert "register?code=" not in admin.get("/admin/users").text
     admin.post("/admin/invite", data={"action": "set", "code": "bulls26"})
-    assert "register?code=bulls26" in admin.get("/admin").text
+    assert "register?code=bulls26" in admin.get("/admin/users").text
 
     with TestClient(app) as guest:
         assert guest.get("/register").status_code == 200
@@ -46,7 +46,7 @@ def test_invite_code_lifecycle(admin, db):
         assert r.status_code == 303
 
     admin.post("/admin/invite", data={"action": "generate"})
-    assert "bulls26" not in admin.get("/admin").text  # alter Code ungültig
+    assert "bulls26" not in admin.get("/admin/users").text  # alter Code ungültig
     admin.post("/admin/invite", data={"action": "disable"})
     with TestClient(app) as guest:
         assert guest.get("/register").status_code == 404
@@ -140,3 +140,24 @@ def test_non_admin_blocked(db, make_user):
             assert c.get(url).status_code == 403
         assert c.post("/admin/rules", data={}).status_code == 403
         assert c.post("/admin/invite", data={"action": "generate"}).status_code == 403
+
+
+def test_overview_todo(admin, db, season, make_user):
+    from datetime import datetime, timedelta, timezone
+
+    make_user("ohne_team")
+    page = admin.get("/admin").text
+    assert "members without a team" in page and "ohne_team" in page
+    assert "waiting for a result" not in page  # nichts angesetzt -> nichts überfällig
+
+    m = db.scalar(select(models.Match).where(models.Match.round == 1, models.Match.slot == 0))
+    m.scheduled_at = datetime.now(timezone.utc) - timedelta(hours=1)
+    later = db.scalar(select(models.Match).where(models.Match.round == 1, models.Match.slot == 1))
+    later.scheduled_at = datetime.now(timezone.utc) + timedelta(days=1)
+    db.commit()
+    assert "1 match waiting for a result" in admin.get("/admin").text
+
+    season.teams_locked = True
+    db.commit()
+    page = admin.get("/admin").text
+    assert "Teams are <strong>locked</strong>" in page and "members without a team" not in page
