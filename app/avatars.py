@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from . import models
 
-SIZE = 256
+SIZE = 512
 MAX_UPLOAD = 5 * 1024 * 1024  # Bytes; Vercel nimmt ohnehin höchstens ~4.5 MB pro Anfrage an
 MAX_PIXELS = 40_000_000  # Schutz gegen "Dekompressionsbomben"
 

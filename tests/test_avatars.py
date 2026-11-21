@@ -42,7 +42,7 @@ def test_upload_resizes_and_serves(olli, db):
     assert r.status_code == 200 and r.headers["content-type"] == "image/webp"
     assert r.headers["x-content-type-options"] == "nosniff"
     img = Image.open(BytesIO(r.content))
-    assert img.format == "WEBP" and img.size == (256, 256)
+    assert img.format == "WEBP" and img.size == (512, 512)
     page = olli.get("/account").text
     assert f'/avatars/{u.id}?v={u.avatar_version}' in page and "Remove picture" in page
 

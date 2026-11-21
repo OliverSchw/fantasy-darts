@@ -4,7 +4,7 @@
 {% block content %}
 <article class="narrow">
   <div class="profile-head">
-    {{ avatar(user, user, "lg") }}
+    {{ avatar(user, user, "xl") }}
     <h1>{{ user.username }}</h1>
   </div>
   {% if user.is_admin %}<a href="/admin" role="button" class="outline admin-link">⚙️ Admin area</a>{% endif %}
