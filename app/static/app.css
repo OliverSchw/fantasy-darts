@@ -281,7 +281,10 @@ a.match:hover { border-color: var(--pico-primary); }
 a.tmatch:hover { border-color: var(--pico-primary); }
 .bside { display: flex; justify-content: space-between; align-items: center; gap: 0.4rem; padding: 0.22rem 0.45rem; font-size: 0.8rem; line-height: 1.3; min-height: 1.7rem; }
 .bside + .bside { border-top: 1px solid var(--pico-muted-border-color); }
-.bside .bn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Polster: kursives "TBD"/"?" und Emojis ragen über ihre Box hinaus und würden sonst (v. a. in Safari)
+   an der Kante abgeschnitten. Der negative Rand gleicht das Polster aus, das Layout bleibt gleich. */
+.bside .bn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding: 0.15em 0.25em 0.15em 0; margin: -0.15em -0.25em -0.15em 0; }
 .bside .bn a { color: inherit; text-decoration: none; }
 .bside .seed { font-size: 0.68rem; }
 .bside .sets { font-weight: 700; font-variant-numeric: tabular-nums; }
@@ -292,6 +295,7 @@ a.tmatch:hover { border-color: var(--pico-primary); }
 .bside.mine { box-shadow: inset 3px 0 0 var(--fd-gold); }
 .tmatch.champion { border: 2px solid var(--fd-gold); }
 .tmatch.champion .bside { font-size: 0.95rem; padding: 0.55rem; justify-content: center; }
+.tmatch.champion .bn { overflow: visible; white-space: normal; text-align: center; margin: 0; padding: 0; }
 .pager { display: flex; justify-content: space-between; font-size: 0.9rem; }
 
 /* Listenansicht nutzt die gleichen Karten */
