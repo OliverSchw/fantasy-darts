@@ -13,16 +13,16 @@
 <div x-data="{ q: '' }">
   <input type="search" placeholder="Search player or nation…" x-model="q" aria-label="Search">
   <div class="table-wrap">
-    <table class="striped compact rowlinks">
-      <thead><tr><th>Player</th><th class="num">Seed</th><th class="num">Price</th></tr></thead>
+    <table class="striped compact rowlinks sortable" data-sort-key="admin-players">
+      <thead><tr><th data-sort="text">Player</th><th class="num" data-sort="num" data-first="asc" data-default="asc">Seed</th><th class="num" data-sort="num">Price</th></tr></thead>
       <tbody>
         {% for p in rows %}
           <tr data-s="{{ (p.name ~ ' ' ~ p.nation) | lower }}" x-show="!q || $el.dataset.s.includes(q.toLowerCase())">
-            <td>{{ flag(p.nation) }} <a href="/admin/players/{{ p.id }}">{{ p.name }}</a>
+            <td data-v="{{ p.name }}">{{ flag(p.nation) }} <a href="/admin/players/{{ p.id }}">{{ p.name }}</a>
               {% if p.id not in in_draw %}<mark class="role ch">not in draw</mark>{% endif %}
               <br><small>{{ p.nation or "– no nation –" }}</small></td>
-            <td class="num">{{ p.seed or "" }}</td>
-            <td class="num">{{ p.price | price }}</td>
+            <td class="num" data-v="{{ p.seed or '' }}">{{ p.seed or "" }}</td>
+            <td class="num" data-v="{{ p.price }}">{{ p.price | price }}</td>
           </tr>
         {% endfor %}
       </tbody>
@@ -30,4 +30,4 @@
   </div>
 </div>
 {% endblock %}
-{% block scripts %}<script defer src="/static/vendor/alpine.min.js"></script>{% endblock %}
+{% block scripts %}<script defer src="/static/sortable.js"></script><script defer src="/static/vendor/alpine.min.js"></script>{% endblock %}
