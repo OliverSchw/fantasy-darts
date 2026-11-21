@@ -79,3 +79,32 @@ def test_sqlite_refused_on_vercel(monkeypatch):
         monkeypatch.undo()
         get_settings.cache_clear()
     assert isinstance(get_settings(), Settings)
+
+
+def test_backup_includes_invites(db, season, make_user, tmp_path):
+    from datetime import datetime, timezone
+
+    olli = make_user("olli")
+    db.add_all([models.Invite(token="offen123", note="Anna"),
+                models.Invite(token="benutzt1", note="Olli", used_by_id=olli.id, used_at=datetime.now(timezone.utc))])
+    db.commit()
+    data = json.loads(json.dumps(export_backup(db, season)))
+    assert {i["token"] for i in data["invites"]} == {"offen123", "benutzt1"}
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'restore.db'}")
+    Base.metadata.create_all(engine)
+    with sessionmaker(bind=engine, expire_on_commit=False)() as fresh:
+        restore_backup(fresh, data)
+        invites = {i.token: i for i in fresh.scalars(select(models.Invite))}
+        assert invites["offen123"].used_at is None and invites["offen123"].note == "Anna"
+        used = invites["benutzt1"]
+        assert used.used_at is not None and fresh.get(models.User, used.used_by_id).username == "olli"
+
+    # Ältere Backups ohne "invites" lassen sich weiter einspielen
+    del data["invites"]
+    data["season"]["key"] = season.key
+    engine2 = create_engine(f"sqlite:///{tmp_path / 'old.db'}")
+    Base.metadata.create_all(engine2)
+    with sessionmaker(bind=engine2, expire_on_commit=False)() as fresh:
+        restore_backup(fresh, data)
+        assert fresh.scalar(select(models.Invite)) is None

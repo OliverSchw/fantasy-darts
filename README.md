@@ -124,7 +124,7 @@ weil die kostenlose Render-Postgres nach 30 Tagen gelöscht wird.
   verweigert die App den Start ohne `DATABASE_URL`, damit nie versehentlich SQLite auf einem
   flüchtigen Dateisystem benutzt wird.
 - **CSV-Export** (öffnet sich direkt in Excel): *Admin → Overview → Export & backup* – Teams, Ergebnisse, Spieler.
-- **Komplett-Backup** (JSON, inkl. User mit Passwort-Hashes – vertraulich behandeln):
+- **Komplett-Backup** (JSON, inkl. User mit Passwort-Hashes und Einladungslinks – vertraulich behandeln):
   ```bash
   python -m app.cli backup                        # oder auf der Admin-Seite herunterladen
   python -m app.cli restore-backup <datei>.json   # in eine DB ohne diese Saison einspielen

@@ -3,6 +3,7 @@
 {% block content %}
 <article class="narrow">
   <h1>{{ user.username }}</h1>
+  {% if user.is_admin %}<a href="/admin" role="button" class="outline admin-link">⚙️ Admin area</a>{% endif %}
   <h3>Change password</h3>
   <form method="post" action="/account/password">
     <label>Current password <input name="current" type="password" autocomplete="current-password" required></label>

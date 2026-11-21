@@ -161,3 +161,11 @@ def test_overview_todo(admin, db, season, make_user):
     db.commit()
     page = admin.get("/admin").text
     assert "Teams are <strong>locked</strong>" in page and "members without a team" not in page
+
+
+def test_account_shows_admin_button(admin, db, make_user):
+    assert 'href="/admin" role="button"' in admin.get("/account").text
+    make_user("normal")
+    with TestClient(app) as c:
+        c.post("/login", data={"username": "normal", "password": "secret123"})
+        assert 'href="/admin" role="button"' not in c.get("/account").text
