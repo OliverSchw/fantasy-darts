@@ -25,14 +25,14 @@
 {% if overlap %}<p class="muted"><span class="dot"></span> {{ overlap | length }} player{{ "s" if overlap|length != 1 }} also in your team</p>{% endif %}
 
 <div class="table-wrap">
-<table class="striped compact">
-  <thead><tr><th>Player</th><th class="num">Price</th><th class="num">Points</th></tr></thead>
+<table class="striped compact sortable" data-sort-key="team">
+  <thead><tr><th data-sort="text">Player</th><th class="num" data-sort="num">Price</th><th class="num" data-sort="num" data-default="desc">Points</th></tr></thead>
   <tbody>
     {% for line in score.lines %}
       {% set p = state.players[line.player_id] %}
       {% set st = state.status(p.id) %}
       <tr>
-        <td>
+        <td data-v="{{ p.name }}">
           {{ player_name(p, state.score(p.id), mine=p.id in overlap) }}
           {% if p.id == team.playmaker_id %}<mark class="role pm">{{ rules.team.playmaker.label }}</mark>{% endif %}
           {% if p.id == team.underdog_id %}<mark class="role ud">{{ rules.team.underdog.label }}</mark>{% endif %}
@@ -48,8 +48,8 @@
             {% endif %}
           </small>
         </td>
-        <td class="num">{{ p.price | price }}</td>
-        <td class="num"><strong>{{ line.points | pts }}</strong>{% if line.multiplier != 1 %}<br><small>{{ line.base_points | pts }} ×{{ line.multiplier | pts }}</small>{% endif %}</td>
+        <td class="num" data-v="{{ p.price }}">{{ p.price | price }}</td>
+        <td class="num" data-v="{{ line.points }}"><strong>{{ line.points | pts }}</strong>{% if line.multiplier != 1 %}<br><small>{{ line.base_points | pts }} ×{{ line.multiplier | pts }}</small>{% endif %}</td>
       </tr>
     {% endfor %}
   </tbody>
@@ -57,3 +57,4 @@
 </div>
 <a href="/" class="secondary">← Back to ranking</a>
 {% endblock %}
+{% block scripts %}<script defer src="/static/sortable.js"></script>{% endblock %}

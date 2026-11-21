@@ -169,3 +169,13 @@ def test_account_shows_admin_button(admin, db, make_user):
     with TestClient(app) as c:
         c.post("/login", data={"username": "normal", "password": "secret123"})
         assert 'href="/admin" role="button"' not in c.get("/account").text
+
+
+def test_sortable_tables_markup(admin, db, season):
+    page = admin.get("/players").text
+    assert 'class="striped compact rowlinks sortable"' in page and "/static/sortable.js" in page
+    assert 'data-sort="num" data-default="desc">Points' in page and "Still in only" in page
+    assert page.count('data-alive="1"') > 0
+    page = admin.get("/admin/players").text
+    assert "sortable" in page and 'data-first="asc"' in page
+    assert admin.get("/static/sortable.js").status_code == 200

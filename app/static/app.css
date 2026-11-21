@@ -505,3 +505,11 @@ a.tmatch:hover { border-color: var(--pico-primary); }
 .copy-row form { margin: 0; flex: none; }
 .used-invites { padding-left: 1.1rem; }
 .admin-link { display: block; text-align: center; margin-bottom: 1.5rem; }
+/* --- Sortierbare Tabellen --------------------------------------------- */
+.th-sort { all: unset; cursor: pointer; font-weight: 600; white-space: nowrap; }
+.th-sort::after { content: " ↕"; font-size: 0.75em; opacity: 0.35; }
+th[aria-sort=ascending] .th-sort::after { content: " ▲"; opacity: 0.9; }
+th[aria-sort=descending] .th-sort::after { content: " ▼"; opacity: 0.9; }
+th[aria-sort] .th-sort { color: var(--pico-primary); }
+.th-sort:focus-visible { outline: 2px solid var(--pico-primary); outline-offset: 2px; border-radius: 3px; }
+.sort-hint { font-size: 0.8rem; margin: -0.3rem 0 0.4rem; }

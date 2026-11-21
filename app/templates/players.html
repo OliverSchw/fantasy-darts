@@ -3,21 +3,27 @@
 {% block title %}Players{% endblock %}
 {% block content %}
 <h1>Players</h1>
-<div x-data="{ q: '' }">
-  <input type="search" placeholder="Search player or nation…" x-model="q" aria-label="Search">
+<div x-data="{ q: '', alive: false }">
+  <div class="filters">
+    <input type="search" placeholder="Search player or nation…" x-model="q" aria-label="Search">
+    <label class="only-sel"><input type="checkbox" x-model="alive"> Still in only</label>
+  </div>
+  <p class="muted sort-hint">Tap a column title to sort.</p>
   <div class="table-wrap">
-  <table class="striped compact rowlinks">
+  <table class="striped compact rowlinks sortable" data-sort-key="players">
     <thead>
-      <tr><th>Player</th><th class="num">Price</th>{% if state.locked %}<th class="num" title="Share of active teams that picked this player">Picked</th>{% endif %}<th class="num">Points</th></tr>
+      <tr><th data-sort="text">Player</th><th class="num" data-sort="num">Price</th>{% if state.locked %}<th class="num" data-sort="num" title="Share of active teams that picked this player">Picked</th>{% endif %}<th class="num" data-sort="num" data-default="desc">Points</th></tr>
     </thead>
     <tbody>
       {% for p in rows %}
         {% set s = state.score(p.id) %}
-        <tr data-s="{{ (p.name ~ ' ' ~ p.nation) | lower }}" x-show="!q || $el.dataset.s.includes(q.toLowerCase())">
-          <td>{{ player_name(p, s) }}</td>
-          <td class="num">{{ p.price | price }}</td>
-          {% if state.locked %}<td class="num">{% if n_teams %}{{ (100 * picks[p.id] / n_teams) | round | int }}%{% endif %}</td>{% endif %}
-          <td class="num"><strong>{{ s.points | pts }}</strong></td>
+        {% set st = state.status(p.id).state %}
+        <tr data-s="{{ (p.name ~ ' ' ~ p.nation) | lower }}" {% if st in ("alive", "champion") %}data-alive="1"{% endif %}
+            x-show="(!q || $el.dataset.s.includes(q.toLowerCase())) && (!alive || $el.dataset.alive)">
+          <td data-v="{{ p.name }}">{{ player_name(p, s) }}</td>
+          <td class="num" data-v="{{ p.price }}">{{ p.price | price }}</td>
+          {% if state.locked %}<td class="num" data-v="{{ picks[p.id] }}">{% if n_teams %}{{ (100 * picks[p.id] / n_teams) | round | int }}%{% endif %}</td>{% endif %}
+          <td class="num" data-v="{{ s.points }}"><strong>{{ s.points | pts }}</strong></td>
         </tr>
       {% endfor %}
     </tbody>
@@ -25,4 +31,4 @@
   </div>
 </div>
 {% endblock %}
-{% block scripts %}<script defer src="/static/vendor/alpine.min.js"></script>{% endblock %}
+{% block scripts %}<script defer src="/static/sortable.js"></script><script defer src="/static/vendor/alpine.min.js"></script>{% endblock %}
