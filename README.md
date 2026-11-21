@@ -39,7 +39,7 @@ Der Admin-Bereich hat fünf Tabs: **Overview** (Zahlen, To-do-Liste, Team-Sperre
 **Members** (Einladen, Mitglieder verwalten), **Schedule**, **Players** und **Rules**.
 
 **Profilbilder** lädt jede:r unter *Account* selbst hoch. Der Browser schneidet das Bild quadratisch zu,
-der Server verkleinert es auf 256×256 px (WebP, entfernt Metadaten wie GPS) und speichert es in der
+der Server verkleinert es auf 512×512 px (WebP, entfernt Metadaten wie GPS) und speichert es in der
 Datenbank – auf Vercel gibt es kein dauerhaftes Dateisystem. Fotos sehen nur eingeloggte Mitspieler,
 Gäste sehen einen Kreis mit dem Anfangsbuchstaben. Admins können Bilder unter *Admin → Members* entfernen.
 

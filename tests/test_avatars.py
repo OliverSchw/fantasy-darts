@@ -42,7 +42,7 @@ def test_upload_resizes_and_serves(olli, db):
     assert r.status_code == 200 and r.headers["content-type"] == "image/webp"
     assert r.headers["x-content-type-options"] == "nosniff"
     img = Image.open(BytesIO(r.content))
-    assert img.format == "WEBP" and img.size == (256, 256)
+    assert img.format == "WEBP" and img.size == (512, 512)
     page = olli.get("/account").text
     assert f'/avatars/{u.id}?v={u.avatar_version}' in page and "Remove picture" in page
 
@@ -99,3 +99,32 @@ def test_admin_can_remove_picture_and_user_delete_cascades(olli, db, make_user):
         admin.post(f"/admin/users/{uid}/delete")
     db.expire_all()
     assert db.get(models.Avatar, uid) is None  # Bild wird mit dem User gelöscht
+
+
+def test_user_profile_page(olli, db, season, rules, make_user):
+    from tests.test_features import _team_form
+
+    anna = make_user("anna")
+    olli.post("/my/new", data=_team_form(db, season, rules, "Bulls"))
+    _upload(olli, _png())
+    me = _user(db)
+
+    with TestClient(app) as c:
+        c.post("/login", data={"username": "anna", "password": "secret123"})
+        page = c.get(f"/users/{me.id}").text
+        assert f"/avatars/{me.id}?v={me.avatar_version}" in page and 'class="avatar xl"' in page
+        assert "Bulls" in page and "visible once teams are locked" in page  # Team vor der Sperre nicht verlinkt
+        assert f'href="/users/{me.id}"' in c.get("/").text  # Rangliste verlinkt aufs Profil
+        assert "has no active team yet" in c.get(f"/users/{anna.id}").text
+        assert c.get("/users/9999").status_code == 404
+
+    season.teams_locked = True
+    db.commit()
+    with TestClient(app) as c:
+        c.post("/login", data={"username": "anna", "password": "secret123"})
+        assert '/teams/' in c.get(f"/users/{me.id}").text  # nach der Sperre verlinkt
+    assert "Change picture or password" in olli.get(f"/users/{me.id}").text  # eigenes Profil
+
+    with TestClient(app) as guest:
+        assert guest.get(f"/users/{me.id}", follow_redirects=False).status_code == 303  # -> Login
+        assert f'href="/users/{me.id}"' not in guest.get("/").text

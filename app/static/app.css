@@ -523,9 +523,20 @@ th[aria-sort] .th-sort { color: var(--pico-primary); }
 .ranking li .avatar { margin-right: 0.15rem; }
 .usermenu summary .avatar { margin-right: 0.3rem; }
 .byline .avatar { margin-right: 0.15rem; }
-.profile-head { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+.avatar.xl { width: min(11rem, 55vw); height: min(11rem, 55vw); font-size: 4.5rem;
+  box-shadow: 0 0 0 4px var(--pico-card-background-color), 0 0 0 6px var(--pico-primary); }
+.profile-head { display: flex; flex-direction: column; align-items: center; gap: 0.8rem; margin: 0.5rem 0 1.2rem; text-align: center; }
 .profile-head h1 { margin: 0; }
 .avatar-pick { display: flex; align-items: center; gap: 1rem; }
 .avatar-pick label { flex: 1; margin: 0; }
 .avatar-pick input[type=file] { margin: 0; font-size: 0.85rem; }
 .small-note { font-size: 0.8rem; margin: 0.4rem 0; }
+.avatar-link { display: inline-flex; border-radius: 50%; flex: none; }
+.avatar-link:focus-visible { outline: 2px solid var(--pico-primary); outline-offset: 2px; }
+.ranking .who small a.user-link { font-weight: 400; color: inherit; text-decoration: underline dotted; }
+.byline a.user-link { color: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem; }
+.byline a.user-link:hover { color: var(--pico-primary); }
+.profile-stats { grid-template-columns: repeat(3, 1fr); margin-bottom: 0.8rem; }
+.profile-stats .of { font-size: 0.8rem; font-weight: 400; color: var(--pico-muted-color); }
+.profile-team { text-align: center; margin-bottom: 1rem; }
+.center { text-align: center; }
