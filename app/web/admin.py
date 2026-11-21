@@ -2,7 +2,7 @@
 
 import json
 import secrets
-from datetime import date
+from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import Response
@@ -12,10 +12,10 @@ from .. import models
 from ..auth import hash_password, require_admin
 from ..backup import export_backup, players_csv, results_csv, teams_csv
 from ..bracket import BracketError, delete_result, save_result
-from ..config_store import INVITE_KEY, get_setting, invite_code, rules_customized, set_setting
+from ..config_store import INVITE_KEY, get_setting, invite_code, set_setting
 from ..settings import get_settings
 from .account import MIN_PASSWORD
-from .common import State, flash, get_state, redirect, render
+from .common import State, flash, get_state, local_dt, redirect, render
 
 router = APIRouter()
 
@@ -84,15 +84,37 @@ def result_delete(match_id: int, request: Request, state: State = Depends(get_st
 # ------------------------------------------------------------ Admin-Seite
 
 
-@router.get("/admin")
-def admin_page(request: Request, state: State = Depends(get_state), admin: models.User = Depends(require_admin)):
+def _invite_lists(state: State) -> tuple[list[models.Invite], list[models.Invite]]:
     invites = state.db.scalars(select(models.Invite).order_by(models.Invite.created_at.desc(),
                                                               models.Invite.id.desc())).all()
-    return render(request, "admin.html", state, invite_code=invite_code(state.db),
-                  open_invites=[i for i in invites if i.used_at is None],
-                  used_invites=sorted((i for i in invites if i.used_at), key=lambda i: i.used_at, reverse=True),
-                  invite_from_env=bool(get_settings().invite_code) and not get_setting(state.db, INVITE_KEY),
-                  rules_custom=rules_customized(state.db, state.season))
+    open_ = [i for i in invites if i.used_at is None]
+    used = sorted((i for i in invites if i.used_at), key=lambda i: i.used_at, reverse=True)
+    return open_, used
+
+
+@router.get("/admin")
+def admin_page(request: Request, state: State = Depends(get_state), admin: models.User = Depends(require_admin)):
+    users = state.db.scalars(select(models.User).order_by(func.lower(models.User.username))).all()
+    with_team = {t.user_id for t in state.active_teams}
+    total = sum(state.rules.matches_in_round(r) for r in range(1, state.rules.tournament.num_rounds + 1))
+    open_invites, _ = _invite_lists(state)
+    lock_at = state.rules.lock_at
+    now = datetime.now(timezone.utc)
+    auto_locked = bool(lock_at) and state.locked and not state.season.teams_locked
+    return render(
+        request, "admin.html", state,
+        n_users=len(users),
+        n_teams=len(state.active_teams),
+        without_team=[u.username for u in users if u.id not in with_team],
+        total_matches=total,
+        played=sum(1 for m in state.matches if m.is_played),
+        scheduled=sum(1 for m in state.matches if m.scheduled_at),
+        # Laut Spielplan schon angefangen, aber noch kein Ergebnis eingetragen
+        waiting=sum(1 for m in state.matches
+                    if m.scheduled_at and local_dt(m.scheduled_at) <= now and not m.is_played),
+        n_open_invites=len(open_invites),
+        auto_locked=auto_locked,
+    )
 
 
 @router.post("/admin/invite")
@@ -112,7 +134,7 @@ def set_invite(request: Request, action: str = Form(...), code: str = Form(""),
         set_setting(state.db, INVITE_KEY, None)
         flash(request, "Self-registration via invite code is off."
               + (" (INVITE_CODE in the environment is still active.)" if get_settings().invite_code else ""))
-    return redirect("/admin")
+    return redirect("/admin/users#code")
 
 
 @router.post("/admin/invites")
@@ -125,7 +147,7 @@ def create_invite(request: Request, note: str = Form(""), state: State = Depends
         state.db.add(models.Invite(token=secrets.token_urlsafe(12), note=note))
         state.db.commit()
         flash(request, "Personal invite link created" + (f" for “{note}”." if note else "."))
-    return redirect("/admin#invites")
+    return redirect("/admin/users#invites")
 
 
 @router.post("/admin/invites/{invite_id}/delete")
@@ -137,7 +159,7 @@ def delete_invite(invite_id: int, request: Request, state: State = Depends(get_s
     state.db.delete(inv)
     state.db.commit()
     flash(request, "Invite link deleted." if inv.used_at is None else "Entry deleted.")
-    return redirect("/admin#invites")
+    return redirect("/admin/users#invites")
 
 
 @router.get("/admin/users")
@@ -150,7 +172,12 @@ def admin_users(request: Request, state: State = Depends(get_state), admin: mode
             .group_by(models.Team.user_id)
         ).all()
     )
-    return render(request, "admin_users.html", state, users=users, team_counts=team_counts)
+    open_invites, used_invites = _invite_lists(state)
+    return render(request, "admin_users.html", state, users=users, team_counts=team_counts,
+                  open_invites=open_invites, used_invites=used_invites,
+                  invite_note={i.used_by_id: i.note for i in used_invites if i.used_by_id and i.note},
+                  invite_code=invite_code(state.db),
+                  invite_from_env=bool(get_settings().invite_code) and not get_setting(state.db, INVITE_KEY))
 
 
 @router.post("/admin/lock")

@@ -29,10 +29,11 @@ def _register(token, username="anna", password="secret123"):
 
 def test_link_works_exactly_once(admin, db):
     inv = _create(admin, db)
-    page = admin.get("/admin").text
+    page = admin.get("/admin/users").text
     assert 'id="invites"' in page and f"register?invite={inv.token}" in page
     # Abschnitt steht über dem Code-Abschnitt
-    assert page.index("Personal invite links") < page.index("Invite code")
+    assert page.index("Personal invite links") < page.index("Shared invite code")
+    assert "1 invite link not used yet" in admin.get("/admin").text  # To-do auf der Übersicht
 
     with TestClient(app) as guest:
         r = guest.get(f"/register?invite={inv.token}")
@@ -50,9 +51,10 @@ def test_link_works_exactly_once(admin, db):
     assert r.status_code == 410
     assert db.scalar(select(models.User).where(models.User.username == "anna2")) is None
 
-    page = admin.get("/admin").text
+    page = admin.get("/admin/users").text
     assert f"register?invite={inv.token}" not in page  # nicht mehr unter "Open"
     assert "Anna → <strong>anna</strong>" in page
+    assert "invited as “Anna”" in page  # Hinweis in der Mitgliederliste
 
 
 def test_errors_keep_link_open(admin, db, make_user):
@@ -89,7 +91,7 @@ def test_deleting_user_keeps_used_entry(admin, db):
     db.expire_all()
     inv = db.get(models.Invite, inv.id)
     assert inv.used_at is not None and inv.used_by_id is None  # ON DELETE SET NULL
-    assert "(deleted user)" in admin.get("/admin").text
+    assert "(deleted user)" in admin.get("/admin/users").text
 
 
 def test_note_max_length(admin, db):

@@ -1,31 +1,80 @@
 {% extends "base.html" %}
-{% block title %}Admin · Users{% endblock %}
+{% block title %}Admin · Members{% endblock %}
 {% block content %}
 {% include "_admin_nav.html" %}
 
-<article>
-  <h3>New user</h3>
-  <p class="muted">Easier: turn on the <a href="/admin">invite code</a> and let everyone register themselves.</p>
-  <form method="post" action="/admin/users" class="grid-form">
-    <input name="username" placeholder="Username" autocapitalize="none" required>
-    <input name="password" type="text" placeholder="Start password (min. 6)" minlength="6" required>
-    <label><input type="checkbox" name="is_admin" value="true"> Admin</label>
-    <button type="submit">Create</button>
+<article id="invites">
+  <h3>🎟️ Personal invite links</h3>
+  <p class="muted">Each link works for exactly one registration – no code needed. The note is only visible to admins.</p>
+  <form method="post" action="/admin/invites" class="grid-form invite-link-form">
+    <input name="note" placeholder="Note, e.g. Anna" maxlength="60" aria-label="Note">
+    <button class="small">Create link</button>
   </form>
+
+  <h4>Open ({{ open_invites|length }})</h4>
+  {% for inv in open_invites %}
+    {% set ilink = request.base_url ~ "register?invite=" ~ inv.token %}
+    <div class="invite-item">
+      <p class="muted"><strong>{{ inv.note or "(no note)" }}</strong> · created {{ inv.created_at.strftime("%d.%m.%Y") }}</p>
+      <div class="copy-row" x-data="{ copied: false }">
+        <input type="text" readonly value="{{ ilink }}" @focus="$el.select()" aria-label="Invite link {{ inv.note }}">
+        <button type="button" class="small" @click="navigator.clipboard.writeText($el.previousElementSibling.value); copied = true; setTimeout(() => copied = false, 1500)" x-text="copied ? 'Copied ✓' : 'Copy'">Copy</button>
+        <form method="post" action="/admin/invites/{{ inv.id }}/delete" onsubmit="return confirm('Delete this invite link?')">
+          <button class="outline secondary small" aria-label="Delete">Delete</button>
+        </form>
+      </div>
+    </div>
+  {% else %}
+    <p class="muted">No open links.</p>
+  {% endfor %}
+
+  <h4>Used ({{ used_invites|length }})</h4>
+  {% if used_invites %}
+    <ul class="used-invites">
+      {% for inv in used_invites %}
+        <li>{{ inv.note or "(no note)" }} → <strong>{{ inv.used_by.username if inv.used_by else "(deleted user)" }}</strong>
+          <span class="muted">· {{ inv.used_at.strftime("%d.%m.%Y") }}</span></li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted">No link used yet.</p>
+  {% endif %}
+</article>
+
+<article id="code">
+  <details {% if invite_code %}open{% endif %}>
+    <summary><strong>✉️ Shared invite code</strong> <mark class="badge {{ '' if invite_code else 'off' }}">{{ "on" if invite_code else "off" }}</mark></summary>
+    <p class="muted">One link for everybody – anyone who has it can register as long as the code is on.</p>
+    {% if invite_code %}
+      {% set link = request.base_url ~ "register?code=" ~ invite_code %}
+      <div class="copy-row" x-data="{ copied: false }">
+        <input type="text" readonly value="{{ link }}" @focus="$el.select()" aria-label="Invite link">
+        <button type="button" class="small" @click="navigator.clipboard.writeText($el.previousElementSibling.value); copied = true; setTimeout(() => copied = false, 1500)" x-text="copied ? 'Copied ✓' : 'Copy'">Copy</button>
+      </div>
+      <p class="muted">Code: <code>{{ invite_code }}</code>{% if invite_from_env %} (from the INVITE_CODE environment variable){% endif %}</p>
+    {% endif %}
+    <form method="post" action="/admin/invite" class="grid-form invite-form">
+      <input name="code" placeholder="Own code, e.g. bullseye26" maxlength="40" autocapitalize="none" aria-label="Own code">
+      <button name="action" value="set" class="outline small">Set code</button>
+      <button name="action" value="generate" class="outline small">{{ "New random code" if invite_code else "Turn on (random code)" }}</button>
+      {% if invite_code and not invite_from_env %}<button name="action" value="disable" class="outline secondary small">Turn off</button>{% endif %}
+    </form>
+  </details>
 </article>
 
 <article>
-  <h3>Users ({{ users|length }})</h3>
+  <h3>👥 Members ({{ users|length }})</h3>
+  <p class="muted">Tap a name to reset the password, change admin rights or delete the member.</p>
   {% for u in users %}
     <details class="user-row">
       <summary>
         <strong>{{ u.username }}</strong>
         {% if u.is_admin %}<mark class="badge">Admin</mark>{% endif %}
-        <small class="muted">{{ team_counts.get(u.id, 0) }} team(s)</small>
+        <small class="muted">{{ team_counts.get(u.id, 0) }} team(s){% if invite_note.get(u.id) %} · invited as “{{ invite_note[u.id] }}”{% endif %}</small>
       </summary>
       <div class="user-actions" x-data="{ sure: false }">
         <form method="post" action="/admin/users/{{ u.id }}/password" class="inline">
-          <input name="password" type="text" placeholder="New password" minlength="6" required>
+          <input name="password" type="text" placeholder="New password" minlength="6" required aria-label="New password">
           <button class="outline small">Set password</button>
         </form>
         {% if u.id != user.id %}
@@ -40,6 +89,19 @@
       </div>
     </details>
   {% endfor %}
+</article>
+
+<article>
+  <details>
+    <summary><strong>➕ Add member manually</strong></summary>
+    <p class="muted">Only needed if someone can't use an invite link. Give them the start password – they can change it under Account.</p>
+    <form method="post" action="/admin/users" class="grid-form">
+      <input name="username" placeholder="Username" autocapitalize="none" required aria-label="Username">
+      <input name="password" type="text" placeholder="Start password (min. 6)" minlength="6" required aria-label="Start password">
+      <label><input type="checkbox" name="is_admin" value="true"> Admin</label>
+      <button type="submit">Create</button>
+    </form>
+  </details>
 </article>
 {% endblock %}
 {% block scripts %}<script defer src="/static/vendor/alpine.min.js"></script>{% endblock %}

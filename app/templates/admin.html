@@ -3,82 +3,54 @@
 {% block content %}
 {% include "_admin_nav.html" %}
 
+<div class="stat-grid admin-stats">
+  <a href="/admin/users"><span>{{ n_users }}</span><small>Members</small></a>
+  <div><span>{{ n_teams }}</span><small>Active teams</small></div>
+  <a href="/bracket"><span>{{ played }}/{{ total_matches }}</span><small>Results entered</small></a>
+  <a href="/admin/schedule"><span>{{ scheduled }}/{{ total_matches }}</span><small>Matches scheduled</small></a>
+</div>
+
+<article>
+  <h3>📋 To do</h3>
+  {% set todo = [] %}
+  <ul class="todo">
+    {% if not state.locked and without_team %}{% set _ = todo.append(1) %}
+      <li><strong>{{ without_team|length }} member{{ "s" if without_team|length != 1 }} without a team:</strong>
+        {{ without_team|join(", ") }}</li>
+    {% endif %}
+    {% if waiting %}{% set _ = todo.append(1) %}
+      <li><a href="/bracket">{{ waiting }} match{{ "es" if waiting != 1 }} waiting for a result →</a></li>
+    {% endif %}
+    {% if not state.locked and not rules.lock_at %}{% set _ = todo.append(1) %}
+      <li>No automatic team lock set – <a href="/admin/rules">set the tournament start →</a></li>
+    {% endif %}
+    {% if n_open_invites %}{% set _ = todo.append(1) %}
+      <li><a href="/admin/users#invites">{{ n_open_invites }} invite link{{ "s" if n_open_invites != 1 }} not used yet →</a></li>
+    {% endif %}
+    {% if not todo %}<li class="done">Nothing to do right now ✓</li>{% endif %}
+  </ul>
+</article>
+
 <article>
   <h3>🔒 Team lock</h3>
-  <form method="post" action="/admin/lock">
-    <label>
-      <input type="checkbox" role="switch" name="locked" value="true" {% if state.season.teams_locked %}checked{% endif %} onchange="this.form.submit()">
-      Teams locked (manual)
-    </label>
-    <noscript><button type="submit">Save</button></noscript>
-  </form>
-  {% if rules.lock_at %}<p class="muted">Automatic lock: {{ rules.lock_at.strftime("%d.%m.%Y %H:%M") }} – change it under <a href="/admin/rules">Rules &amp; points</a>.</p>{% endif %}
-  <p class="muted">Results are entered in the <a href="/bracket">bracket</a> – tap a match.</p>
-</article>
-
-<article id="invites">
-  <h3>🎟️ Personal invite links</h3>
-  <p class="muted">Each link works for exactly one registration – no code needed. The note is only visible to admins.</p>
-  <form method="post" action="/admin/invites" class="grid-form invite-link-form">
-    <input name="note" placeholder="Note, e.g. Anna" maxlength="60" aria-label="Note">
-    <button class="small">Create link</button>
-  </form>
-
-  <h4>Open ({{ open_invites|length }})</h4>
-  {% for inv in open_invites %}
-    {% set ilink = request.base_url ~ "register?invite=" ~ inv.token %}
-    <div class="invite-item">
-      <p class="muted"><strong>{{ inv.note or "(no note)" }}</strong> · created {{ inv.created_at.strftime("%d.%m.%Y") }}</p>
-      <div class="copy-row" x-data="{ copied: false }">
-        <input type="text" readonly value="{{ ilink }}" @focus="$el.select()" aria-label="Invite link {{ inv.note }}">
-        <button type="button" class="small" @click="navigator.clipboard.writeText($el.previousElementSibling.value); copied = true; setTimeout(() => copied = false, 1500)" x-text="copied ? 'Copied ✓' : 'Copy'">Copy</button>
-        <form method="post" action="/admin/invites/{{ inv.id }}/delete" onsubmit="return confirm('Delete this invite link?')">
-          <button class="outline secondary small" aria-label="Delete">Delete</button>
-        </form>
-      </div>
-    </div>
+  {% if state.locked %}
+    <p>Teams are <strong>locked</strong>{% if auto_locked %} – automatically since {{ rules.lock_at.strftime("%d.%m.%Y %H:%M") }}{% endif %}.
+      Everyone can now see all teams.</p>
   {% else %}
-    <p class="muted">No open links.</p>
-  {% endfor %}
-
-  <h4>Used ({{ used_invites|length }})</h4>
-  {% if used_invites %}
-    <ul class="used-invites">
-      {% for inv in used_invites %}
-        <li>{{ inv.note or "(no note)" }} → <strong>{{ inv.used_by.username if inv.used_by else "(deleted user)" }}</strong>
-          <span class="muted">· {{ inv.used_at.strftime("%d.%m.%Y") }}</span></li>
-      {% endfor %}
-    </ul>
-  {% else %}
-    <p class="muted">No link used yet.</p>
+    <p>Teams are <strong>open</strong> – players can still build and change them.
+      {% if rules.lock_at %}They lock automatically on <strong>{{ rules.lock_at.strftime("%d.%m.%Y at %H:%M") }}</strong>.{% endif %}</p>
   {% endif %}
-</article>
-
-<article>
-  <h3>✉️ Invite code</h3>
-  {% if invite_code %}
-    {% set link = request.base_url ~ "register?code=" ~ invite_code %}
-    <p>Self-registration is <strong>on</strong>. Send this link to your players – they pick their own username and password:</p>
-    <div class="copy-row" x-data="{ copied: false }">
-      <input type="text" readonly value="{{ link }}" @focus="$el.select()" aria-label="Invite link">
-      <button type="button" class="small" @click="navigator.clipboard.writeText($el.previousElementSibling.value); copied = true; setTimeout(() => copied = false, 1500)" x-text="copied ? 'Copied ✓' : 'Copy'">Copy</button>
-    </div>
-    <p class="muted">Code: <code>{{ invite_code }}</code>{% if invite_from_env %} (from the INVITE_CODE environment variable){% endif %}</p>
+  {% if auto_locked %}
+    <p class="muted">To reopen the teams, move the lock time under <a href="/admin/rules">Rules &amp; points</a>.</p>
   {% else %}
-    <p>Self-registration is <strong>off</strong> – only admins can create users (under <a href="/admin/users">Users</a>).</p>
+    <form method="post" action="/admin/lock">
+      <label>
+        <input type="checkbox" role="switch" name="locked" value="true" {% if state.season.teams_locked %}checked{% endif %} onchange="this.form.submit()">
+        Lock teams now (manually)
+      </label>
+      <noscript><button type="submit">Save</button></noscript>
+    </form>
   {% endif %}
-  <form method="post" action="/admin/invite" class="grid-form invite-form">
-    <input name="code" placeholder="Own code, e.g. bullseye26" maxlength="40" autocapitalize="none">
-    <button name="action" value="set" class="outline small">Set code</button>
-    <button name="action" value="generate" class="outline small">{{ "New random code" if invite_code else "Turn on (random code)" }}</button>
-    {% if invite_code and not invite_from_env %}<button name="action" value="disable" class="outline secondary small">Turn off</button>{% endif %}
-  </form>
-</article>
-
-<article>
-  <h3>⚙️ Rules</h3>
-  <p class="muted">{% if rules_custom %}Rules were changed in the admin area.{% else %}Using the default rules from the season file.{% endif %}
-    <a href="/admin/rules">Edit rules &amp; points →</a></p>
 </article>
 
 <article>
@@ -93,4 +65,3 @@
     <code>python -m app.cli restore-backup &lt;file&gt;</code>. It contains password hashes – keep it private.</p>
 </article>
 {% endblock %}
-{% block scripts %}<script defer src="/static/vendor/alpine.min.js"></script>{% endblock %}
