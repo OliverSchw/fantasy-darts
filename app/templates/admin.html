@@ -16,6 +16,44 @@
   <p class="muted">Results are entered in the <a href="/bracket">bracket</a> – tap a match.</p>
 </article>
 
+<article id="invites">
+  <h3>🎟️ Personal invite links</h3>
+  <p class="muted">Each link works for exactly one registration – no code needed. The note is only visible to admins.</p>
+  <form method="post" action="/admin/invites" class="grid-form invite-link-form">
+    <input name="note" placeholder="Note, e.g. Anna" maxlength="60" aria-label="Note">
+    <button class="small">Create link</button>
+  </form>
+
+  <h4>Open ({{ open_invites|length }})</h4>
+  {% for inv in open_invites %}
+    {% set ilink = request.base_url ~ "register?invite=" ~ inv.token %}
+    <div class="invite-item">
+      <p class="muted"><strong>{{ inv.note or "(no note)" }}</strong> · created {{ inv.created_at.strftime("%d.%m.%Y") }}</p>
+      <div class="copy-row" x-data="{ copied: false }">
+        <input type="text" readonly value="{{ ilink }}" @focus="$el.select()" aria-label="Invite link {{ inv.note }}">
+        <button type="button" class="small" @click="navigator.clipboard.writeText($el.previousElementSibling.value); copied = true; setTimeout(() => copied = false, 1500)" x-text="copied ? 'Copied ✓' : 'Copy'">Copy</button>
+        <form method="post" action="/admin/invites/{{ inv.id }}/delete" onsubmit="return confirm('Delete this invite link?')">
+          <button class="outline secondary small" aria-label="Delete">Delete</button>
+        </form>
+      </div>
+    </div>
+  {% else %}
+    <p class="muted">No open links.</p>
+  {% endfor %}
+
+  <h4>Used ({{ used_invites|length }})</h4>
+  {% if used_invites %}
+    <ul class="used-invites">
+      {% for inv in used_invites %}
+        <li>{{ inv.note or "(no note)" }} → <strong>{{ inv.used_by.username if inv.used_by else "(deleted user)" }}</strong>
+          <span class="muted">· {{ inv.used_at.strftime("%d.%m.%Y") }}</span></li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted">No link used yet.</p>
+  {% endif %}
+</article>
+
 <article>
   <h3>✉️ Invite code</h3>
   {% if invite_code %}

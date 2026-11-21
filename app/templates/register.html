@@ -5,7 +5,12 @@
   <h1>Join the league</h1>
   {% if error %}<p class="flash error">{{ error }}</p>{% endif %}
   <form method="post" action="/register">
-    <label>Invite code <input name="code" value="{{ code or '' }}" autocapitalize="none" autocomplete="off" required></label>
+    {% if invite %}
+      <input type="hidden" name="invite" value="{{ invite }}">
+      <p class="muted">You were invited personally – just pick a username and password.</p>
+    {% else %}
+      <label>Invite code <input name="code" value="{{ code or '' }}" autocapitalize="none" autocomplete="off" required></label>
+    {% endif %}
     <label>Username <input name="username" value="{{ username or '' }}" autocomplete="username" autocapitalize="none" maxlength="40" required></label>
     <label>Password <input name="password" type="password" autocomplete="new-password" minlength="6" required></label>
     <button type="submit">Create account</button>

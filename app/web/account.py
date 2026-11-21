@@ -1,7 +1,9 @@
 import hmac
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .. import auth, models
@@ -73,7 +75,10 @@ def change_password(
     return redirect("/account")
 
 
-# ------------------------------------------------------------ Registrierung mit Einladungscode
+# ------------------------------------------------------------ Registrierung
+#
+# Zwei Wege: der gemeinsame Einladungscode (?code=...) oder ein persönlicher
+# Einmal-Link (?invite=<token>), den der Admin pro Mitspieler erzeugt.
 
 
 def _invite_code(db: Session) -> str:
@@ -83,8 +88,23 @@ def _invite_code(db: Session) -> str:
     return code
 
 
+def _open_invite(db: Session, token: str) -> models.Invite | None:
+    inv = db.scalar(select(models.Invite).where(models.Invite.token == token))
+    return inv if inv is not None and inv.used_at is None else None
+
+
+def _invite_gone(request: Request):
+    return render(request, "message.html", status_code=410, title="Invite link not valid",
+                  text="This invite link was already used or is no longer valid. "
+                       "Ask the admin for a new one.")
+
+
 @router.get("/register")
-def register_form(request: Request, code: str = "", db: Session = Depends(get_db)):
+def register_form(request: Request, code: str = "", invite: str = "", db: Session = Depends(get_db)):
+    if invite:
+        if _open_invite(db, invite) is None:
+            return _invite_gone(request)
+        return render(request, "register.html", invite=invite)
     _invite_code(db)
     return render(request, "register.html", code=code)
 
@@ -94,13 +114,21 @@ def register(
     request: Request,
     username: str = Form(...),
     password: str = Form(...),
-    code: str = Form(...),
+    code: str = Form(""),
+    invite: str = Form(""),
     db: Session = Depends(get_db),
 ):
-    expected = _invite_code(db)
     username = username.strip()
+    inv = None
+    code_ok = True
+    if invite:
+        inv = _open_invite(db, invite)
+        if inv is None:
+            return _invite_gone(request)
+    else:
+        code_ok = hmac.compare_digest(code.strip().encode(), _invite_code(db).encode())
     error = None
-    if not hmac.compare_digest(code.strip().encode(), expected.encode()):
+    if not code_ok:
         error = "Wrong invite code."
     elif not username or len(username) > 40:
         error = "Username must be 1-40 characters."
@@ -109,9 +137,28 @@ def register(
     elif db.scalar(select(models.User).where(func.lower(models.User.username) == username.lower())):
         error = "Username already taken."
     if error:
-        return render(request, "register.html", status_code=400, error=error, username=username, code=code)
+        # Fehler verbrauchen den Link nicht: bis hierhin wurde nichts geschrieben.
+        return render(request, "register.html", status_code=400, error=error, username=username,
+                      code=code, invite=invite)
+
     user = models.User(username=username, password_hash=auth.hash_password(password))
     db.add(user)
+    try:
+        db.flush()
+    except IntegrityError:  # gleichzeitig derselbe Name registriert
+        db.rollback()
+        return render(request, "register.html", status_code=400, error="Username already taken.",
+                      username=username, code=code, invite=invite)
+    if inv is not None:
+        # Bedingtes UPDATE: nur ein einziger Request kann den Link einlösen, auch bei Parallelzugriff.
+        result = db.execute(
+            update(models.Invite)
+            .where(models.Invite.id == inv.id, models.Invite.used_at.is_(None))
+            .values(used_at=datetime.now(timezone.utc), used_by_id=user.id)
+        )
+        if result.rowcount != 1:
+            db.rollback()  # User wird mit zurückgerollt
+            return _invite_gone(request)
     db.commit()
     auth.login(request, user)
     flash(request, f"Welcome, {username}! Now build your team.")

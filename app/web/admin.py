@@ -86,7 +86,11 @@ def result_delete(match_id: int, request: Request, state: State = Depends(get_st
 
 @router.get("/admin")
 def admin_page(request: Request, state: State = Depends(get_state), admin: models.User = Depends(require_admin)):
+    invites = state.db.scalars(select(models.Invite).order_by(models.Invite.created_at.desc(),
+                                                              models.Invite.id.desc())).all()
     return render(request, "admin.html", state, invite_code=invite_code(state.db),
+                  open_invites=[i for i in invites if i.used_at is None],
+                  used_invites=sorted((i for i in invites if i.used_at), key=lambda i: i.used_at, reverse=True),
                   invite_from_env=bool(get_settings().invite_code) and not get_setting(state.db, INVITE_KEY),
                   rules_custom=rules_customized(state.db, state.season))
 
@@ -109,6 +113,31 @@ def set_invite(request: Request, action: str = Form(...), code: str = Form(""),
         flash(request, "Self-registration via invite code is off."
               + (" (INVITE_CODE in the environment is still active.)" if get_settings().invite_code else ""))
     return redirect("/admin")
+
+
+@router.post("/admin/invites")
+def create_invite(request: Request, note: str = Form(""), state: State = Depends(get_state),
+                  admin: models.User = Depends(require_admin)):
+    note = note.strip()
+    if len(note) > 60:
+        flash(request, "Note can have at most 60 characters.", "error")
+    else:
+        state.db.add(models.Invite(token=secrets.token_urlsafe(12), note=note))
+        state.db.commit()
+        flash(request, "Personal invite link created" + (f" for “{note}”." if note else "."))
+    return redirect("/admin#invites")
+
+
+@router.post("/admin/invites/{invite_id}/delete")
+def delete_invite(invite_id: int, request: Request, state: State = Depends(get_state),
+                  admin: models.User = Depends(require_admin)):
+    inv = state.db.get(models.Invite, invite_id)
+    if inv is None:
+        raise HTTPException(404)
+    state.db.delete(inv)
+    state.db.commit()
+    flash(request, "Invite link deleted." if inv.used_at is None else "Entry deleted.")
+    return redirect("/admin#invites")
 
 
 @router.get("/admin/users")
