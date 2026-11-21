@@ -113,6 +113,11 @@ def export_backup(db: Session, season: models.Season) -> dict:
             "playmaker_id": t.playmaker_id, "underdog_id": t.underdog_id, "champion_pick_id": t.champion_pick_id,
             "created_at": t.created_at.isoformat() if t.created_at else None,
         } for t in teams],
+        "invites": [{
+            "token": i.token, "note": i.note, "used_by_id": i.used_by_id,
+            "created_at": i.created_at.isoformat() if i.created_at else None,
+            "used_at": i.used_at.isoformat() if i.used_at else None,
+        } for i in db.scalars(select(models.Invite).order_by(models.Invite.id))],
     }
 
 
@@ -165,5 +170,14 @@ def restore_backup(db: Session, data: dict) -> models.Season:
         )
         team.members = [models.TeamPlayer(player_id=pm(pid)) for pid in t["player_ids"]]
         db.add(team)
+    # Einladungslinks (ältere Backups haben keine). Schon vorhandene Tokens bleiben unverändert.
+    known = set(db.scalars(select(models.Invite.token)))
+    for i in data.get("invites", []):
+        if i["token"] in known:
+            continue
+        db.add(models.Invite(
+            token=i["token"], note=i["note"], used_by_id=user_map.get(i["used_by_id"]),
+            created_at=ts(i["created_at"]) or datetime.now(timezone.utc), used_at=ts(i["used_at"]),
+        ))
     db.commit()
     return season
