@@ -202,6 +202,8 @@ class DartsGame(Base):
     created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    tournament_match_id: Mapped[int | None] = mapped_column(
+        ForeignKey("tournament_matches.id", ondelete="SET NULL"), nullable=True, index=True)
 
     players: Mapped[list["DartsGamePlayer"]] = relationship(
         cascade="all, delete-orphan", order_by="DartsGamePlayer.position", lazy="selectin")
@@ -238,3 +240,87 @@ class DartsVisit(Base):
     checkout: Mapped[bool] = mapped_column(Boolean, default=False)
     remaining_before: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+# ---------------------------------------------------------------- Kern: Turniere (K.-o.)
+# Gemeinsam für Darts und Bierpong. Ein Eintrag ist ein Spieler (Darts) oder ein Team (Bierpong).
+
+
+class Tournament(Base):
+    __tablename__ = "tournaments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    sport: Mapped[str] = mapped_column(String(20), index=True)  # "darts" | "beerpong"
+    name: Mapped[str] = mapped_column(String(80))
+    status: Mapped[str] = mapped_column(String(12), default="running")  # running | finished
+    settings: Mapped[dict] = mapped_column(JSON, default=dict)  # z. B. {"start": 501, "legs": 2, "final_legs": 3}
+    winner_entry_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    entries: Mapped[list["TournamentEntry"]] = relationship(
+        cascade="all, delete-orphan", order_by="TournamentEntry.seed", lazy="selectin")
+    matches: Mapped[list["TournamentMatch"]] = relationship(
+        cascade="all, delete-orphan", order_by="(TournamentMatch.round, TournamentMatch.slot)", lazy="selectin")
+
+    @property
+    def num_rounds(self) -> int:
+        return max((m.round for m in self.matches), default=0)
+
+
+class TournamentEntry(Base):
+    __tablename__ = "tournament_entries"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id", ondelete="CASCADE"), index=True)
+    seed: Mapped[int] = mapped_column(Integer)  # 1 = Topgesetzt
+    name: Mapped[str | None] = mapped_column(String(60), nullable=True)  # Teamname (Bierpong)
+
+    members: Mapped[list["TournamentEntryMember"]] = relationship(
+        cascade="all, delete-orphan", order_by="TournamentEntryMember.position", lazy="selectin")
+
+    @property
+    def competitors(self) -> list[Competitor]:
+        return [m.competitor for m in self.members]
+
+    @property
+    def display_name(self) -> str:
+        return self.name or " & ".join(c.display_name for c in self.competitors)
+
+
+class TournamentEntryMember(Base):
+    __tablename__ = "tournament_entry_members"
+
+    entry_id: Mapped[int] = mapped_column(ForeignKey("tournament_entries.id", ondelete="CASCADE"), primary_key=True)
+    position: Mapped[int] = mapped_column(Integer, primary_key=True)
+    competitor_id: Mapped[int] = mapped_column(ForeignKey("competitors.id"), index=True)
+
+    competitor: Mapped[Competitor] = relationship(lazy="joined")
+
+
+class TournamentMatch(Base):
+    """Ein Match im K.-o.-Baum, adressiert über (round, slot) - wie bei Fantasy Darts:
+    der Sieger von (r, s) spielt in (r+1, s // 2), als Seite 1 wenn s gerade ist, sonst Seite 2."""
+
+    __tablename__ = "tournament_matches"
+    __table_args__ = (UniqueConstraint("tournament_id", "round", "slot"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id", ondelete="CASCADE"), index=True)
+    round: Mapped[int] = mapped_column(Integer)
+    slot: Mapped[int] = mapped_column(Integer)
+    entry1_id: Mapped[int | None] = mapped_column(ForeignKey("tournament_entries.id"), nullable=True)
+    entry2_id: Mapped[int | None] = mapped_column(ForeignKey("tournament_entries.id"), nullable=True)
+    winner_id: Mapped[int | None] = mapped_column(ForeignKey("tournament_entries.id"), nullable=True)
+    score1: Mapped[int] = mapped_column(Integer, default=0)  # Legs (Darts) bzw. Becher (Bierpong)
+    score2: Mapped[int] = mapped_column(Integer, default=0)
+    bye: Mapped[bool] = mapped_column(Boolean, default=False)  # Freilos: Gegner fehlt, Sieger steht fest
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    entry1: Mapped[TournamentEntry | None] = relationship(foreign_keys=[entry1_id], lazy="joined")
+    entry2: Mapped[TournamentEntry | None] = relationship(foreign_keys=[entry2_id], lazy="joined")
+
+    @property
+    def is_played(self) -> bool:
+        return self.winner_id is not None

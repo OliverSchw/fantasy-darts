@@ -6,7 +6,7 @@ landet man auf einer Startseite und wählt den Bereich:
 | Bereich | Adresse | Stand |
 |---|---|---|
 | 🏆 **Fantasy Darts** – Team zur PDC-WM zusammenstellen, Ranking | `/fantasy` | fertig |
-| 🎯 **Darts** – 501 gegeneinander spielen, am Handy zählen, Stats | `/darts` | fertig (Turniere folgen) |
+| 🎯 **Darts** – 501 gegeneinander spielen, am Handy zählen, Stats | `/darts` | fertig |
 | 🍺 **Beer Pong** – Turniere mit Teams und Turnierbaum | `/beerpong` | geplant |
 
 Konten, Login, Profilbilder, Profilseiten, Einladungen und die Mitgliederverwaltung gehören zum
@@ -39,6 +39,14 @@ später einem Konto zuordnen (*Stats → Spieler → Link guest to an account*),
   Aufnahmen, die auf einem ausmachbaren Rest begonnen haben). Abgebrochene Spiele zählen nicht.
 - Spiellogik in `app/darts/` (engine, checkouts, stats, service) – reine Funktionen mit eigenen Tests.
 
+**Turniere** (*Darts → Tournaments*): Name, Startwert, „First to X Legs“ (fürs Finale extra einstellbar),
+Mitglieder antippen und Gäste eintippen, optional zufällig losen. Es entsteht ein K.-o.-Baum mit
+üblicher Setzliste (1 gegen den Letzten …); bei ungerader Teilnehmerzahl bekommen die Topgesetzten
+ein Freilos. Match antippen → *Play this match* startet ein normales Darts-Spiel; ist es entschieden,
+rückt der Sieger automatisch weiter. Ohne Handy gespielt? Der Organisator (wer das Turnier angelegt hat,
+oder ein Admin) trägt das Ergebnis direkt ein. Ergebnisse lassen sich ändern, solange das Folgematch
+noch keins hat. Die Turnier-Logik (`app/tournaments.py`) ist für alle Sportarten gleich.
+
 ## Aufbau
 
 ```
@@ -47,6 +55,7 @@ app/
   platform.py    Welche Bereiche es gibt (Startseite, Navigation, Admin)
   settings.py    Konfiguration über Umgebungsvariablen / .env
   avatars.py     Profilbilder verkleinern & speichern
+  tournaments.py K.-o.-Turniere (Setzliste, Freilose, Weiterrücken) für alle Sportarten
   darts/         Darts: Spiellogik, Checkout-Wege, Stats, Datenbank-Operationen
   rules.py       Fantasy: lädt seasons/<saison>/rules.toml
   scoring.py     Fantasy: Punkteberechnung (reine Funktionen)

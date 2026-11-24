@@ -38,7 +38,7 @@ SECTIONS: tuple[Section, ...] = (
     Section(
         key="darts", name="Darts", icon="🎯", href="/darts",
         tagline="Play 501 against each other, score on your phone and track your stats.",
-        tabs=(("/darts", "🎯", "Play"), ("/darts/new", "➕", "New game"), ("/darts/games", "🕒", "Games"),
+        tabs=(("/darts", "🎯", "Play"), ("/darts/games", "🕒", "Games"), ("/darts/tournaments", "🏆", "Tournaments"),
               ("/darts/players", "📈", "Stats")),
     ),
     Section(key="beerpong", name="Beer Pong", icon="🍺", href="/beerpong",

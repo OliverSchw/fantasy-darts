@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% from "_macros.html" import cavatar %}
+{% block title %}New tournament{% endblock %}
+{% block content %}
+<h1>New tournament</h1>
+{% if error %}<p class="flash error">{{ error }}</p>{% endif %}
+<form method="post" action="/darts/tournaments/new" class="dnew" x-data='{ "legs": {{ form.legs }}, "final": {{ form.final_legs }} }'>
+  <fieldset>
+    <legend>Tournament</legend>
+    <input name="name" value="{{ form.name }}" placeholder="Name, e.g. Christmas Cup 2026" maxlength="80" required aria-label="Name">
+    <div class="seg" role="radiogroup" aria-label="Start score">
+      {% for s in starts %}
+        <label><input type="radio" name="start" value="{{ s }}" {% if s == form.start %}checked{% endif %}><span>{{ s }}</span></label>
+      {% endfor %}
+    </div>
+    <div class="stepper">
+      <span>Matches: first to</span>
+      <button type="button" class="outline small" @click="legs = Math.max(1, legs - 1)" aria-label="Fewer legs per match">−</button>
+      <strong x-text="legs">{{ form.legs }}</strong>
+      <button type="button" class="outline small" @click="legs = Math.min(11, legs + 1); final = Math.max(final, legs)" aria-label="More legs per match">＋</button>
+      <input type="hidden" name="legs" :value="legs" value="{{ form.legs }}">
+    </div>
+    <div class="stepper">
+      <span>Final: first to</span>
+      <button type="button" class="outline small" @click="final = Math.max(1, final - 1)" aria-label="Fewer legs in the final">−</button>
+      <strong x-text="final">{{ form.final_legs }}</strong>
+      <button type="button" class="outline small" @click="final = Math.min(11, final + 1)" aria-label="More legs in the final">＋</button>
+      <input type="hidden" name="final_legs" :value="final" value="{{ form.final_legs }}">
+    </div>
+    <small class="muted">Knockout, double out. With an odd number of players the top seeds get a bye.</small>
+  </fieldset>
+
+  <fieldset>
+    <legend>Players</legend>
+    <div class="pick-grid">
+      {% for c in competitors %}
+        <label class="pick-chip">
+          <input type="checkbox" name="players" value="{{ c.id }}" {% if c.id in form.players %}checked{% endif %}>
+          {{ cavatar(c, user, "xs") }} <span>{{ c.display_name }}</span>
+        </label>
+      {% endfor %}
+    </div>
+    <label>New guests <small class="muted">(one per line or separated by commas)</small>
+      <textarea name="guests" rows="2" placeholder="Kevin, Marco">{{ form.guests }}</textarea>
+    </label>
+    <label><input type="checkbox" name="shuffle" value="1" {% if form.shuffle %}checked{% endif %}> Random draw
+      <small class="muted">– otherwise the list order is the seeding</small></label>
+  </fieldset>
+
+  <button type="submit">🏆 Create tournament</button>
+</form>
+{% endblock %}
+{% block scripts %}<script defer src="/static/vendor/alpine.min.js"></script>{% endblock %}
