@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% from "darts/_game_list.html" import game_list %}
+{% block title %}Games{% endblock %}
+{% block content %}
+<div class="title-row">
+  <h1>Games</h1>
+  <a href="/darts/new" role="button" class="small">＋ New game</a>
+</div>
+{% if games %}
+  {{ game_list(games, user) }}
+{% else %}
+  <p class="muted">No games yet.</p>
+{% endif %}
+{% endblock %}

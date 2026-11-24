@@ -6,6 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from .. import models
 from ..auth import require_user
+from ..darts.service import competitor_for_user
+from ..darts.stats import compute_stats
 from ..scoring import side_breakdown
 from ..teams import user_teams
 from .common import State, get_state, render
@@ -41,8 +43,10 @@ def user_profile(user_id: int, request: Request, state: State = Depends(get_stat
     if person is None:
         raise HTTPException(404)
     row = next((r for r in state.leaderboard() if r["team"].user_id == person.id), None)
+    darts_me = competitor_for_user(state.db, person)
     return render(request, "user_profile.html", state, person=person, row=row,
-                  n_ranked=len(state.active_teams))
+                  n_ranked=len(state.active_teams), darts_me=darts_me,
+                  darts_stats=compute_stats(state.db, [darts_me.id]).get(darts_me.id))
 
 
 def _pick_counts(state: State) -> tuple[Counter, Counter, Counter, Counter]:

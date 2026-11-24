@@ -1,0 +1,15 @@
+{% from "_macros.html" import avg %}
+{% macro stats_grid(s) -%}
+<div class="stat-grid">
+  <div><span>{{ avg(s.average) }}</span><small>3-dart average</small></div>
+  <div><span>{{ avg(s.first9) }}</span><small>First 9 average</small></div>
+  <div><span>{{ s.wins }}/{{ s.games }}</span><small>Games won{% if s.win_pct is not none %} · {{ "%.0f" | format(s.win_pct) }}%{% endif %}</small></div>
+  <div><span>{{ s.legs_won }}/{{ s.legs }}</span><small>Legs won</small></div>
+  <div><span>{{ s.max180 }}</span><small>180s</small></div>
+  <div><span>{{ s.ton40 }}</span><small>140+</small></div>
+  <div><span>{{ s.tons }}</span><small>100+</small></div>
+  <div><span>{{ s.high_finish or "–" }}</span><small>Highest finish</small></div>
+  <div><span>{{ s.best_leg or "–" }}</span><small>Best leg (darts)</small></div>
+  <div><span>{{ ("%.0f" | format(s.checkout_pct)) ~ "%" if s.checkout_pct is not none else "–" }}</span><small>Checkout rate{% if s.checkout_chances %} · {{ s.checkouts }}/{{ s.checkout_chances }}{% endif %}</small></div>
+</div>
+{%- endmacro %}

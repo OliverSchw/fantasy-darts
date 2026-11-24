@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import avatar %}
+{% from "_macros.html" import avatar, avg %}
 {% block title %}{{ person.username }}{% endblock %}
 {% block content %}
 <article class="narrow">
@@ -8,6 +8,7 @@
     <h1>{{ person.username }}</h1>
   </div>
 
+  <h3 class="profile-section">🏆 Fantasy Darts</h3>
   {% if row %}
     {% set t = row.team %}
     <div class="stat-grid profile-stats">
@@ -23,9 +24,22 @@
     <p class="muted center">{{ person.username }} has no active team yet.</p>
   {% endif %}
 
+  <h3 class="profile-section">🎯 Darts</h3>
+  {% if darts_stats %}
+    <a class="stat-grid profile-stats four" href="/darts/players/{{ darts_me.id }}">
+      <div><span>{{ avg(darts_stats.average) }}</span><small>Average</small></div>
+      <div><span>{{ darts_stats.wins }}/{{ darts_stats.games }}</span><small>Won</small></div>
+      <div><span>{{ darts_stats.max180 }}</span><small>180s</small></div>
+      <div><span>{{ darts_stats.high_finish or "–" }}</span><small>High finish</small></div>
+    </a>
+    <p class="profile-team"><a href="/darts/players/{{ darts_me.id }}">All darts stats →</a></p>
+  {% else %}
+    <p class="muted center">No darts games yet.</p>
+  {% endif %}
+
   {% if person.id == user.id %}
     <a href="/account" role="button" class="outline admin-link">✏️ Change picture or password</a>
   {% endif %}
 </article>
-<a href="/fantasy" class="secondary">← Back to ranking</a>
+<a href="/" class="secondary">← Back to start</a>
 {% endblock %}

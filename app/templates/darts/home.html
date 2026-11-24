@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% from "_macros.html" import cavatar, avg %}
+{% from "darts/_game_list.html" import game_list %}
+{% block title %}Play{% endblock %}
+{% block content %}
+<div class="title-row">
+  <h1>Darts</h1>
+  <a href="/darts/new" role="button" class="small">＋ New game</a>
+</div>
+
+{% if my_stats %}
+  <a class="stat-grid darts-me" href="/darts/players/{{ me.id }}">
+    <div><span>{{ avg(my_stats.average) }}</span><small>Your average</small></div>
+    <div><span>{{ my_stats.wins }}/{{ my_stats.games }}</span><small>Games won</small></div>
+    <div><span>{{ my_stats.max180 }}</span><small>180s</small></div>
+    <div><span>{{ my_stats.high_finish or "–" }}</span><small>High finish</small></div>
+  </a>
+{% else %}
+  <article class="cta"><p>Play your first game – your stats will show up here.</p>
+    <a href="/darts/new" role="button">Start a game</a></article>
+{% endif %}
+
+<h3>🔴 Live now</h3>
+{% if live %}
+  {{ game_list(live, user) }}
+{% else %}
+  <p class="muted">No game running right now.</p>
+{% endif %}
+
+{% if recent %}
+  <h3>Recent games</h3>
+  {{ game_list(recent, user) }}
+  <a href="/darts/games" class="small-link">All games →</a>
+{% endif %}
+{% endblock %}

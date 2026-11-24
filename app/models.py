@@ -162,3 +162,79 @@ class Avatar(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     image: Mapped[bytes] = mapped_column(LargeBinary)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+# ---------------------------------------------------------------- Kern: Teilnehmer an Spielen
+# Ein Teilnehmer kann ein Konto haben (user_id) oder ein Gast sein (nur Name). Darts und
+# Bierpong benutzen dieselben Teilnehmer, damit Stats später einem Konto zugeordnet werden können.
+
+
+class Competitor(Base):
+    __tablename__ = "competitors"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(40))  # Gastname; bei Konten der Username beim Anlegen
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), unique=True, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+    user: Mapped[User | None] = relationship(lazy="joined")
+
+    @property
+    def display_name(self) -> str:
+        return self.user.username if self.user else self.name
+
+    @property
+    def is_guest(self) -> bool:
+        return self.user_id is None
+
+
+# ---------------------------------------------------------------- Darts (X01)
+
+
+class DartsGame(Base):
+    __tablename__ = "darts_games"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    start_score: Mapped[int] = mapped_column(Integer, default=501)
+    legs_to_win: Mapped[int] = mapped_column(Integer, default=1)
+    status: Mapped[str] = mapped_column(String(12), default="live")  # live | finished | abandoned
+    winner_id: Mapped[int | None] = mapped_column(ForeignKey("competitors.id"), nullable=True)
+    created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    players: Mapped[list["DartsGamePlayer"]] = relationship(
+        cascade="all, delete-orphan", order_by="DartsGamePlayer.position", lazy="selectin")
+    visits: Mapped[list["DartsVisit"]] = relationship(
+        cascade="all, delete-orphan", order_by="DartsVisit.seq", lazy="selectin")
+    winner: Mapped[Competitor | None] = relationship(foreign_keys=[winner_id])
+
+
+class DartsGamePlayer(Base):
+    __tablename__ = "darts_game_players"
+
+    game_id: Mapped[int] = mapped_column(ForeignKey("darts_games.id", ondelete="CASCADE"), primary_key=True)
+    position: Mapped[int] = mapped_column(Integer, primary_key=True)  # Wurfreihenfolge, 0 = Anwurf im 1. Leg
+    competitor_id: Mapped[int] = mapped_column(ForeignKey("competitors.id"), index=True)
+
+    competitor: Mapped[Competitor] = relationship(lazy="joined")
+
+
+class DartsVisit(Base):
+    """Eine Aufnahme (bis zu 3 Darts). Der Spielstand wird aus allen Aufnahmen nachgespielt."""
+
+    __tablename__ = "darts_visits"
+    __table_args__ = (UniqueConstraint("game_id", "seq"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    game_id: Mapped[int] = mapped_column(ForeignKey("darts_games.id", ondelete="CASCADE"), index=True)
+    seq: Mapped[int] = mapped_column(Integer)  # 0, 1, 2 ... - schützt vor doppelt abgeschickten Eingaben
+    leg_no: Mapped[int] = mapped_column(Integer)
+    position: Mapped[int] = mapped_column(Integer)
+    competitor_id: Mapped[int] = mapped_column(ForeignKey("competitors.id"), index=True)
+    score: Mapped[int] = mapped_column(Integer)  # gezählte Punkte, 0 bei Bust
+    darts: Mapped[int] = mapped_column(Integer, default=3)
+    bust: Mapped[bool] = mapped_column(Boolean, default=False)
+    checkout: Mapped[bool] = mapped_column(Boolean, default=False)
+    remaining_before: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

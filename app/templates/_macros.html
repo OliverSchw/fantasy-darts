@@ -7,6 +7,15 @@
   {%- endif -%}
 {%- endmacro %}
 
+{# Teilnehmer (Darts/Bierpong): Mitglied -> Profilbild, Gast -> Kreis mit Anfangsbuchstaben #}
+{% macro cavatar(c, viewer, size="") -%}
+  {%- if c.user -%}{{ avatar(c.user, viewer, size) }}
+  {%- else -%}<span class="avatar initials guest {{ size }}" style="--h: {{ (c.id * 47 + 200) % 360 }}" aria-hidden="true">{{ c.name[:1] | upper }}</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro avg(v) -%}{{ "%.1f" | format(v) if v is not none else "–" }}{%- endmacro %}
+
 {% macro flag(nation) -%}
   {%- set code = flag_code(nation) -%}
   {%- if code -%}<img class="flag" src="/static/flags/{{ code }}.svg" alt="{{ nation }}" title="{{ nation }}" loading="lazy">{%- endif -%}
