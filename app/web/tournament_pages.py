@@ -34,6 +34,10 @@ class Sport:
     summary: Callable  # (t) -> kurze Beschreibung der Einstellungen
     max_score: Callable  # (t, tm) -> höchster sinnvoller Wert im Ergebnis-Formular
     manual_hint: str  # Erklärung im Formular "Ergebnis von Hand"
+    # Zusatzspalten der Turnier-Stats: ((Schlüssel, Überschrift, Format), ...) und
+    # extra_stats(db, t) -> {entry_id: {Schlüssel: Wert}}
+    extra_columns: tuple = ()
+    extra_stats: Callable | None = None
 
 
 def add_tournament_routes(router: APIRouter, sp: Sport) -> None:
@@ -59,7 +63,8 @@ def add_tournament_routes(router: APIRouter, sp: Sport) -> None:
     def tournaments_list(request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_user)):
         ts = db.scalars(select(models.Tournament).where(models.Tournament.sport == sp.key)
                         .order_by(models.Tournament.created_at.desc(), models.Tournament.id.desc())).all()
-        return render(request, "tournament/list.html", user=user, sp=sp, tournaments=ts, entry_by_id=tour.entry_by_id)
+        return render(request, "tournament/list.html", user=user, sp=sp, tournaments=ts, entry_by_id=tour.entry_by_id,
+                      fame=tour.hall_of_fame(db, sp.key))
 
     @router.get("/tournaments/{tid:int}", name=f"{sp.key}_tournament")
     def tournament_page(tid: int, request: Request, db: Session = Depends(get_db),
@@ -69,7 +74,8 @@ def add_tournament_routes(router: APIRouter, sp: Sport) -> None:
                       groups=tour.group_view(t) if t.has_groups else [],
                       live=sp.live_match_ids(db, [m.id for m in t.matches]),
                       winner=tour.entry_by_id(t, t.winner_entry_id), organizer=tour.can_organize(user, t),
-                      ko_started=tour.knockout_started(t), match_title=tour.match_title)
+                      ko_started=tour.knockout_started(t), match_title=tour.match_title,
+                      results=tour.entry_results(t), extra=sp.extra_stats(db, t) if sp.extra_stats else {})
 
     @router.get("/tournaments/{tid:int}/matches/{mid:int}", name=f"{sp.key}_tournament_match")
     def match_page(tid: int, mid: int, request: Request, db: Session = Depends(get_db),

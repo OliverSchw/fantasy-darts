@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 {% from "_tbracket.html" import tbracket %}
+{% from "_macros.html" import cavatar %}
+{% import "_compare.html" as cmp %}
 {% block title %}{{ t.name }}{% endblock %}
 {% block content %}
 <div class="title-row">
@@ -55,6 +57,37 @@
   <p class="muted center">🔒 The knockout bracket appears here once all group matches are played.</p>
 {% endif %}
 
+{% if results | selectattr("played") | list %}
+  <h2 class="t-stage">📊 Standings &amp; stats</h2>
+  <p class="muted sort-hint">Everyone's record in this tournament – tap a column title to sort.</p>
+  <div class="table-wrap">
+    <table class="striped compact sortable dstats t-stats" data-sort-key="tournament-{{ sp.key }}">
+      <thead><tr>
+        <th class="num" data-sort="num" data-first="asc" data-default="asc">#</th>
+        <th data-sort="text">{{ "Team" if sp.entries_label == "teams" else "Player" }}</th>
+        <th class="num" data-sort="num" title="won – lost">W–L</th>
+        <th class="num" data-sort="num" title="{{ sp.score_label }} difference">+/−</th>
+        {% for key, label, f in sp.extra_columns %}<th class="num" data-sort="num">{{ label }}</th>{% endfor %}
+      </tr></thead>
+      <tbody>
+        {% for r in results %}
+          {% set ex = extra.get(r.entry.id, {}) %}
+          <tr class="{% if r.place == 'Champion' %}champ{% elif r.out_in_groups %}out{% endif %}">
+            <td class="num" data-v="{{ loop.index }}">{{ loop.index }}</td>
+            <td data-v="{{ r.entry.display_name }}"><span class="dname">{% if r.entry.competitors | length == 1 %}{{ cavatar(r.entry.competitors[0], user, "xs") }}{% endif %}
+              <span>{{ r.entry.display_name }}<br><small class="muted">{{ "🏆 " if r.place == "Champion" }}{{ r.place }}</small></span></span></td>
+            <td class="num" data-v="{{ r.won - r.lost / 100 }}">{{ r.won }}–{{ r.lost }}</td>
+            <td class="num" data-v="{{ r.diff if r.played else '' }}">{{ "%+d" | format(r.diff) if r.played else "–" }}</td>
+            {% for key, label, f in sp.extra_columns %}
+              <td class="num" data-v="{{ ex.get(key) if ex.get(key) is not none else '' }}">{{ cmp.fmt(ex.get(key), f) }}</td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endif %}
+
 {% if organizer %}
   <details class="dg-more">
     <summary class="small-link">Organizer options…</summary>
@@ -69,3 +102,4 @@
   </details>
 {% endif %}
 {% endblock %}
+{% block scripts %}<script defer src="/static/sortable.js"></script>{% endblock %}

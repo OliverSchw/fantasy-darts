@@ -57,6 +57,17 @@ Vergleich. Sind alle Gruppenspiele gespielt, entsteht der K.-o.-Baum automatisch
 pro Gruppe über Kreuz (A1–B2, B1–A2), sonst nach Bilanz gesetzt. Danach sind Gruppenergebnisse gesperrt;
 der Organisator kann den K.-o. zurücksetzen, solange dort noch nichts gespielt ist.
 
+**Turnier-Historie & Stats:** Die Turnierliste zeigt alle (auch beendeten) Turniere mit Champion und oben
+eine **Hall of Fame** (Turniersiege pro Spieler). Auf jeder Turnierseite steht unten **„Standings & stats“**:
+Platzierung (Champion, Runner-up, Halbfinale …, in der Gruppe ausgeschieden), Siege–Niederlagen, Differenz,
+bei Darts zusätzlich Average, 180er, höchstes Finish und Checkout-Quote aus den Turnierspielen, bei Beer Pong
+Becher pro Spiel.
+
+**Wer darf Ergebnisse eingeben?** (Darts und Beer Pong gleich): wer das Spiel angelegt hat, alle Mitspieler
+mit Konto (auf ihrem eigenen Handy eingeloggt), Admins und bei Turnierspielen der Organisator des Turniers.
+Alle anderen sehen das Spiel live, können aber nichts eintragen. Für Gäste ohne Konto zählt, wer das Spiel
+angelegt hat.
+
 ## Beer Pong
 
 *Beer Pong → New game*: 6 oder 10 Becher, zwei Teams mit je 1–4 Spielern (Mitglieder oder Gäste),

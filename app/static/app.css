@@ -750,3 +750,13 @@ table.compact.t-table th, table.compact.t-table td { padding: 0.3rem 0.35rem; fo
 .cmp-h2h span { display: block; font-size: 2.4rem; font-weight: 800; line-height: 1; }
 .cmp-h2h small { color: var(--pico-muted-color); font-size: 0.78rem; }
 .cmp-together { text-align: center; }
+
+/* Turnier-Stats & Hall of Fame */
+.t-stats tr.champ td { background: rgba(212, 160, 23, 0.12); }
+.t-stats tr.out td { color: var(--pico-muted-color); }
+.t-stats .dname { max-width: 10rem; }
+.t-stats .dname small { font-size: 0.68rem; }
+.t-fame { padding: 0.7rem 0.9rem; border: 1px solid var(--fd-gold); }
+.t-fame h3 { font-size: 1rem; margin-bottom: 0.4rem; }
+.t-fame ol { margin: 0; padding-left: 1.3rem; }
+.t-fame li { margin-bottom: 0.15rem; }

@@ -321,3 +321,58 @@ def test_manual_darts_result_must_match_legs(olli, db):
     final = next(m for m in db.get(models.Tournament, t.id).ko_matches if m.round == 2)
     r = olli.post(f"/darts/tournaments/{t.id}/matches/{final.id}/result", data={"score1": 2, "score2": 0})
     assert "Both sides" in r.text or "first to 3" in r.text  # Finale: first to 3
+
+
+# ---------------------------------------------------------------- Turnier-Stats, Hall of Fame, Rechte
+
+
+def test_entry_results_places(db):
+    t = _t(db, 4)  # Halbfinale 1-4, 2-3
+    seed = lambda eid: tour.entry_by_id(t, eid).seed  # noqa: E731
+    s1, s2 = sorted((m for m in t.ko_matches if m.round == 1), key=lambda m: m.slot)
+    tour.set_result(db, t, s1, 1, 0)  # 1 schlägt 4
+    tour.set_result(db, t, s2, 0, 1)  # 3 schlägt 2
+    final = next(m for m in t.ko_matches if m.round == 2)
+    tour.set_result(db, t, final, 0, 1)  # 3 wird Champion
+    places = {r.entry.seed: (r.place, r.won, r.lost) for r in tour.entry_results(t)}
+    assert places[3] == ("Champion", 2, 0) and places[1] == ("Runner-up", 1, 1)
+    assert places[2][0] == places[4][0] == "Semi-finals"
+    assert [r.entry.seed for r in tour.entry_results(t)][:2] == [3, 1]
+
+
+def test_group_exit_place(db):
+    t = _gt(db, 6, groups=2, advance=1)
+    _play_groups(db, t)
+    res = tour.entry_results(t)
+    assert sum(r.out_in_groups for r in res) == 4 and all(r.place == "Group stage" for r in res if r.out_in_groups)
+
+
+def test_tournament_stats_and_hall_of_fame(olli, db):
+    olli.post("/darts/tournaments/new", data={"name": "Mini", "start": 301, "legs": 1, "final_legs": 1,
+                                              "guests": "P1, P2"})
+    t = db.scalar(select(models.Tournament))
+    final = t.ko_matches[0]
+    r = olli.post(f"/darts/tournaments/{t.id}/matches/{final.id}/play", follow_redirects=False)
+    game = db.get(models.DartsGame, int(r.headers["location"].rsplit("/", 1)[1]))
+    _play_out(olli, db, game)  # Spieler auf Position 0 gewinnt mit 180 / 81 / 40
+    page = olli.get(f"/darts/tournaments/{t.id}").text
+    assert "Standings &amp; stats" in page and "🏆 Champion" in page and "Runner-up" in page
+    assert "180.0" not in page and ">1</td>" in page  # 180er-Spalte gefüllt
+    lst = olli.get("/darts/tournaments").text
+    assert "Hall of fame" in lst and "1 title" in lst
+    db.rollback()  # offene Lese-Transaktion des Tests beenden -> aktuellen Stand sehen
+    db.expire_all()
+    champ = tour.entry_by_id(db.get(models.Tournament, t.id), db.get(models.Tournament, t.id).winner_entry_id)
+    assert tour.hall_of_fame(db, "darts")[0] == (champ.competitors[0], 1)
+
+
+def test_organizer_can_score_games_started_by_players(db, make_user):
+    boss, anna, kai = make_user("orga"), make_user("anna"), make_user("kai")
+    a = competitors.competitor_for_user(db, anna)
+    b = competitors.competitor_for_user(db, kai)
+    t = tour.create_tournament(db, "darts", "Cup", [[a.id], [b.id]], {"start": 301, "legs": 1}, boss)
+    final = t.ko_matches[0]
+    game = service.start_tournament_game(db, t, final, anna)  # anna startet ihr Match selbst
+    assert service.can_score(boss, game)  # Organisator (kein Admin, spielt nicht mit) darf zählen
+    stranger = make_user("zuschauer")
+    assert not service.can_score(stranger, game)
