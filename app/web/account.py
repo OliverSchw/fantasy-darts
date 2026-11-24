@@ -35,11 +35,18 @@ def login(
     next: str = Form("/"),
     db: Session = Depends(get_db),
 ):
+    locked = auth.login_locked_minutes(db, username)
+    if locked:
+        return render(request, "login.html", status_code=429, next=_safe_next(next), username=username,
+                      error=f"Too many wrong passwords. Please wait {locked} minute{'s' if locked != 1 else ''} "
+                            "or ask an admin to reset your password.", invite_enabled=bool(invite_code(db)))
     user = db.scalar(select(models.User).where(func.lower(models.User.username) == username.strip().lower()))
     if user is None or not auth.verify_password(password, user.password_hash):
+        auth.record_login_failure(db, username)
         return render(request, "login.html", status_code=401, next=_safe_next(next),
                       error="Wrong username or password.", username=username,
                       invite_enabled=bool(invite_code(db)))
+    auth.clear_login_failures(db, username)
     auth.login(request, user)
     return redirect(_safe_next(next))
 

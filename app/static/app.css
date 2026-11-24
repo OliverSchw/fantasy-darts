@@ -699,3 +699,31 @@ table.dstats .th-sort::after { font-size: 0.6em; }
 .bp-undo { margin: 0; }
 .bp-teams { padding-left: 1.1rem; }
 .bp-teams li { margin-bottom: 0.2rem; }
+
+/* Gruppenphase */
+.t-stage { font-size: 1.2rem; margin: 1.2rem 0 0.5rem; }
+.t-groups { display: grid; gap: 0.8rem; grid-template-columns: 1fr; margin-bottom: 0.5rem; }
+@media (min-width: 720px) { .t-groups { grid-template-columns: repeat(2, 1fr); } }
+.t-group { margin: 0; padding: 0.7rem 0.8rem; }
+.t-group h3 { font-size: 1rem; margin-bottom: 0.4rem; }
+.t-table { margin-bottom: 0.5rem; width: 100%; }
+table.compact.t-table th, table.compact.t-table td { padding: 0.3rem 0.35rem; font-size: 0.85rem; }
+.t-table .t-name { max-width: 9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.t-table tr.q td:first-child { box-shadow: inset 3px 0 0 var(--pico-primary); font-weight: 700; }
+.q-dot { display: inline-block; width: 3px; height: 0.9em; background: var(--pico-primary); vertical-align: -0.1em; margin-right: 0.2rem; }
+.t-matches { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.25rem; }
+.t-matches li { list-style: none; margin: 0; }
+.t-matches a { display: grid; grid-template-columns: 1fr auto 1fr; gap: 0.4rem; align-items: center; padding: 0.3rem 0.5rem;
+  border: 1px solid var(--pico-muted-border-color); border-radius: var(--pico-border-radius); text-decoration: none; color: inherit; font-size: 0.85rem; }
+.t-matches a > span:first-child { text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.t-matches a > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.t-matches a:hover { border-color: var(--pico-primary); }
+.t-matches a.is-live { border-color: #dc3545; }
+.t-matches .w { font-weight: 700; }
+.t-matches a:not(.played) .t-res { color: var(--pico-muted-color); font-size: 0.75rem; }
+.t-res { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 2.4rem; text-align: center; }
+.t-running { display: grid; gap: 0.4rem; margin-bottom: 1rem; }
+.t-run { display: block; padding: 0.55rem 0.8rem; border-radius: var(--pico-border-radius); text-decoration: none; color: inherit;
+  background: rgba(212, 160, 23, 0.12); border: 1px solid var(--fd-gold); font-size: 0.92rem; }
+.t-run small { color: var(--pico-muted-color); }
+.dnew label:has(> input[type=checkbox]) > small { display: block; margin: 0.1rem 0 0 1.9rem; }

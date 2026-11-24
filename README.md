@@ -47,6 +47,13 @@ rückt der Sieger automatisch weiter. Ohne Handy gespielt? Der Organisator (wer 
 oder ein Admin) trägt das Ergebnis direkt ein. Ergebnisse lassen sich ändern, solange das Folgematch
 noch keins hat. Die Turnier-Logik (`app/tournaments.py`) ist für alle Sportarten gleich.
 
+**Format „Groups + KO“** (bei Darts und Beer Pong): Anzahl Gruppen und wie viele pro Gruppe weiterkommen
+wählen. Die Einträge werden nach Setzliste in Schlangenlinie verteilt (A B C C B A …), in jeder Gruppe
+spielt jeder gegen jeden. Tabelle: Siege → Differenz (Legs/Becher) → erzielte Legs/Becher → direkter
+Vergleich. Sind alle Gruppenspiele gespielt, entsteht der K.-o.-Baum automatisch – bei zwei Qualifikanten
+pro Gruppe über Kreuz (A1–B2, B1–A2), sonst nach Bilanz gesetzt. Danach sind Gruppenergebnisse gesperrt;
+der Organisator kann den K.-o. zurücksetzen, solange dort noch nichts gespielt ist.
+
 ## Beer Pong
 
 *Beer Pong → New game*: 6 oder 10 Becher, zwei Teams mit je 1–4 Spielern (Mitglieder oder Gäste),
@@ -193,6 +200,13 @@ weil die kostenlose Render-Postgres nach 30 Tagen gelöscht wird.
   Hast du unter *Schedule* Anstoßzeiten eingetragen, zeigt die To-do-Liste auf *Admin → Fantasy Darts → Overview*, welche
   Matches schon gespielt sein müssten und noch kein Ergebnis haben.
 
+## Sicherheit
+
+- Passwörter werden mit bcrypt gespeichert, der Login ist ein signiertes Cookie (`SECRET_KEY`).
+- **Schutz gegen Passwort-Raten:** nach 10 falschen Passwörtern für einen Namen innerhalb von 15 Minuten
+  ist dieser Name 15 Minuten gesperrt (gezählt in der Datenbank, wirkt also auch auf Vercel). Setzt ein
+  Admin das Passwort zurück, ist die Sperre sofort weg.
+
 ## Backup & Export
 
 - **Wo liegen die Daten?** In Produktion in der Postgres-DB (Neon), unabhängig von der App –
@@ -200,7 +214,8 @@ weil die kostenlose Render-Postgres nach 30 Tagen gelöscht wird.
   verweigert die App den Start ohne `DATABASE_URL`, damit nie versehentlich SQLite auf einem
   flüchtigen Dateisystem benutzt wird.
 - **CSV-Export** (öffnet sich direkt in Excel): *Admin → Fantasy Darts → Overview → Export & backup* – Teams, Ergebnisse, Spieler.
-- **Komplett-Backup** (JSON, inkl. User mit Passwort-Hashes, Profilbildern und Einladungslinks – vertraulich behandeln):
+- **Komplett-Backup** (JSON, inkl. User mit Passwort-Hashes, Profilbildern, Einladungslinks sowie allen
+  Darts-, Beer-Pong- und Turnierdaten – vertraulich behandeln):
   ```bash
   python -m app.cli backup                        # oder auf der Admin-Seite herunterladen
   python -m app.cli restore-backup <datei>.json   # in eine DB ohne diese Saison einspielen

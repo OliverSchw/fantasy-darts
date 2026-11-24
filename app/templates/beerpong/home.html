@@ -6,6 +6,11 @@
   <h1>Beer Pong</h1>
   <a href="/beerpong/new" role="button" class="small">＋ New game</a>
 </div>
+{% if running %}
+  <div class="t-running">
+    {% for t in running %}<a href="/beerpong/tournaments/{{ t.id }}" class="t-run">🏆 <strong>{{ t.name }}</strong> <small>is running – open the {{ "groups" if t.has_groups and not t.ko_matches else "bracket" }} →</small></a>{% endfor %}
+  </div>
+{% endif %}
 {% if my_stats %}
   <div class="stat-grid darts-me">
     <div><span>{{ my_stats.wins }}/{{ my_stats.games }}</span><small>Games won</small></div>

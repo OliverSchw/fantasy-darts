@@ -114,7 +114,17 @@ TOURNAMENT_DEFAULTS = {"start": 501, "legs": 2, "final_legs": 3}
 
 def legs_for(t: models.Tournament, tm: models.TournamentMatch) -> int:
     s = {**TOURNAMENT_DEFAULTS, **(t.settings or {})}
-    return s["final_legs"] if tm.round == t.num_rounds else s["legs"]
+    return s["final_legs"] if tour.is_final(t, tm) else s["legs"]
+
+
+def record_tournament_result(db: Session, t: models.Tournament, tm: models.TournamentMatch,
+                             legs1: int, legs2: int) -> None:
+    """Ergebnis von Hand: der Sieger muss genau die nötigen Legs haben, der Verlierer weniger."""
+    need = legs_for(t, tm)
+    if max(legs1, legs2) != need or min(legs1, legs2) >= need or min(legs1, legs2) < 0:
+        raise DartsError(f"This match is first to {need} leg{'s' if need != 1 else ''} – "
+                         f"the winner has {need}, the other player fewer.")
+    tour.set_result(db, t, tm, legs1, legs2)
 
 
 def tournament_game(db: Session, tm: models.TournamentMatch) -> models.DartsGame | None:

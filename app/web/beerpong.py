@@ -13,6 +13,7 @@ from ..auth import require_user
 from ..competitors import CompetitorError
 from ..db import get_db
 from .common import flash, redirect, render
+from .tournament_pages import Sport, add_tournament_routes, read_format
 
 router = APIRouter(prefix="/beerpong")
 ERRORS = (bp.BeerpongError, CompetitorError, tour.TournamentError)
@@ -51,7 +52,7 @@ def _read_team(form, prefix: str, db: Session) -> list[int]:
 def bp_home(request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_user)):
     me = competitors.competitor_for_user(db, user)
     return render(request, "beerpong/home.html", user=user, me=me, my_stats=bp.compute_stats(db, [me.id]).get(me.id),
-                  live=_games(db, 20, "live"), recent=_games(db, 8, "finished"))
+                  live=_games(db, 20, "live"), recent=_games(db, 8, "finished"), running=tour.running(db, "beerpong"))
 
 
 @router.get("/new")
@@ -82,7 +83,7 @@ def bp_game(game_id: int, request: Request, db: Session = Depends(get_db), user:
     g = _game(db, game_id)
     t, tm = bp._tournament_of(db, g)
     return render(request, "beerpong/game.html", user=user, g=g, can_manage=bp.can_manage(user, g),
-                  tinfo={"t": t, "title": tour.round_title(tm.round, t.num_rounds)} if t else None)
+                  tinfo={"t": t, "title": tour.match_title(t, tm)} if t else None)
 
 
 @router.get("/games/{game_id}/version")
@@ -133,32 +134,12 @@ def bp_stats(request: Request, db: Session = Depends(get_db), user: models.User 
 # ---------------------------------------------------------------- Turniere
 
 
-def _tournament(db: Session, tid: int) -> models.Tournament:
-    t = db.get(models.Tournament, tid)
-    if t is None or t.sport != "beerpong":
-        raise HTTPException(404)
-    return t
-
-
-def _tmatch(t: models.Tournament, mid: int) -> models.TournamentMatch:
-    tm = next((m for m in t.matches if m.id == mid), None)
-    if tm is None:
-        raise HTTPException(404)
-    return tm
-
-
-@router.get("/tournaments")
-def bp_tournaments(request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_user)):
-    ts = db.scalars(select(models.Tournament).where(models.Tournament.sport == "beerpong")
-                    .order_by(models.Tournament.created_at.desc(), models.Tournament.id.desc())).all()
-    return render(request, "beerpong/tournaments.html", user=user, tournaments=ts, entry_by_id=tour.entry_by_id)
-
-
 @router.get("/tournaments/new")
 def bp_tournament_form(request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_user)):
     return render(request, "beerpong/tournament_new.html", user=user, competitors=competitors.all_competitors(db),
                   cup_options=bp.CUP_OPTIONS,
-                  form={"name": "", "cups": 10, "mode": "random", "players": [], "guests": "", "teams": "", "shuffle": True})
+                  form={"name": "", "cups": 10, "mode": "random", "players": [], "guests": "", "teams": "", "shuffle": True,
+                        "format": "knockout", "groups": "", "advance": "2"})
 
 
 @router.post("/tournaments/new")
@@ -167,10 +148,12 @@ async def bp_tournament_new(request: Request, db: Session = Depends(get_db), use
     keep = {"name": str(form.get("name", "")), "cups": int(form.get("cups") or 10) if str(form.get("cups", "")).isdigit() else 10,
             "mode": "fixed" if form.get("mode") == "fixed" else "random",
             "players": [int(x) for x in form.getlist("players") if str(x).isdigit()],
-            "guests": str(form.get("guests", "")), "teams": str(form.get("teams", "")), "shuffle": bool(form.get("shuffle"))}
+            "guests": str(form.get("guests", "")), "teams": str(form.get("teams", "")), "shuffle": bool(form.get("shuffle")),
+            "format": form.get("format") or "knockout", "groups": str(form.get("groups", "")), "advance": str(form.get("advance", "2")),}
     try:
         if keep["cups"] not in bp.CUP_OPTIONS:
             raise bp.BeerpongError("Play with 6 or 10 cups.")
+        groups, advance = read_format(form)
         if keep["mode"] == "fixed":
             teams, names = bp.parse_teams(db, keep["teams"])
         else:
@@ -179,7 +162,7 @@ async def bp_tournament_new(request: Request, db: Session = Depends(get_db), use
                 ids.append(competitors.create_guest(db, name).id)
             teams, names = bp.random_pairs(ids), None
         t = tour.create_tournament(db, "beerpong", keep["name"], teams, {"cups": keep["cups"]}, user,
-                                   shuffle=keep["shuffle"], entry_names=names)
+                                   shuffle=keep["shuffle"], entry_names=names, groups=groups, advance=advance)
     except ERRORS as e:
         db.rollback()
         return render(request, "beerpong/tournament_new.html", status_code=400, user=user, error=str(e),
@@ -188,83 +171,16 @@ async def bp_tournament_new(request: Request, db: Session = Depends(get_db), use
     return redirect(f"/beerpong/tournaments/{t.id}")
 
 
-@router.get("/tournaments/{tid}")
-def bp_tournament(tid: int, request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_user)):
-    t = _tournament(db, tid)
-    live = {g.tournament_match_id: g for g in db.scalars(select(models.BeerpongGame).where(
-        models.BeerpongGame.tournament_match_id.in_([m.id for m in t.matches]), models.BeerpongGame.status == "live"))}
-    return render(request, "beerpong/tournament.html", user=user, t=t, cols=tour.columns(t), live=live,
-                  winner=tour.entry_by_id(t, t.winner_entry_id), organizer=tour.can_organize(user, t))
+def _bp_live_ids(db: Session, match_ids: list[int]) -> set[int]:
+    return set(db.scalars(select(models.BeerpongGame.tournament_match_id).where(
+        models.BeerpongGame.tournament_match_id.in_(match_ids), models.BeerpongGame.status == "live")))
 
 
-@router.get("/tournaments/{tid}/matches/{mid}")
-def bp_tmatch(tid: int, mid: int, request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_user)):
-    t = _tournament(db, tid)
-    tm = _tmatch(t, mid)
-    return render(request, "beerpong/tournament_match.html", user=user, t=t, tm=tm, cups=int(t.settings.get("cups", 10)),
-                  title=tour.round_title(tm.round, t.num_rounds), game=bp.tournament_game(db, tm),
-                  organizer=tour.can_organize(user, t), changeable=tour.can_change(t, tm))
-
-
-@router.post("/tournaments/{tid}/matches/{mid}/play")
-def bp_tmatch_play(tid: int, mid: int, request: Request, db: Session = Depends(get_db),
-                   user: models.User = Depends(require_user)):
-    t = _tournament(db, tid)
-    tm = _tmatch(t, mid)
-    players = {c.user_id for e in (tm.entry1, tm.entry2) if e for c in e.competitors}
-    if not (tour.can_organize(user, t) or user.id in players):
-        raise HTTPException(403, "Only the organizer and the players of this match can start it.")
-    try:
-        game = bp.start_tournament_game(db, t, tm, user)
-    except ERRORS as e:
-        db.rollback()
-        flash(request, str(e), "error")
-        return redirect(f"/beerpong/tournaments/{t.id}/matches/{tm.id}")
-    return redirect(f"/beerpong/games/{game.id}")
-
-
-@router.post("/tournaments/{tid}/matches/{mid}/result")
-async def bp_tmatch_result(tid: int, mid: int, request: Request, db: Session = Depends(get_db),
-                           user: models.User = Depends(require_user)):
-    t = _tournament(db, tid)
-    tm = _tmatch(t, mid)
-    if not tour.can_organize(user, t):
-        raise HTTPException(403)
-    form = await request.form()
-    try:
-        bp.record_tournament_result(db, t, tm, int(form.get("score1", -1)), int(form.get("score2", -1)), user)
-        flash(request, "Result saved.")
-    except ValueError as e:
-        db.rollback()
-        flash(request, str(e) if isinstance(e, ERRORS) else "Please enter numbers.", "error")
-        return redirect(f"/beerpong/tournaments/{t.id}/matches/{tm.id}")
-    return redirect(f"/beerpong/tournaments/{t.id}")
-
-
-@router.post("/tournaments/{tid}/matches/{mid}/reset")
-def bp_tmatch_reset(tid: int, mid: int, request: Request, db: Session = Depends(get_db),
-                    user: models.User = Depends(require_user)):
-    t = _tournament(db, tid)
-    tm = _tmatch(t, mid)
-    if not tour.can_organize(user, t):
-        raise HTTPException(403)
-    try:
-        bp.reset_tournament_match(db, t, tm)
-        flash(request, "Result reset.")
-    except ERRORS as e:
-        db.rollback()
-        flash(request, str(e), "error")
-    return redirect(f"/beerpong/tournaments/{t.id}/matches/{tm.id}")
-
-
-@router.post("/tournaments/{tid}/delete")
-def bp_tournament_delete(tid: int, request: Request, db: Session = Depends(get_db),
-                         user: models.User = Depends(require_user)):
-    t = _tournament(db, tid)
-    if not tour.can_organize(user, t):
-        raise HTTPException(403)
-    name = t.name
-    db.delete(t)
-    db.commit()
-    flash(request, f"Tournament “{name}” deleted. Its games stay in the history.")
-    return redirect("/beerpong/tournaments")
+add_tournament_routes(router, Sport(
+    key="beerpong", base="/beerpong", icon="🍺", entries_label="teams", score_label="cups",
+    find_game=bp.tournament_game, game_url=lambda g: f"/beerpong/games/{g.id}",
+    start_game=bp.start_tournament_game, record=bp.record_tournament_result, reset=bp.reset_tournament_match,
+    live_match_ids=_bp_live_ids, summary=lambda t: f"{t.settings.get('cups', 10)} cups",
+    max_score=lambda t, tm: int(t.settings.get("cups", 10)),
+    manual_hint="Cups hit by each team – the winner hits all of them.",
+))

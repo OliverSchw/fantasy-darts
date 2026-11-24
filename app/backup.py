@@ -1,4 +1,5 @@
-"""Export (CSV für Excel) und Komplett-Backup/Wiederherstellung (JSON) einer Saison."""
+"""Export (CSV für Excel) und Komplett-Backup/Wiederherstellung (JSON): Fantasy-Saison, Konten,
+Einladungen sowie Darts, Beer Pong und Turniere."""
 
 import base64
 import csv
@@ -121,7 +122,119 @@ def export_backup(db: Session, season: models.Season) -> dict:
             "created_at": i.created_at.isoformat() if i.created_at else None,
             "used_at": i.used_at.isoformat() if i.used_at else None,
         } for i in db.scalars(select(models.Invite).order_by(models.Invite.id))],
+        "platform": export_platform(db),
     }
+
+
+def _iso(dt):
+    return dt.isoformat() if dt else None
+
+
+def export_platform(db: Session) -> dict:
+    """Darts, Beer Pong und Turniere (saisonunabhängig)."""
+    return {
+        "competitors": [{"id": c.id, "name": c.name, "user_id": c.user_id}
+                        for c in db.scalars(select(models.Competitor).order_by(models.Competitor.id)).unique()],
+        "tournaments": [{
+            "id": t.id, "sport": t.sport, "name": t.name, "status": t.status, "settings": t.settings,
+            "winner_entry_id": t.winner_entry_id, "created_by_id": t.created_by_id,
+            "created_at": _iso(t.created_at), "finished_at": _iso(t.finished_at),
+            "entries": [{"id": e.id, "seed": e.seed, "name": e.name, "group_no": e.group_no,
+                         "members": [m.competitor_id for m in e.members]} for e in t.entries],
+            "matches": [{"id": m.id, "round": m.round, "slot": m.slot, "group_no": m.group_no,
+                         "entry1_id": m.entry1_id, "entry2_id": m.entry2_id, "winner_id": m.winner_id,
+                         "score1": m.score1, "score2": m.score2, "bye": m.bye, "updated_at": _iso(m.updated_at)}
+                        for m in t.matches],
+        } for t in db.scalars(select(models.Tournament).order_by(models.Tournament.id))],
+        "darts_games": [{
+            "start_score": g.start_score, "legs_to_win": g.legs_to_win, "status": g.status, "winner_id": g.winner_id,
+            "created_by_id": g.created_by_id, "created_at": _iso(g.created_at), "finished_at": _iso(g.finished_at),
+            "tournament_match_id": g.tournament_match_id,
+            "players": [[p.position, p.competitor_id] for p in g.players],
+            "visits": [[v.seq, v.leg_no, v.position, v.competitor_id, v.score, v.darts, v.bust, v.checkout,
+                        v.remaining_before] for v in g.visits],
+        } for g in db.scalars(select(models.DartsGame).order_by(models.DartsGame.id))],
+        "beerpong_games": [{
+            "cups": g.cups, "hits1": g.hits1, "hits2": g.hits2, "status": g.status, "winner_side": g.winner_side,
+            "version": g.version, "team1_name": g.team1_name, "team2_name": g.team2_name,
+            "tournament_match_id": g.tournament_match_id, "created_by_id": g.created_by_id,
+            "created_at": _iso(g.created_at), "finished_at": _iso(g.finished_at),
+            "players": [[p.side, p.position, p.competitor_id] for p in g.players],
+        } for g in db.scalars(select(models.BeerpongGame).order_by(models.BeerpongGame.id))],
+    }
+
+
+def restore_platform(db: Session, data: dict, user_map: dict[int, int]) -> bool:
+    """Spieldaten einspielen - nur in eine DB ohne Spieldaten (sonst False, nichts passiert)."""
+    if not data or db.scalar(select(models.DartsGame.id).limit(1)) or db.scalar(select(models.BeerpongGame.id).limit(1)) \
+            or db.scalar(select(models.Tournament.id).limit(1)):
+        return False
+
+    def ts(value):
+        return datetime.fromisoformat(value) if value else None
+
+    def uid(old):
+        return user_map.get(old) if old is not None else None
+
+    cmap = {}
+    for c in data.get("competitors", []):
+        new_uid = uid(c["user_id"])
+        obj = db.scalar(select(models.Competitor).where(models.Competitor.user_id == new_uid)) if new_uid else None
+        if obj is None:
+            obj = models.Competitor(name=c["name"], user_id=new_uid)
+            db.add(obj)
+            db.flush()
+        cmap[c["id"]] = obj.id
+
+    tm_map = {}
+    for t in data.get("tournaments", []):
+        nt = models.Tournament(sport=t["sport"], name=t["name"], status=t["status"], settings=t["settings"],
+                               created_by_id=uid(t["created_by_id"]), created_at=ts(t["created_at"]),
+                               finished_at=ts(t["finished_at"]))
+        db.add(nt)
+        db.flush()
+        emap = {}
+        for e in t["entries"]:
+            ne = models.TournamentEntry(tournament_id=nt.id, seed=e["seed"], name=e["name"], group_no=e.get("group_no"),
+                                        members=[models.TournamentEntryMember(position=i, competitor_id=cmap[cid])
+                                                 for i, cid in enumerate(e["members"])])
+            db.add(ne)
+            db.flush()
+            emap[e["id"]] = ne.id
+        em = lambda x: emap.get(x) if x is not None else None  # noqa: E731
+        nt.winner_entry_id = em(t["winner_entry_id"])
+        for m in t["matches"]:
+            nm = models.TournamentMatch(tournament_id=nt.id, round=m["round"], slot=m["slot"], group_no=m.get("group_no"),
+                                        entry1_id=em(m["entry1_id"]), entry2_id=em(m["entry2_id"]),
+                                        winner_id=em(m["winner_id"]), score1=m["score1"], score2=m["score2"],
+                                        bye=m["bye"], updated_at=ts(m.get("updated_at")))
+            db.add(nm)
+            db.flush()
+            tm_map[m["id"]] = nm.id
+    tmid = lambda x: tm_map.get(x) if x is not None else None  # noqa: E731
+
+    for g in data.get("darts_games", []):
+        ng = models.DartsGame(start_score=g["start_score"], legs_to_win=g["legs_to_win"], status=g["status"],
+                              winner_id=cmap.get(g["winner_id"]), created_by_id=uid(g["created_by_id"]),
+                              created_at=ts(g["created_at"]), finished_at=ts(g["finished_at"]),
+                              tournament_match_id=tmid(g["tournament_match_id"]))
+        ng.players = [models.DartsGamePlayer(position=pos, competitor_id=cmap[cid]) for pos, cid in g["players"]]
+        db.add(ng)
+        db.flush()
+        for seq, leg, pos, cid, score, darts, bust, co, rem in g["visits"]:
+            db.add(models.DartsVisit(game_id=ng.id, seq=seq, leg_no=leg, position=pos, competitor_id=cmap[cid],
+                                     score=score, darts=darts, bust=bust, checkout=co, remaining_before=rem))
+    for g in data.get("beerpong_games", []):
+        ng = models.BeerpongGame(cups=g["cups"], hits1=g["hits1"], hits2=g["hits2"], status=g["status"],
+                                 winner_side=g["winner_side"], version=g["version"], team1_name=g["team1_name"],
+                                 team2_name=g["team2_name"], tournament_match_id=tmid(g["tournament_match_id"]),
+                                 created_by_id=uid(g["created_by_id"]), created_at=ts(g["created_at"]),
+                                 finished_at=ts(g["finished_at"]))
+        ng.players = [models.BeerpongGamePlayer(side=side, position=pos, competitor_id=cmap[cid])
+                      for side, pos, cid in g["players"]]
+        db.add(ng)
+    db.flush()
+    return True
 
 
 def restore_backup(db: Session, data: dict) -> models.Season:
@@ -185,5 +298,6 @@ def restore_backup(db: Session, data: dict) -> models.Season:
             token=i["token"], note=i["note"], used_by_id=user_map.get(i["used_by_id"]),
             created_at=ts(i["created_at"]) or datetime.now(timezone.utc), used_at=ts(i["used_at"]),
         ))
+    restore_platform(db, data.get("platform"), user_map)  # ältere Backups haben keine Spieldaten
     db.commit()
     return season

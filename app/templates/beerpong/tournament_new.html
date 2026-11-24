@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros.html" import cavatar %}
+{% from "tournament/_format.html" import format_fields %}
 {% block title %}New tournament{% endblock %}
 {% block content %}
 <h1>New tournament</h1>
@@ -11,8 +12,9 @@
     <div class="seg" role="radiogroup" aria-label="Cups">
       {% for c in cup_options %}<label><input type="radio" name="cups" value="{{ c }}" {% if c == form.cups %}checked{% endif %}><span>{{ c }} cups</span></label>{% endfor %}
     </div>
-    <small class="muted">Knockout. With an odd number of teams the top seeds get a bye.</small>
   </fieldset>
+
+  {{ format_fields(form, "teams") }}
 
   <fieldset>
     <legend>Teams</legend>

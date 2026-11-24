@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros.html" import cavatar %}
+{% from "tournament/_format.html" import format_fields %}
 {% block title %}New tournament{% endblock %}
 {% block content %}
 <h1>New tournament</h1>
@@ -27,8 +28,10 @@
       <button type="button" class="outline small" @click="final = Math.min(11, final + 1)" aria-label="More legs in the final">＋</button>
       <input type="hidden" name="final_legs" :value="final" value="{{ form.final_legs }}">
     </div>
-    <small class="muted">Knockout, double out. With an odd number of players the top seeds get a bye.</small>
+    <small class="muted">Double out. The final setting applies to the knockout final only.</small>
   </fieldset>
+
+  {{ format_fields(form, "players") }}
 
   <fieldset>
     <legend>Players</legend>

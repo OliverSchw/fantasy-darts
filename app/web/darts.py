@@ -16,6 +16,7 @@ from ..darts.engine import START_SCORES, DartsError
 from ..darts.stats import compute_stats, leg_average
 from ..db import get_db
 from .common import flash, redirect, render
+from .tournament_pages import Sport, add_tournament_routes, read_format
 
 router = APIRouter(prefix="/darts")
 
@@ -57,7 +58,7 @@ def darts_home(request: Request, db: Session = Depends(get_db), user: models.Use
     me = competitors.competitor_for_user(db, user)
     stats = compute_stats(db, [me.id])
     return render(request, "darts/home.html", user=user, me=me, my_stats=stats.get(me.id),
-                  live=_game_summaries(_recent_games(db, 20, "live")),
+                  live=_game_summaries(_recent_games(db, 20, "live")), running=tour.running(db, "darts"),
                   recent=_game_summaries(_recent_games(db, 8, "finished")))
 
 
@@ -235,7 +236,8 @@ async def link_guest(competitor_id: int, request: Request, db: Session = Depends
     """Admin: Gast einem Konto zuordnen (z. B. nachdem sich jemand registriert hat). Stats wandern mit."""
     c = db.get(models.Competitor, competitor_id)
     form = await request.form()
-    target = db.get(models.User, int(form.get("user_id") or 0))
+    raw = str(form.get("user_id", ""))
+    target = db.get(models.User, int(raw)) if raw.isdigit() else None
     if c is None or target is None or not c.is_guest:
         raise HTTPException(404)
     existing = db.scalar(select(models.Competitor).where(models.Competitor.user_id == target.id))
@@ -268,35 +270,14 @@ def _tournament_info(db: Session, game: models.DartsGame) -> dict | None:
     if tm is None:
         return None
     t = db.get(models.Tournament, tm.tournament_id)
-    return {"t": t, "tm": tm, "title": tour.round_title(tm.round, t.num_rounds)}
-
-
-def _tournament(db: Session, tid: int) -> models.Tournament:
-    t = db.get(models.Tournament, tid)
-    if t is None or t.sport != "darts":
-        raise HTTPException(404)
-    return t
-
-
-def _tmatch(t: models.Tournament, mid: int) -> models.TournamentMatch:
-    tm = next((m for m in t.matches if m.id == mid), None)
-    if tm is None:
-        raise HTTPException(404)
-    return tm
-
-
-@router.get("/tournaments")
-def tournaments_page(request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_user)):
-    ts = db.scalars(select(models.Tournament).where(models.Tournament.sport == "darts")
-                    .order_by(models.Tournament.created_at.desc(), models.Tournament.id.desc())).all()
-    return render(request, "darts/tournaments.html", user=user, tournaments=ts, entry_by_id=tour.entry_by_id)
+    return {"t": t, "tm": tm, "title": tour.match_title(t, tm)}
 
 
 @router.get("/tournaments/new")
 def new_tournament_form(request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_user)):
     return render(request, "darts/tournament_new.html", user=user, competitors=competitors.all_competitors(db),
                   starts=START_SCORES, form={"start": 501, "legs": 2, "final_legs": 3, "players": [], "shuffle": True,
-                                             "name": "", "guests": ""})
+                                             "name": "", "guests": "", "format": "knockout", "groups": "", "advance": "2"})
 
 
 @router.post("/tournaments/new")
@@ -309,16 +290,18 @@ async def new_tournament(request: Request, db: Session = Depends(get_db), user: 
     players = [int(x) for x in form.getlist("players") if str(x).isdigit()]
     guests_raw = str(form.get("guests", ""))
     keep = {"start": start or 501, "legs": legs or 2, "final_legs": final_legs or 3, "players": players,
-            "shuffle": bool(form.get("shuffle")), "name": str(form.get("name", "")), "guests": guests_raw}
+            "shuffle": bool(form.get("shuffle")), "name": str(form.get("name", "")), "guests": guests_raw,
+            "format": form.get("format") or "knockout", "groups": str(form.get("groups", "")), "advance": str(form.get("advance", "2")),}
     try:
         if start not in START_SCORES or not 1 <= legs <= 11 or not 1 <= final_legs <= 11:
             raise DartsError("Pick a start score and 1-11 legs.")
+        groups, advance = read_format(form)
         ids = list(players)
         for name in [g.strip() for g in guests_raw.replace(",", "\n").splitlines() if g.strip()]:
             ids.append(competitors.create_guest(db, name).id)
         t = tour.create_tournament(db, "darts", keep["name"], [[i] for i in ids],
                                    {"start": start, "legs": legs, "final_legs": final_legs}, user,
-                                   shuffle=keep["shuffle"])
+                                   shuffle=keep["shuffle"], groups=groups, advance=advance)
     except (DartsError, CompetitorError, tour.TournamentError) as e:
         db.rollback()
         return render(request, "darts/tournament_new.html", status_code=400, user=user, error=str(e),
@@ -327,86 +310,23 @@ async def new_tournament(request: Request, db: Session = Depends(get_db), user: 
     return redirect(f"/darts/tournaments/{t.id}")
 
 
-@router.get("/tournaments/{tid}")
-def tournament_page(tid: int, request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_user)):
-    t = _tournament(db, tid)
-    live = {g.tournament_match_id: g for g in db.scalars(select(models.DartsGame).where(
-        models.DartsGame.tournament_match_id.in_([m.id for m in t.matches]), models.DartsGame.status == "live"))}
-    return render(request, "darts/tournament.html", user=user, t=t, cols=tour.columns(t), live=live,
-                  winner=tour.entry_by_id(t, t.winner_entry_id), organizer=tour.can_organize(user, t),
-                  settings={**service.TOURNAMENT_DEFAULTS, **(t.settings or {})})
+def _darts_live_ids(db: Session, match_ids: list[int]) -> set[int]:
+    return set(db.scalars(select(models.DartsGame.tournament_match_id).where(
+        models.DartsGame.tournament_match_id.in_(match_ids), models.DartsGame.status == "live")))
 
 
-@router.get("/tournaments/{tid}/matches/{mid}")
-def tmatch_page(tid: int, mid: int, request: Request, db: Session = Depends(get_db),
-                user: models.User = Depends(require_user)):
-    t = _tournament(db, tid)
-    tm = _tmatch(t, mid)
-    return render(request, "darts/tournament_match.html", user=user, t=t, tm=tm,
-                  title=tour.round_title(tm.round, t.num_rounds), game=service.tournament_game(db, tm),
-                  organizer=tour.can_organize(user, t), changeable=tour.can_change(t, tm),
-                  legs=service.legs_for(t, tm))
+def _darts_settings(t: models.Tournament) -> str:
+    s = {**service.TOURNAMENT_DEFAULTS, **(t.settings or {})}
+    return f"{s['start']} · first to {s['legs']}, final first to {s['final_legs']}"
 
 
-@router.post("/tournaments/{tid}/matches/{mid}/play")
-def tmatch_play(tid: int, mid: int, request: Request, db: Session = Depends(get_db),
-                user: models.User = Depends(require_user)):
-    t = _tournament(db, tid)
-    tm = _tmatch(t, mid)
-    players = {c.user_id for e in (tm.entry1, tm.entry2) if e for c in e.competitors}
-    if not (tour.can_organize(user, t) or user.id in players):
-        raise HTTPException(403, "Only the organizer and the two players can start this match.")
-    try:
-        game = service.start_tournament_game(db, t, tm, user)
-    except DartsError as e:
-        db.rollback()
-        flash(request, str(e), "error")
-        return redirect(f"/darts/tournaments/{t.id}/matches/{tm.id}")
-    return redirect(f"/darts/games/{game.id}")
-
-
-@router.post("/tournaments/{tid}/matches/{mid}/result")
-async def tmatch_result(tid: int, mid: int, request: Request, db: Session = Depends(get_db),
-                        user: models.User = Depends(require_user)):
-    t = _tournament(db, tid)
-    tm = _tmatch(t, mid)
-    if not tour.can_organize(user, t):
-        raise HTTPException(403)
-    form = await request.form()
-    try:
-        tour.set_result(db, t, tm, int(form.get("score1", -1)), int(form.get("score2", -1)))
-        flash(request, "Result saved.")
-    except (ValueError, tour.TournamentError) as e:
-        db.rollback()
-        flash(request, str(e) if isinstance(e, tour.TournamentError) else "Please enter numbers.", "error")
-        return redirect(f"/darts/tournaments/{t.id}/matches/{tm.id}")
-    return redirect(f"/darts/tournaments/{t.id}")
-
-
-@router.post("/tournaments/{tid}/matches/{mid}/reset")
-def tmatch_reset(tid: int, mid: int, request: Request, db: Session = Depends(get_db),
-                 user: models.User = Depends(require_user)):
-    t = _tournament(db, tid)
-    tm = _tmatch(t, mid)
-    if not tour.can_organize(user, t):
-        raise HTTPException(403)
-    try:
-        tour.clear_result(db, t, tm)
-        flash(request, "Result reset.")
-    except tour.TournamentError as e:
-        db.rollback()
-        flash(request, str(e), "error")
-    return redirect(f"/darts/tournaments/{t.id}/matches/{tm.id}")
-
-
-@router.post("/tournaments/{tid}/delete")
-def tournament_delete(tid: int, request: Request, db: Session = Depends(get_db),
-                      user: models.User = Depends(require_user)):
-    t = _tournament(db, tid)
-    if not tour.can_organize(user, t):
-        raise HTTPException(403)
-    name = t.name
-    db.delete(t)
-    db.commit()
-    flash(request, f"Tournament “{name}” deleted. Its games stay in the history.")
-    return redirect("/darts/tournaments")
+add_tournament_routes(router, Sport(
+    key="darts", base="/darts", icon="🎯", entries_label="players", score_label="legs",
+    find_game=service.tournament_game, game_url=lambda g: f"/darts/games/{g.id}",
+    start_game=service.start_tournament_game,
+    record=lambda db, t, tm, s1, s2, user: service.record_tournament_result(db, t, tm, s1, s2),
+    reset=lambda db, t, tm: tour.clear_result(db, t, tm),
+    live_match_ids=_darts_live_ids, summary=_darts_settings,
+    max_score=lambda t, tm: service.legs_for(t, tm),
+    manual_hint="For a match played without the app: legs won by each player.",
+))

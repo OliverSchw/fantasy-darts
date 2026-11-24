@@ -1,0 +1,30 @@
+{# Turnierformat: K.-o. oder Gruppenphase + K.-o. (gemeinsam für alle Sportarten) #}
+{% macro format_fields(form, unit) -%}
+<fieldset x-data='{ "fmt": {{ form.format | tojson }}, "groups": {{ (form.groups or 2) | int }}, "adv": {{ (form.advance or 2) | int }} }'>
+  <legend>Format</legend>
+  <div class="seg" role="radiogroup" aria-label="Format">
+    <label><input type="radio" name="format" value="knockout" x-model="fmt"><span>Knockout</span></label>
+    <label><input type="radio" name="format" value="groups" x-model="fmt"><span>Groups + KO</span></label>
+  </div>
+  <div x-show="fmt === 'groups'" x-cloak>
+    <div class="stepper">
+      <span>Groups</span>
+      <button type="button" class="outline small" @click="groups = Math.max(1, groups - 1)" aria-label="Fewer groups">−</button>
+      <strong x-text="groups">{{ (form.groups or 2) | int }}</strong>
+      <button type="button" class="outline small" @click="groups = Math.min(16, groups + 1)" aria-label="More groups">＋</button>
+      <input type="hidden" name="groups" :value="groups" value="{{ (form.groups or 2) | int }}">
+    </div>
+    <div class="stepper">
+      <span>Top</span>
+      <button type="button" class="outline small" @click="adv = Math.max(1, adv - 1)" aria-label="Fewer qualifiers">−</button>
+      <strong x-text="adv">{{ (form.advance or 2) | int }}</strong>
+      <button type="button" class="outline small" @click="adv = Math.min(4, adv + 1)" aria-label="More qualifiers">＋</button>
+      <span>per group go through</span>
+      <input type="hidden" name="advance" :value="adv" value="{{ (form.advance or 2) | int }}">
+    </div>
+    <small class="muted">Everyone plays everyone in their group. {{ unit | capitalize }} are spread over the groups by seeding,
+      the knockout bracket is drawn automatically afterwards (winner of A plays the runner-up of B).</small>
+  </div>
+  <small class="muted" x-show="fmt === 'knockout'">Straight knockout – with an odd number the top seeds get a bye.</small>
+</fieldset>
+{%- endmacro %}

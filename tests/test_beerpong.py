@@ -164,3 +164,23 @@ def test_random_tournament_needs_even(olli, db):
     assert r.status_code == 303
     t = db.scalar(select(models.Tournament))
     assert len(t.entries) == 2 and all(len(e.members) == 2 for e in t.entries)
+
+
+def test_group_tournament(olli, db):
+    r = olli.post("/beerpong/tournaments/new", data={
+        "name": "Pong Groups", "cups": 6, "mode": "fixed", "format": "groups", "groups": 2, "advance": 1,
+        "teams": "T1: a1, a2\nT2: b1, b2\nT3: c1, c2\nT4: d1, d2"}, follow_redirects=False)
+    assert r.status_code == 303, r.text[:400]
+    t = db.scalar(select(models.Tournament))
+    assert t.has_groups and len(t.group_matches) == 2
+    for m in t.group_matches:
+        olli.post(f"/beerpong/tournaments/{t.id}/matches/{m.id}/result", data={"score1": 6, "score2": 3})
+    db.expire_all()
+    t = db.get(models.Tournament, t.id)
+    assert tour.knockout_started(t) and t.num_rounds == 1  # 2 Gruppensieger -> Finale
+    final = t.ko_matches[0]
+    assert {final.entry1_id, final.entry2_id} == {m.winner_id for m in t.group_matches}
+    page = olli.get(f"/beerpong/tournaments/{t.id}").text
+    assert "Group A" in page and "Final" in page
+    # Gruppenspiele zählen für die Stats (je ein Spiel pro Ergebnis)
+    assert sum(s.games for s in bp.compute_stats(db).values()) == 8

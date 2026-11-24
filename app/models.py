@@ -266,7 +266,20 @@ class Tournament(Base):
 
     @property
     def num_rounds(self) -> int:
-        return max((m.round for m in self.matches), default=0)
+        """Anzahl K.-o.-Runden (0, solange die Gruppenphase läuft)."""
+        return max((m.round for m in self.matches if m.group_no is None), default=0)
+
+    @property
+    def has_groups(self) -> bool:
+        return (self.settings or {}).get("format") == "groups"
+
+    @property
+    def group_matches(self) -> list["TournamentMatch"]:
+        return [m for m in self.matches if m.group_no is not None]
+
+    @property
+    def ko_matches(self) -> list["TournamentMatch"]:
+        return [m for m in self.matches if m.group_no is None]
 
 
 class TournamentEntry(Base):
@@ -276,6 +289,7 @@ class TournamentEntry(Base):
     tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id", ondelete="CASCADE"), index=True)
     seed: Mapped[int] = mapped_column(Integer)  # 1 = Topgesetzt
     name: Mapped[str | None] = mapped_column(String(60), nullable=True)  # Teamname (Bierpong)
+    group_no: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 0 = Gruppe A, 1 = B ... (nur mit Gruppenphase)
 
     members: Mapped[list["TournamentEntryMember"]] = relationship(
         cascade="all, delete-orphan", order_by="TournamentEntryMember.position", lazy="selectin")
@@ -301,7 +315,9 @@ class TournamentEntryMember(Base):
 
 class TournamentMatch(Base):
     """Ein Match im K.-o.-Baum, adressiert über (round, slot) - wie bei Fantasy Darts:
-    der Sieger von (r, s) spielt in (r+1, s // 2), als Seite 1 wenn s gerade ist, sonst Seite 2."""
+    der Sieger von (r, s) spielt in (r+1, s // 2), als Seite 1 wenn s gerade ist, sonst Seite 2.
+
+    Gruppenspiele haben round = 0, eine Gruppennummer (group_no) und eine laufende Nummer als slot."""
 
     __tablename__ = "tournament_matches"
     __table_args__ = (UniqueConstraint("tournament_id", "round", "slot"),)
@@ -316,6 +332,7 @@ class TournamentMatch(Base):
     score1: Mapped[int] = mapped_column(Integer, default=0)  # Legs (Darts) bzw. Becher (Bierpong)
     score2: Mapped[int] = mapped_column(Integer, default=0)
     bye: Mapped[bool] = mapped_column(Boolean, default=False)  # Freilos: Gegner fehlt, Sieger steht fest
+    group_no: Mapped[int | None] = mapped_column(Integer, nullable=True)  # gesetzt = Gruppenspiel
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     entry1: Mapped[TournamentEntry | None] = relationship(foreign_keys=[entry1_id], lazy="joined")
@@ -367,3 +384,14 @@ class BeerpongGamePlayer(Base):
     competitor_id: Mapped[int] = mapped_column(ForeignKey("competitors.id"), index=True)
 
     competitor: Mapped[Competitor] = relationship(lazy="joined")
+
+
+class LoginThrottle(Base):
+    """Fehlgeschlagene Logins pro Username (in der DB, damit es auch auf mehreren Server-Instanzen wirkt)."""
+
+    __tablename__ = "login_throttle"
+
+    key: Mapped[str] = mapped_column(String(40), primary_key=True)  # Username in Kleinbuchstaben
+    failures: Mapped[int] = mapped_column(Integer, default=0)
+    window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
