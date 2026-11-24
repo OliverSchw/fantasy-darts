@@ -75,7 +75,8 @@ def manifest():
 
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon():
-    return FileResponse(STATIC_DIR / "icons" / "icon-192.png", media_type="image/png")
+    return FileResponse(STATIC_DIR / "icons" / "icon-192.png", media_type="image/png",
+                        headers={"Cache-Control": "public, max-age=86400"})
 
 
 @app.get("/healthz", include_in_schema=False)
