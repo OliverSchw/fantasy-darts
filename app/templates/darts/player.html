@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "_macros.html" import cavatar %}
+{% from "darts/_stats_grid.html" import stats_grid %}
+{% from "darts/_game_list.html" import game_list %}
+{% block title %}{{ c.display_name }}{% endblock %}
+{% block content %}
+<div class="profile-head">
+  {{ cavatar(c, user, "xl") }}
+  <h1>{{ c.display_name }}</h1>
+  {% if c.user %}<a href="/users/{{ c.user.id }}" class="small-link">Profile →</a>{% else %}<small class="muted">Guest</small>{% endif %}
+</div>
+
+{% if stats %}
+  {{ stats_grid(stats) }}
+{% else %}
+  <p class="muted center">No darts thrown yet.</p>
+{% endif %}
+
+{% if games %}
+  <h3>Recent games</h3>
+  {{ game_list(games, user) }}
+{% endif %}
+
+{% if link_users %}
+  <article>
+    <details>
+      <summary><strong>🔗 Link guest to an account</strong> <small class="muted">(admin)</small></summary>
+      <p class="muted">Did {{ c.name }} register in the meantime? Link the guest to their account – all games and stats move along.</p>
+      <form method="post" action="/darts/players/{{ c.id }}/link" class="grid-form invite-link-form">
+        <select name="user_id" required aria-label="Account">
+          <option value="">– choose account –</option>
+          {% for u in link_users %}<option value="{{ u.id }}">{{ u.username }}</option>{% endfor %}
+        </select>
+        <button class="small">Link</button>
+      </form>
+    </details>
+  </article>
+{% endif %}
+{% endblock %}

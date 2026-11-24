@@ -6,7 +6,7 @@ landet man auf einer Startseite und wählt den Bereich:
 | Bereich | Adresse | Stand |
 |---|---|---|
 | 🏆 **Fantasy Darts** – Team zur PDC-WM zusammenstellen, Ranking | `/fantasy` | fertig |
-| 🎯 **Darts** – 501 gegeneinander spielen, am Handy zählen, Stats | `/darts` | in Arbeit |
+| 🎯 **Darts** – 501 gegeneinander spielen, am Handy zählen, Stats | `/darts` | fertig (Turniere folgen) |
 | 🍺 **Beer Pong** – Turniere mit Teams und Turnierbaum | `/beerpong` | geplant |
 
 Konten, Login, Profilbilder, Profilseiten, Einladungen und die Mitgliederverwaltung gehören zum
@@ -23,6 +23,22 @@ der Admin trägt die Ergebnisse im Turnierbaum ein, und das Ranking aktualisiert
 Fantasy Darts lag früher direkt unter `/` – alte Links (z. B. `/my`, `/bracket`) werden automatisch
 auf `/fantasy/...` umgeleitet.
 
+## Darts
+
+Unter *Darts → New game* Startwert (301/501/701), „First to X Legs“ und 1–4 Spieler wählen
+(1 Spieler = Training). Spieler sind Mitglieder **oder Gäste ohne Konto** – ein Admin kann einen Gast
+später einem Konto zuordnen (*Stats → Spieler → Link guest to an account*), die Stats wandern mit.
+
+- **Zählen am Handy:** Punkte der Aufnahme eintippen oder Schnelltaste (26, 41, 45, 60, 81, 85, 100, 140, 180).
+  Bust wird automatisch erkannt, beim Checkout fragt die App nach der Anzahl Darts, darüber steht
+  ein Checkout-Vorschlag (z. B. 121 → T20 · T15 · D8). *Undo* nimmt die letzte Aufnahme zurück.
+- **Zählen dürfen:** wer das Spiel angelegt hat, mitspielende Mitglieder und Admins. Alle anderen sehen
+  das Spiel live – die Seite aktualisiert sich nach jeder Aufnahme automatisch (alle 3 Sekunden geprüft).
+- **Stats** (immer aus den gespeicherten Aufnahmen berechnet): 3-Dart-Average, First-9-Average,
+  Siege, Legs, 180er, 140+, 100+, höchstes Finish, bestes Leg, Checkout-Quote (Checkouts geteilt durch
+  Aufnahmen, die auf einem ausmachbaren Rest begonnen haben). Abgebrochene Spiele zählen nicht.
+- Spiellogik in `app/darts/` (engine, checkouts, stats, service) – reine Funktionen mit eigenen Tests.
+
 ## Aufbau
 
 ```
@@ -31,6 +47,7 @@ app/
   platform.py    Welche Bereiche es gibt (Startseite, Navigation, Admin)
   settings.py    Konfiguration über Umgebungsvariablen / .env
   avatars.py     Profilbilder verkleinern & speichern
+  darts/         Darts: Spiellogik, Checkout-Wege, Stats, Datenbank-Operationen
   rules.py       Fantasy: lädt seasons/<saison>/rules.toml
   scoring.py     Fantasy: Punkteberechnung (reine Funktionen)
   teams.py       Fantasy: Team-Validierung & Speichern
@@ -39,6 +56,7 @@ app/
   cli.py         Kommandozeile (Import, User anlegen, ...)
   web/
     hub.py       Kern: Startseite, Admin-Übersicht
+    darts.py     Darts-Seiten (Spiele, Zählen, Stats)
     account.py   Kern: Login, Registrierung, Account, Profilbild
     members.py   Kern: Mitglieder, Einladungslinks, Einladungscode
     pages.py, my_teams.py, admin*.py   Fantasy-Seiten

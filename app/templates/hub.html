@@ -33,6 +33,8 @@
               {% elif user and not st.locked %}No team yet – build one now!
               {% else %}{{ st.rows }} team{{ "s" if st.rows != 1 }} in the race{% endif %}
             </span>
+          {% elif s.key == "darts" and st %}
+            <span class="hub-status">{% if st.live %}<mark class="live-badge">LIVE</mark> {{ st.live }} game{{ "s" if st.live != 1 }} running{% else %}Start a game →{% endif %}</span>
           {% endif %}
         </span>
         <span class="hub-go" aria-hidden="true">›</span>

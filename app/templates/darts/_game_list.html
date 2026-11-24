@@ -1,0 +1,22 @@
+{% from "_macros.html" import cavatar %}
+{# Liste von Darts-Spielen; rows = [{"game": DartsGame, "legs": {position: n}}] #}
+{% macro game_list(rows, viewer) -%}
+<ul class="dgames">
+  {% for row in rows %}
+    {% set g = row.game %}
+    <li>
+      <a href="/darts/games/{{ g.id }}" class="dgame {{ g.status }}">
+        <span class="dgame-meta">{{ g.start_score }} · first to {{ g.legs_to_win }}
+          {% if g.status == "live" %}<mark class="live-badge">LIVE</mark>{% else %}· {{ (g.finished_at or g.created_at) | when }}{% endif %}</span>
+        {% for p in g.players %}
+          <span class="dgame-side {% if g.winner_id == p.competitor_id %}win{% endif %}">
+            {{ cavatar(p.competitor, viewer, "xs") }}
+            <span class="nm">{{ p.competitor.display_name }}</span>
+            <span class="legs">{{ row.legs[p.position] }}</span>
+          </span>
+        {% endfor %}
+      </a>
+    </li>
+  {% endfor %}
+</ul>
+{%- endmacro %}

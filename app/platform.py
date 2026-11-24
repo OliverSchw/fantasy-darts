@@ -35,8 +35,12 @@ SECTIONS: tuple[Section, ...] = (
         desktop_tabs=(("/fantasy/insights", "📊", "Insights"),),
         admin_href="/fantasy/admin",
     ),
-    Section(key="darts", name="Darts", icon="🎯", href="/darts",
-            tagline="Play 501 against each other, score on your phone and track your stats.", ready=False),
+    Section(
+        key="darts", name="Darts", icon="🎯", href="/darts",
+        tagline="Play 501 against each other, score on your phone and track your stats.",
+        tabs=(("/darts", "🎯", "Play"), ("/darts/new", "➕", "New game"), ("/darts/games", "🕒", "Games"),
+              ("/darts/players", "📈", "Stats")),
+    ),
     Section(key="beerpong", name="Beer Pong", icon="🍺", href="/beerpong",
             tagline="Run beer pong tournaments with teams and a bracket.", ready=False),
 )

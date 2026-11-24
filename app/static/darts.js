@@ -1,0 +1,43 @@
+// Darts: Zahlentastatur fürs Zählen + Live-Aktualisierung für Zuschauer.
+document.addEventListener("alpine:init", function () {
+  Alpine.data("scorer", function (rest, finishable, minDarts) {
+    var IMPOSSIBLE = [163, 166, 169, 172, 173, 175, 176, 178, 179];
+    return {
+      entry: "", error: "", busy: false, needDarts: false,
+      press(d) { this.error = ""; if (this.entry.length < 3) this.entry = (this.entry + d).replace(/^0+(?=\d)/, ""); },
+      back() { this.error = ""; this.entry = this.entry.slice(0, -1); },
+      quick(n) { this.entry = String(n); this.ok(); },
+      ok() {
+        var score = parseInt(this.entry || "0", 10);
+        if (score > 180 || IMPOSSIBLE.indexOf(score) >= 0) { this.error = score + " isn't possible"; return; }
+        if (finishable && score === rest) { this.needDarts = true; return; }
+        this.send(score, "");
+      },
+      send(score, darts) {
+        if (this.busy) return;
+        this.busy = true;
+        this.$refs.score.value = score;
+        this.$refs.darts.value = darts;
+        this.$refs.form.submit();
+      },
+      typing() { return this.entry !== "" || this.needDarts; },
+    };
+  });
+});
+
+// Live: alle 3 Sekunden fragen, ob es eine neue Aufnahme gibt - dann neu laden (nicht während man tippt).
+(function () {
+  var cfg = window.DARTS_LIVE;
+  if (!cfg || !cfg.live) return;
+  function busyTyping() {
+    var el = document.querySelector("[x-data^='scorer']");
+    return el && el._x_dataStack && el._x_dataStack[0].typing();
+  }
+  setInterval(function () {
+    if (document.hidden || busyTyping()) return;
+    fetch("/darts/games/" + cfg.id + "/version", { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) { if (d && (d.v !== cfg.v || d.status !== "live")) location.reload(); })
+      .catch(function () {});
+  }, 3000);
+})();

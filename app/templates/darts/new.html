@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}New game{% endblock %}
+{% block content %}
+<h1>New game</h1>
+{% if error %}<p class="flash error">{{ error }}</p>{% endif %}
+{% set chosen = form.players %}
+<form method="post" action="/darts/new" class="dnew"
+      x-data='{ "n": {{ [chosen|length, 2]|max }}, "legs": {{ form.legs }}, "sel": {{ (chosen + ["", "", "", ""])[:4] | map("string") | list | tojson }} }'>
+  <fieldset>
+    <legend>Game</legend>
+    <div class="seg" role="radiogroup" aria-label="Start score">
+      {% for s in starts %}
+        <label><input type="radio" name="start" value="{{ s }}" {% if s == form.start %}checked{% endif %}><span>{{ s }}</span></label>
+      {% endfor %}
+    </div>
+    <div class="stepper">
+      <span>First to</span>
+      <button type="button" class="outline small" @click="legs = Math.max(1, legs - 1)" aria-label="Fewer legs">−</button>
+      <strong x-text="legs">{{ form.legs }}</strong>
+      <button type="button" class="outline small" @click="legs = Math.min(11, legs + 1)" aria-label="More legs">＋</button>
+      <span x-text="legs == 1 ? 'leg' : 'legs'">legs</span>
+      <input type="hidden" name="legs" :value="legs" value="{{ form.legs }}">
+    </div>
+    <small class="muted">Double out. The throw alternates every leg.</small>
+  </fieldset>
+
+  <fieldset>
+    <legend>Players <small class="muted">(in throwing order)</small></legend>
+    {% for i in range(4) %}
+      <div class="prow" x-show="n > {{ i }}" {% if i >= [chosen|length, 2]|max %}x-cloak{% endif %}>
+        <span class="pnum">{{ i + 1 }}</span>
+        <select name="p{{ i }}" x-model="sel[{{ i }}]" aria-label="Player {{ i + 1 }}" :disabled="n <= {{ i }}">
+          <option value="">– choose –</option>
+          <optgroup label="Members">
+            {% for c in competitors if not c.is_guest %}<option value="{{ c.id }}">{{ c.display_name }}</option>{% endfor %}
+          </optgroup>
+          {% if competitors | selectattr("is_guest") | list %}
+            <optgroup label="Guests">
+              {% for c in competitors if c.is_guest %}<option value="{{ c.id }}">{{ c.display_name }}</option>{% endfor %}
+            </optgroup>
+          {% endif %}
+          <option value="guest">＋ New guest…</option>
+        </select>
+        <input name="g{{ i }}" placeholder="Guest name" maxlength="40" x-show="sel[{{ i }}] === 'guest'" x-cloak
+               :required="sel[{{ i }}] === 'guest' && n > {{ i }}" aria-label="Guest name for player {{ i + 1 }}">
+      </div>
+    {% endfor %}
+    <div class="btn-row left">
+      <button type="button" class="outline small" x-show="n < 4" @click="n++">＋ Player</button>
+      <button type="button" class="outline secondary small" x-show="n > 1" @click="n--; sel[n] = ''">− Player</button>
+    </div>
+    <small class="muted">1 player = practice. Guests don't need an account – an admin can link them to one later.</small>
+  </fieldset>
+
+  <button type="submit">🎯 Game on!</button>
+</form>
+{% endblock %}
+{% block scripts %}<script defer src="/static/vendor/alpine.min.js"></script>{% endblock %}
