@@ -71,6 +71,11 @@ Spiele, Siege, Siegquote, getroffene Becher pro Spiel, Becher-Differenz (zählt 
 
 Alle Stats (Darts und Beer Pong) stehen auch auf der Profilseite jedes Mitglieds.
 
+**Vergleichen (⚖️ Compare)**: unter *Stats* oder über „Compare with me“ auf einer Spieler- bzw. Profilseite.
+Zwei Spieler nebeneinander, bei jedem Wert ist der bessere grün markiert („Categories won“). Darts zeigt
+dazu den **direkten Vergleich** (Siege, Legs und Stats nur aus den gemeinsamen Spielen, letzte Duelle),
+Beer Pong die Bilanz **gegeneinander** und **zusammen im Team**.
+
 ## Aufbau
 
 ```

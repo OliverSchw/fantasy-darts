@@ -239,3 +239,57 @@ def compute_stats(db: Session, competitor_ids: list[int] | None = None) -> dict[
             s.cups_for += g.hits1 if p.side == 1 else g.hits2
             s.cups_against += g.hits2 if p.side == 1 else g.hits1
     return stats
+
+
+# ---------------------------------------------------------------- Vergleich zweier Spieler
+
+COMPARE_ROWS = (
+    ("win_pct", "Win rate", True, "pct"),
+    ("games", "Games played", None, "int"),
+    ("wins", "Games won", True, "int"),
+    ("cups_per_game", "Cups per game", True, "dec"),
+    ("diff_per_game", "Cup difference per game", True, "signed"),
+)
+
+
+def compare_rows(a: BeerpongStats | None, b: BeerpongStats | None) -> list[dict]:
+    rows = []
+    for key, label, higher, fmt in COMPARE_ROWS:
+        va = getattr(a, key) if a else None
+        vb = getattr(b, key) if b else None
+        winner = None
+        if higher is not None and va is not None and vb is not None and va != vb:
+            winner = "a" if (va > vb) == higher else "b"
+        rows.append({"label": label, "a": va, "b": vb, "fmt": fmt, "winner": winner})
+    return rows
+
+
+@dataclass
+class Rivalry:
+    against: list[models.BeerpongGame]  # a und b in verschiedenen Teams
+    together: list[models.BeerpongGame]  # a und b im selben Team
+    wins_a: int = 0
+    wins_b: int = 0
+    cups_a: int = 0
+    cups_b: int = 0
+    together_wins: int = 0
+
+
+def rivalry(db: Session, a: int, b: int) -> Rivalry:
+    games = db.scalars(select(models.BeerpongGame).where(models.BeerpongGame.status == "finished")
+                       .order_by(models.BeerpongGame.created_at.desc(), models.BeerpongGame.id.desc())).all()
+    r = Rivalry(against=[], together=[])
+    for g in games:
+        side = {p.competitor_id: p.side for p in g.players}
+        if a not in side or b not in side:
+            continue
+        if side[a] == side[b]:
+            r.together.append(g)
+            r.together_wins += g.winner_side == side[a]
+        else:
+            r.against.append(g)
+            r.wins_a += g.winner_side == side[a]
+            r.wins_b += g.winner_side == side[b]
+            r.cups_a += g.hits1 if side[a] == 1 else g.hits2
+            r.cups_b += g.hits1 if side[b] == 1 else g.hits2
+    return r

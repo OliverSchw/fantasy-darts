@@ -109,3 +109,71 @@ def leg_average(visits: list[models.DartsVisit], competitor_id: int, leg_no: int
     vs = [v for v in visits if v.competitor_id == competitor_id and (leg_no is None or v.leg_no == leg_no)]
     darts = sum(v.darts for v in vs)
     return 3 * sum(v.score for v in vs) / darts if darts else None
+
+
+# ---------------------------------------------------------------- Vergleich zweier Spieler
+
+# (Schlüssel, Bezeichnung, höher ist besser?, Format)
+COMPARE_ROWS = (
+    ("average", "3-dart average", True, "avg"),
+    ("first9", "First 9 average", True, "avg"),
+    ("win_pct", "Win rate", True, "pct"),
+    ("games", "Games played", None, "int"),
+    ("legs_won", "Legs won", True, "int"),
+    ("max180", "180s", True, "int"),
+    ("ton40", "140+", True, "int"),
+    ("tons", "100+", True, "int"),
+    ("high_finish", "Highest finish", True, "int"),
+    ("best_leg", "Best leg (darts)", False, "int"),
+    ("checkout_pct", "Checkout rate", True, "pct"),
+)
+
+
+def compare_rows(a: PlayerStats | None, b: PlayerStats | None) -> list[dict]:
+    """Zeilen für die Vergleichstabelle; winner = "a", "b" oder None (gleich / nicht vergleichbar)."""
+    rows = []
+    for key, label, higher, fmt in COMPARE_ROWS:
+        va = getattr(a, key) if a else None
+        vb = getattr(b, key) if b else None
+        if key == "high_finish":
+            va, vb = va or None, vb or None
+        winner = None
+        if higher is not None and va is not None and vb is not None and va != vb:
+            winner = "a" if (va > vb) == higher else "b"
+        elif key in ("high_finish", "best_leg") and (va is None) != (vb is None) and a and b:
+            winner = "a" if va is not None else "b"  # ein Finish / gewonnenes Leg schlägt keins
+        rows.append({"label": label, "a": va, "b": vb, "fmt": fmt, "winner": winner})
+    return rows
+
+
+@dataclass
+class HeadToHead:
+    game_ids: list[int]
+    wins_a: int = 0
+    wins_b: int = 0
+    legs_a: int = 0
+    legs_b: int = 0
+    stats_a: PlayerStats | None = None  # nur aus den gemeinsamen Spielen
+    stats_b: PlayerStats | None = None
+
+
+def head_to_head(db: Session, a: int, b: int) -> HeadToHead:
+    """Alle (nicht abgebrochenen) Spiele, in denen a und b gegeneinander gespielt haben."""
+    pa = select(models.DartsGamePlayer.game_id).where(models.DartsGamePlayer.competitor_id == a)
+    pb = select(models.DartsGamePlayer.game_id).where(models.DartsGamePlayer.competitor_id == b)
+    games = db.scalars(select(models.DartsGame).where(
+        models.DartsGame.id.in_(pa), models.DartsGame.id.in_(pb), models.DartsGame.status != "abandoned")
+        .order_by(models.DartsGame.created_at.desc(), models.DartsGame.id.desc())).all()
+    h = HeadToHead(game_ids=[g.id for g in games])
+    for g in games:
+        if g.status == "finished":
+            h.wins_a += g.winner_id == a
+            h.wins_b += g.winner_id == b
+        for v in g.visits:
+            if v.checkout:
+                h.legs_a += v.competitor_id == a
+                h.legs_b += v.competitor_id == b
+    if h.game_ids:
+        s = compute_stats(db, [a, b], game_ids=h.game_ids)
+        h.stats_a, h.stats_b = s.get(a), s.get(b)
+    return h

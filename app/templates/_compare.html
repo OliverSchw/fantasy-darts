@@ -1,0 +1,51 @@
+{% from "_macros.html" import cavatar %}
+{# Gemeinsame Teile der Vergleichsseiten (Darts, Beer Pong) #}
+
+{% macro fmt(v, kind) -%}
+  {%- if v is none -%}–
+  {%- elif kind == "avg" or kind == "dec" -%}{{ "%.1f" | format(v) }}
+  {%- elif kind == "pct" -%}{{ "%.0f" | format(v) }}%
+  {%- elif kind == "signed" -%}{{ "%+.1f" | format(v) }}
+  {%- else -%}{{ v }}{%- endif -%}
+{%- endmacro %}
+
+{% macro pickers(action, people, a, b) -%}
+<form method="get" action="{{ action }}" class="cmp-pick" onchange="this.submit()">
+  {% for name, sel in (("a", a), ("b", b)) %}
+    <select name="{{ name }}" aria-label="Player {{ loop.index }}">
+      <option value="">– choose –</option>
+      {% for c in people %}<option value="{{ c.id }}" {% if sel and sel.id == c.id %}selected{% endif %}>{{ c.display_name }}{{ " (guest)" if c.is_guest }}</option>{% endfor %}
+    </select>
+    {% if loop.first %}<span class="cmp-vs">vs</span>{% endif %}
+  {% endfor %}
+  <noscript><button class="small">Compare</button></noscript>
+</form>
+{%- endmacro %}
+
+{% macro heads(a, b, viewer, link_a, link_b) -%}
+<div class="cmp-heads">
+  <a href="{{ link_a }}" class="cmp-head">{{ cavatar(a, viewer, "lg") }}<strong>{{ a.display_name }}</strong></a>
+  <span class="cmp-vs big">vs</span>
+  <a href="{{ link_b }}" class="cmp-head">{{ cavatar(b, viewer, "lg") }}<strong>{{ b.display_name }}</strong></a>
+</div>
+{%- endmacro %}
+
+{% macro table(rows, title) -%}
+{% set ns = namespace(a=0, b=0) %}
+{% for r in rows %}{% if r.winner == "a" %}{% set ns.a = ns.a + 1 %}{% elif r.winner == "b" %}{% set ns.b = ns.b + 1 %}{% endif %}{% endfor %}
+<article class="cmp-card">
+  <h3>{{ title }}</h3>
+  <table class="cmp-table">
+    <tbody>
+      {% for r in rows %}
+        <tr>
+          <td class="cmp-v {% if r.winner == 'a' %}best{% endif %}">{{ fmt(r.a, r.fmt) }}</td>
+          <th>{{ r.label }}</th>
+          <td class="cmp-v {% if r.winner == 'b' %}best{% endif %}">{{ fmt(r.b, r.fmt) }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if ns.a or ns.b %}<p class="cmp-score">Categories won: <strong>{{ ns.a }}</strong> : <strong>{{ ns.b }}</strong></p>{% endif %}
+</article>
+{%- endmacro %}

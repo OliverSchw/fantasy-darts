@@ -2,11 +2,11 @@
 {% from "_macros.html" import cavatar %}
 {% block title %}Stats{% endblock %}
 {% block content %}
-<h1>Stats</h1>
+<div class="title-row"><h1>Stats</h1><a href="/beerpong/compare" role="button" class="outline small">⚖️ Compare</a></div>
 <p class="muted sort-hint">Tap a column title to sort. Cups count for every player of the team; finished games only.</p>
 {% if not rows %}<article class="cta"><p>No games finished yet.</p><a href="/beerpong/new" role="button">Start a game</a></article>{% else %}
 <div class="table-wrap">
-  <table class="striped compact sortable dstats" data-sort-key="beerpong-stats">
+  <table class="striped compact rowlinks sortable dstats" data-sort-key="beerpong-stats">
     <thead><tr>
       <th data-sort="text">Player</th>
       <th class="num" data-sort="num" data-default="desc">Win%</th>
@@ -17,7 +17,7 @@
     <tbody>
       {% for c, s in rows %}
         <tr>
-          <td data-v="{{ c.display_name }}"><span class="dname">{{ cavatar(c, user, "xs") }} {{ c.display_name }}{% if c.is_guest %}<small class="muted">guest</small>{% endif %}</span></td>
+          <td data-v="{{ c.display_name }}"><span class="dname">{{ cavatar(c, user, "xs") }} <a href="/beerpong/compare?b={{ c.id }}">{{ c.display_name }}</a>{% if c.is_guest %}<small class="muted">guest</small>{% endif %}</span></td>
           <td class="num" data-v="{{ s.win_pct }}"><strong>{{ "%.0f" | format(s.win_pct) }}%</strong></td>
           <td class="num" data-v="{{ s.wins }}">{{ s.wins }}/{{ s.games }}</td>
           <td class="num" data-v="{{ s.cups_per_game }}">{{ "%.1f" | format(s.cups_per_game) }}</td>

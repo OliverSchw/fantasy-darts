@@ -13,7 +13,7 @@ from ..competitors import CompetitorError
 from ..darts import service
 from ..darts.checkouts import checkout_route, is_finishable, min_darts
 from ..darts.engine import START_SCORES, DartsError
-from ..darts.stats import compute_stats, leg_average
+from ..darts.stats import compare_rows, compute_stats, head_to_head, leg_average
 from ..db import get_db
 from .common import flash, redirect, render
 from .tournament_pages import Sport, add_tournament_routes, read_format
@@ -215,6 +215,27 @@ def players_page(request: Request, db: Session = Depends(get_db), user: models.U
     rows = [(c, stats[c.id]) for c in people if c.id in stats]  # nur wer schon geworfen hat
     rows.sort(key=lambda r: (r[1].average is None, -(r[1].average or 0)))
     return render(request, "darts/players.html", user=user, rows=rows)
+
+
+def _pick(db: Session, raw: str | None) -> models.Competitor | None:
+    return db.get(models.Competitor, int(raw)) if raw and raw.isdigit() else None
+
+
+@router.get("/compare")
+def compare_page(request: Request, a: str | None = None, b: str | None = None, db: Session = Depends(get_db),
+                 user: models.User = Depends(require_user)):
+    ca = _pick(db, a) or competitors.competitor_for_user(db, user)
+    cb = _pick(db, b)
+    ctx = {"people": competitors.all_competitors(db), "a": ca, "b": cb}
+    if ca and cb and ca.id != cb.id:
+        stats = compute_stats(db, [ca.id, cb.id])
+        h2h = head_to_head(db, ca.id, cb.id)
+        games = db.scalars(select(models.DartsGame).where(models.DartsGame.id.in_(h2h.game_ids[:5]))
+                           .order_by(models.DartsGame.created_at.desc())).all() if h2h.game_ids else []
+        rows, h2h_rows = compare_rows(stats.get(ca.id), stats.get(cb.id)), compare_rows(h2h.stats_a, h2h.stats_b)
+        ctx.update(rows=rows, h2h=h2h, h2h_rows=None if h2h_rows == rows else h2h_rows,
+                   h2h_games=_game_summaries(games))
+    return render(request, "darts/compare.html", user=user, **ctx)
 
 
 @router.get("/players/{competitor_id}")

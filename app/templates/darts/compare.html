@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% import "_compare.html" as cmp %}
+{% from "darts/_game_list.html" import game_list %}
+{% block title %}Compare{% endblock %}
+{% block content %}
+<h1>⚖️ Compare</h1>
+{{ cmp.pickers("/darts/compare", people, a, b) }}
+
+{% if a and b and a.id != b.id %}
+  {{ cmp.heads(a, b, user, "/darts/players/" ~ a.id, "/darts/players/" ~ b.id) }}
+  {{ cmp.table(rows, "All games") }}
+
+  <article class="cmp-card">
+    <h3>🥊 Head to head</h3>
+    {% if h2h.game_ids %}
+      <div class="cmp-h2h">
+        <div><span>{{ h2h.wins_a }}</span><small>wins</small></div>
+        <div class="cmp-h2h-mid"><small>{{ h2h.game_ids | length }} game{{ "s" if h2h.game_ids | length != 1 }}</small><br>
+          <small>legs {{ h2h.legs_a }} : {{ h2h.legs_b }}</small></div>
+        <div><span>{{ h2h.wins_b }}</span><small>wins</small></div>
+      </div>
+      {% if h2h_rows %}{{ cmp.table(h2h_rows, "Stats in their games") }}{% else %}<p class="muted center">They have only played each other so far – the table above is their head to head.</p>{% endif %}
+      <h4>Their games</h4>
+      {{ game_list(h2h_games, user) }}
+    {% else %}
+      <p class="muted">{{ a.display_name }} and {{ b.display_name }} haven't played each other yet.</p>
+      <a href="/darts/new" role="button" class="small">Start a game</a>
+    {% endif %}
+  </article>
+{% elif a and b %}
+  <p class="muted">Pick two different players.</p>
+{% else %}
+  <p class="muted">Pick two players to compare their stats side by side.</p>
+{% endif %}
+{% endblock %}

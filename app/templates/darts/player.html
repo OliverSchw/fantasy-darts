@@ -8,6 +8,7 @@
   {{ cavatar(c, user, "xl") }}
   <h1>{{ c.display_name }}</h1>
   {% if c.user %}<a href="/users/{{ c.user.id }}" class="small-link">Profile →</a>{% else %}<small class="muted">Guest</small>{% endif %}
+  {% if not (c.user and c.user.id == user.id) %}<a href="/darts/compare?b={{ c.id }}" role="button" class="outline small">⚖️ Compare with me</a>{% endif %}
 </div>
 
 {% if stats %}

@@ -32,7 +32,8 @@
       <div><span>{{ darts_stats.max180 }}</span><small>180s</small></div>
       <div><span>{{ darts_stats.high_finish or "–" }}</span><small>High finish</small></div>
     </a>
-    <p class="profile-team"><a href="/darts/players/{{ darts_me.id }}">All darts stats →</a></p>
+    <p class="profile-team"><a href="/darts/players/{{ darts_me.id }}">All darts stats →</a>
+      {% if person.id != user.id %} · <a href="/darts/compare?b={{ darts_me.id }}">⚖️ Compare with me</a>{% endif %}</p>
   {% else %}
     <p class="muted center">No darts games yet.</p>
   {% endif %}
@@ -45,6 +46,7 @@
       <div><span>{{ "%.1f" | format(bp_stats.cups_per_game) }}</span><small>Cups / game</small></div>
       <div><span>{{ "%+.1f" | format(bp_stats.diff_per_game) }}</span><small>Cup diff</small></div>
     </a>
+    {% if person.id != user.id %}<p class="profile-team"><a href="/beerpong/compare?b={{ darts_me.id }}">⚖️ Compare with me</a></p>{% endif %}
   {% else %}
     <p class="muted center">No beer pong games yet.</p>
   {% endif %}
