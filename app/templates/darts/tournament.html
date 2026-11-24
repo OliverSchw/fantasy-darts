@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_tbracket.html" import tbracket %}
+{% block title %}{{ t.name }}{% endblock %}
+{% block content %}
+<div class="title-row">
+  <hgroup>
+    <h1>🏆 {{ t.name }}</h1>
+    <p>{{ t.entries | length }} players · {{ settings.start }} · first to {{ settings.legs }}, final first to {{ settings.final_legs }}</p>
+  </hgroup>
+</div>
+{% if winner %}
+  <article class="dg-winner"><p>🏆 <strong>{{ winner.display_name }}</strong> wins the tournament!</p></article>
+{% else %}
+  <p class="muted legend">Tap a match to start the game or enter a result.{% if live %} <mark class="live-badge">LIVE</mark> = being played right now.{% endif %}</p>
+{% endif %}
+{{ tbracket(t, cols, "/darts/tournaments/" ~ t.id, live, winner) }}
+
+{% if organizer %}
+  <details class="dg-more">
+    <summary class="small-link">Organizer options…</summary>
+    <form method="post" action="/darts/tournaments/{{ t.id }}/delete" onsubmit="return confirm('Delete this tournament? The games stay in the history.')">
+      <button class="danger small">Delete tournament</button>
+    </form>
+  </details>
+{% endif %}
+{% endblock %}

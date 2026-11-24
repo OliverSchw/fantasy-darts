@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Tournaments{% endblock %}
+{% block content %}
+<div class="title-row">
+  <h1>Tournaments</h1>
+  <a href="/darts/tournaments/new" role="button" class="small">＋ New tournament</a>
+</div>
+{% if tournaments %}
+  <ul class="dgames">
+    {% for t in tournaments %}
+      {% set w = entry_by_id(t, t.winner_entry_id) %}
+      <li>
+        <a href="/darts/tournaments/{{ t.id }}" class="dgame {{ 'live' if t.status == 'running' }}">
+          <span class="dgame-meta">{{ t.entries | length }} players · {{ t.settings.start }} · {{ t.created_at | when }}
+            {% if t.status == "running" %}<mark class="live-badge">RUNNING</mark>{% endif %}</span>
+          <span class="dgame-side"><strong class="nm">🏆 {{ t.name }}</strong></span>
+          {% if w %}<span class="dgame-side win"><span class="nm">Winner: {{ w.display_name }}</span></span>{% endif %}
+        </a>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <article class="cta"><p>No tournaments yet. Set one up in a minute – knockout bracket, games scored on the phone.</p>
+    <a href="/darts/tournaments/new" role="button">Create a tournament</a></article>
+{% endif %}
+{% endblock %}

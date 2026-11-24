@@ -1,0 +1,46 @@
+{# K.-o.-Baum für Darts- und Bierpong-Turniere. base = URL-Präfix, z. B. "/darts/tournaments/3" #}
+{% macro tside(entry, score, played, won, bye) -%}
+  {%- if entry -%}
+    <div class="bside {% if won %}win{% elif played %}lose{% endif %}">
+      <span class="bn">{{ entry.display_name }}</span>
+      <span class="sets">{% if played and not bye %}{{ score }}{% endif %}</span>
+    </div>
+  {%- elif bye -%}
+    <div class="bside tbd"><span class="bn">bye</span></div>
+  {%- else -%}
+    <div class="bside tbd"><span class="bn">TBD</span></div>
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro tbracket(t, cols, base, live={}, winner=none) -%}
+<div class="tree-scroll">
+  <div class="tree">
+    {% for col in cols %}
+      <div class="tcol {% if loop.first %}first{% endif %}">
+        <div class="tcol-head">{{ col.title }}</div>
+        <div class="tcol-body">
+          {% for group in col.groups %}
+            <div class="tgroup {% if group|length == 1 %}single{% endif %}">
+              {% for m in group %}
+                <div class="tslot">
+                  <a class="tmatch {% if m.is_played %}played{% endif %} {% if m.id in live %}is-live{% endif %}" href="{{ base }}/matches/{{ m.id }}">
+                    {{ tside(m.entry1, m.score1, m.is_played, m.winner_id and m.winner_id == m.entry1_id, m.bye) }}
+                    {{ tside(m.entry2, m.score2, m.is_played, m.winner_id and m.winner_id == m.entry2_id, m.bye) }}
+                    {% if m.id in live %}<div class="ttime"><mark class="live-badge">LIVE</mark></div>{% endif %}
+                  </a>
+                </div>
+              {% endfor %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+    <div class="tcol last champ-col">
+      <div class="tcol-head">Champion</div>
+      <div class="tcol-body"><div class="tgroup single"><div class="tslot">
+        <div class="tmatch champion"><div class="bside {{ 'win' if winner else 'tbd' }}"><span class="bn">🏆 {{ winner.display_name if winner else "?" }}</span></div></div>
+      </div></div></div>
+    </div>
+  </div>
+</div>
+{%- endmacro %}
