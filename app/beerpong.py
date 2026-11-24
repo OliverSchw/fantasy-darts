@@ -79,6 +79,9 @@ def add_hit(db: Session, game: models.BeerpongGame, side: int, delta: int, versi
     """Becher getroffen (+1) oder Korrektur (-1). version = Stand, den die Seite kannte (gegen Doppel-Tipps)."""
     if side not in (1, 2) or delta not in (1, -1):
         raise BeerpongError("Invalid input.")
+    # Zeile sperren, bis gespeichert ist: gleichzeitige Tipps von zwei Handys werden nacheinander geprüft,
+    # der zweite sieht dann die neue Version und wird abgelehnt (Postgres; SQLite sperrt ohnehin die ganze DB).
+    db.refresh(game, with_for_update=True)
     if game.status == "abandoned":
         raise BeerpongError("This game was abandoned.")
     if version != game.version:

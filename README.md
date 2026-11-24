@@ -146,7 +146,8 @@ uvicorn app.main:app --reload
 
 → http://127.0.0.1:8000 . Ohne `.env` wird lokal die SQLite-Datei `fantasy.db` benutzt.
 
-Tests: `pytest`
+Tests: `pytest` (SQLite). Gegen eine echte, **leere** Postgres-Test-Datenbank:
+`TEST_DATABASE_URL=postgresql://user:pass@localhost/fd_test pytest` – die Tests löschen und erzeugen dort alle Tabellen.
 
 ## Neue Saison (z. B. WM 2027)
 

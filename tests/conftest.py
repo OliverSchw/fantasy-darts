@@ -3,8 +3,10 @@ import tempfile
 from pathlib import Path
 
 # Muss vor dem Import der App gesetzt sein: eigene Wegwerf-Datenbank für die Tests.
+# Standard ist SQLite; mit TEST_DATABASE_URL=postgresql://... laufen die Tests gegen Postgres
+# (Achtung: die Tests löschen und erzeugen dort alle Tabellen - nur eine leere Test-DB verwenden!).
 _tmp = Path(tempfile.mkdtemp()) / "test.db"
-os.environ["DATABASE_URL"] = f"sqlite:///{_tmp}"
+os.environ["DATABASE_URL"] = os.environ.get("TEST_DATABASE_URL") or f"sqlite:///{_tmp}"
 os.environ["SECRET_KEY"] = "test-secret"
 os.environ["SEASON"] = "wm2026"
 
