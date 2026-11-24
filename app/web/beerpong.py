@@ -131,6 +131,19 @@ def bp_stats(request: Request, db: Session = Depends(get_db), user: models.User 
     return render(request, "beerpong/stats.html", user=user, rows=rows)
 
 
+@router.get("/compare")
+def bp_compare(request: Request, a: str | None = None, b: str | None = None, db: Session = Depends(get_db),
+               user: models.User = Depends(require_user)):
+    pick = lambda raw: db.get(models.Competitor, int(raw)) if raw and raw.isdigit() else None  # noqa: E731
+    ca = pick(a) or competitors.competitor_for_user(db, user)
+    cb = pick(b)
+    ctx = {"people": competitors.all_competitors(db), "a": ca, "b": cb}
+    if ca and cb and ca.id != cb.id:
+        stats = bp.compute_stats(db, [ca.id, cb.id])
+        ctx.update(rows=bp.compare_rows(stats.get(ca.id), stats.get(cb.id)), riv=bp.rivalry(db, ca.id, cb.id))
+    return render(request, "beerpong/compare.html", user=user, **ctx)
+
+
 # ---------------------------------------------------------------- Turniere
 
 

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% import "_compare.html" as cmp %}
+{% from "beerpong/_pick.html" import bp_list %}
+{% block title %}Compare{% endblock %}
+{% block content %}
+<h1>⚖️ Compare</h1>
+{{ cmp.pickers("/beerpong/compare", people, a, b) }}
+
+{% if a and b and a.id != b.id %}
+  {{ cmp.heads(a, b, user, ("/users/" ~ a.user.id) if a.user else "#", ("/users/" ~ b.user.id) if b.user else "#") }}
+  {{ cmp.table(rows, "All games") }}
+
+  <article class="cmp-card">
+    <h3>🥊 Against each other</h3>
+    {% if riv.against %}
+      <div class="cmp-h2h">
+        <div><span>{{ riv.wins_a }}</span><small>wins</small></div>
+        <div class="cmp-h2h-mid"><small>{{ riv.against | length }} game{{ "s" if riv.against | length != 1 }}</small><br>
+          <small>cups {{ riv.cups_a }} : {{ riv.cups_b }}</small></div>
+        <div><span>{{ riv.wins_b }}</span><small>wins</small></div>
+      </div>
+      {{ bp_list(riv.against[:5], user) }}
+    {% else %}
+      <p class="muted">No games against each other yet.</p>
+    {% endif %}
+  </article>
+
+  <article class="cmp-card">
+    <h3>🤝 As a team</h3>
+    {% if riv.together %}
+      <p class="cmp-together"><strong>{{ riv.together_wins }}</strong> of <strong>{{ riv.together | length }}</strong> games won together
+        ({{ "%.0f" | format(100 * riv.together_wins / riv.together | length) }}%)</p>
+      {{ bp_list(riv.together[:5], user) }}
+    {% else %}
+      <p class="muted">They haven't played in a team together yet.</p>
+    {% endif %}
+  </article>
+{% elif a and b %}
+  <p class="muted">Pick two different players.</p>
+{% else %}
+  <p class="muted">Pick two players to compare their stats side by side.</p>
+{% endif %}
+{% endblock %}
