@@ -105,7 +105,7 @@ def test_user_profile_page(olli, db, season, rules, make_user):
     from tests.test_features import _team_form
 
     anna = make_user("anna")
-    olli.post("/my/new", data=_team_form(db, season, rules, "Bulls"))
+    olli.post("/fantasy/my/new", data=_team_form(db, season, rules, "Bulls"))
     _upload(olli, _png())
     me = _user(db)
 
@@ -114,7 +114,7 @@ def test_user_profile_page(olli, db, season, rules, make_user):
         page = c.get(f"/users/{me.id}").text
         assert f"/avatars/{me.id}?v={me.avatar_version}" in page and 'class="avatar xl"' in page
         assert "Bulls" in page and "visible once teams are locked" in page  # Team vor der Sperre nicht verlinkt
-        assert f'href="/users/{me.id}"' in c.get("/").text  # Rangliste verlinkt aufs Profil
+        assert f'href="/users/{me.id}"' in c.get("/fantasy").text  # Rangliste verlinkt aufs Profil
         assert "has no active team yet" in c.get(f"/users/{anna.id}").text
         assert c.get("/users/9999").status_code == 404
 
@@ -122,9 +122,9 @@ def test_user_profile_page(olli, db, season, rules, make_user):
     db.commit()
     with TestClient(app) as c:
         c.post("/login", data={"username": "anna", "password": "secret123"})
-        assert '/teams/' in c.get(f"/users/{me.id}").text  # nach der Sperre verlinkt
+        assert '/fantasy/teams/' in c.get(f"/users/{me.id}").text  # nach der Sperre verlinkt
     assert "Change picture or password" in olli.get(f"/users/{me.id}").text  # eigenes Profil
 
     with TestClient(app) as guest:
         assert guest.get(f"/users/{me.id}", follow_redirects=False).status_code == 303  # -> Login
-        assert f'href="/users/{me.id}"' not in guest.get("/").text
+        assert f'href="/users/{me.id}"' not in guest.get("/fantasy").text

@@ -63,7 +63,7 @@
   <article>
     <h3>💪 Most players still in</h3>
     <ol class="plain">
-      {% for t, n in teams_alive %}<li><a href="/teams/{{ t.id }}">{{ t.name }}</a> <span class="pts">{{ n }}/{{ rules.team.squad_size }}</span></li>{% endfor %}
+      {% for t, n in teams_alive %}<li><a href="/fantasy/teams/{{ t.id }}">{{ t.name }}</a> <span class="pts">{{ n }}/{{ rules.team.squad_size }}</span></li>{% endfor %}
     </ol>
     {% if never %}
       <h3>🙈 Nobody picked them</h3>

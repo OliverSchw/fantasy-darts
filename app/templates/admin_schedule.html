@@ -7,14 +7,14 @@
 <nav class="round-tabs" aria-label="Rounds">
   {% for name in rules.tournament.round_names %}
     {% set r = loop.index %}
-    <a href="/admin/schedule?round={{ r }}" {% if r == rnd %}aria-current="page"{% endif %}>
+    <a href="/fantasy/admin/schedule?round={{ r }}" {% if r == rnd %}aria-current="page"{% endif %}>
       {{ name }}<small>{{ counts[r] }}/{{ rules.matches_in_round(r) }}</small>
     </a>
   {% endfor %}
 </nav>
 <p class="muted">Times in {{ tz }}. You can schedule matches before the players are known – everyone sees “A / B” until then.</p>
 
-<form method="post" action="/admin/schedule?round={{ rnd }}" x-data="scheduleFill">
+<form method="post" action="/fantasy/admin/schedule?round={{ rnd }}" x-data="scheduleFill">
   <details class="fill-helper">
     <summary>⚡ Fill empty times automatically</summary>
     <div class="grid-form fill-form">

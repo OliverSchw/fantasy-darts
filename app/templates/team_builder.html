@@ -21,7 +21,7 @@
     <div class="view-toggle">
       <button type="button" :class="{ active: view === 'list' }" @click="view = 'list'">☰ List</button>
       <button type="button" :class="{ active: view === 'draw' }" @click="view = 'draw'">🌳 Draw</button>
-      <a href="/bracket" target="_blank" rel="noopener" class="small-link">Full bracket ↗</a>
+      <a href="/fantasy/bracket" target="_blank" rel="noopener" class="small-link">Full bracket ↗</a>
     </div>
 
     <!-- Listenansicht -->
@@ -137,7 +137,7 @@
     <li :class="champion ? 'ok' : ''">Champion pick</li>
   </ul>
   <button type="submit" :disabled="!valid || submitting" :aria-busy="submitting">Save team</button>
-  <a href="/my" class="secondary">Cancel</a>
+  <a href="/fantasy/my" class="secondary">Cancel</a>
 </form>
 
 <script id="builder-data" type="application/json">{{ {"players": players_json, "initial": initial, "budget": t.budget, "squadSize": t.squad_size, "pmMax": t.playmaker.max_price, "udMax": t.underdog.max_price, "draw": draw_json} | tojson }}</script>

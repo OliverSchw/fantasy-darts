@@ -16,7 +16,7 @@ from ..settings import get_settings
 from ..teams import TeamInput, validate_team
 from .common import State, flash, get_state, redirect, render
 
-router = APIRouter(prefix="/admin/rules")
+router = APIRouter(prefix="/fantasy/admin/rules")
 
 
 def _tz() -> ZoneInfo:
@@ -138,7 +138,7 @@ def rules_form(request: Request, state: State = Depends(get_state), admin: model
 async def rules_save(request: Request, state: State = Depends(get_state), admin: models.User = Depends(require_admin)):
     if state.locked:
         flash(request, "Teams are locked – unlock them first if you really want to change the rules.", "error")
-        return redirect("/admin/rules")
+        return redirect("/fantasy/admin/rules")
     data, errors = parse_rules_form(await request.form(), state.rules)
     if not errors:
         try:
@@ -160,7 +160,7 @@ async def rules_save(request: Request, state: State = Depends(get_state), admin:
         names = ", ".join(t.name for t in invalid[:5]) + (" …" if len(invalid) > 5 else "")
         flash(request, f"{len(invalid)} team(s) no longer fit the new rules (e.g. budget or squad size): {names}. "
                        "Their owners need to edit them before the lock.", "error")
-    return redirect("/admin/rules")
+    return redirect("/fantasy/admin/rules")
 
 
 @router.post("/reset")
@@ -170,4 +170,4 @@ def rules_reset(request: Request, state: State = Depends(get_state), admin: mode
     else:
         reset_rules(state.db, state.season)
         flash(request, "Rules reset to the season defaults (rules.toml).")
-    return redirect("/admin/rules")
+    return redirect("/fantasy/admin/rules")

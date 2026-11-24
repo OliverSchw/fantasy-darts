@@ -34,8 +34,12 @@ small { color: var(--pico-muted-color); }
   display: flex; align-items: center; gap: 1rem;
   max-width: 1100px; margin: 0 auto; padding: 0.45rem 1rem;
 }
-.brand { color: #fff; font-weight: 700; text-decoration: none; display: flex; align-items: center; gap: 0.5rem; }
-.brand img { border-radius: 50%; }
+.brand { color: #fff; font-weight: 700; text-decoration: none; display: flex; align-items: center; gap: 0.5rem;
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-link { display: flex; align-items: center; flex: none; margin-right: -0.45rem; border-radius: 999px; color: #fff; text-decoration: none; }
+.home-back { font-size: 1.6rem; line-height: 1; margin: -0.15rem 0.2rem 0 -0.2rem; opacity: 0.85; }
+.home-link img { border-radius: 50%; display: block; }
+.home-link:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .topnav { display: none; gap: 1.3rem; flex: 1; justify-content: flex-start; margin-left: 1rem; }
 .topnav a { color: rgba(255, 255, 255, 0.8); text-decoration: none; }
 .topnav a[aria-current] { color: #fff; font-weight: 600; text-decoration: underline; text-underline-offset: 6px; }
@@ -544,3 +548,29 @@ th[aria-sort] .th-sort { color: var(--pico-primary); }
 .profile-stats .of { font-size: 0.8rem; font-weight: 400; color: var(--pico-muted-color); }
 .profile-team { text-align: center; margin-bottom: 1rem; }
 .center { text-align: center; }
+
+/* --- Plattform: Startseite & Admin-Übersicht --------------------------- */
+.admin-tabs.core { grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr)); }
+.hub-hello { display: flex; align-items: center; gap: 1rem; margin: 0.5rem 0 1.4rem; }
+.hub-hello h1 { margin: 0 0 0.15rem; }
+.hub-hello p { margin: 0 0 0.6rem; }
+.hub-hello .avatar-link + div p { margin: 0; }
+.hub-grid { display: grid; gap: 0.8rem; grid-template-columns: 1fr; margin-bottom: 1.5rem; }
+@media (min-width: 640px) { .hub-grid { grid-template-columns: repeat(2, 1fr); } }
+.hub-tile {
+  display: flex; align-items: center; gap: 0.9rem; padding: 1rem 1.1rem; text-decoration: none; color: inherit;
+  background: var(--pico-card-background-color); border: 1px solid var(--pico-muted-border-color);
+  border-radius: calc(var(--pico-border-radius) * 2); box-shadow: 0 1px 2px rgba(0,0,0,.04);
+}
+a.hub-tile:hover { border-color: var(--pico-primary); }
+.hub-ico { font-size: 2.2rem; line-height: 1; width: 3.2rem; height: 3.2rem; flex: none; display: flex; align-items: center;
+  justify-content: center; border-radius: 0.9rem; background: rgba(25, 135, 84, 0.1); }
+.hub-text { flex: 1; display: flex; flex-direction: column; min-width: 0; gap: 0.15rem; }
+.hub-text strong { font-size: 1.1rem; }
+.hub-text small { color: var(--pico-muted-color); font-size: 0.82rem; line-height: 1.35; }
+.hub-status { font-size: 0.85rem; color: var(--pico-primary); margin-top: 0.2rem; }
+.hub-go { font-size: 1.8rem; color: var(--pico-muted-color); line-height: 1; }
+.hub-tile.soon { opacity: 0.6; }
+.hub-tile.soon .hub-ico { background: var(--pico-card-sectioning-background-color); filter: grayscale(0.6); }
+.hub-tile.soon .hub-status { color: var(--pico-muted-color); font-style: italic; }
+h1 small.muted { font-size: 0.55em; font-weight: 500; }

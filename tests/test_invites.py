@@ -33,7 +33,7 @@ def test_link_works_exactly_once(admin, db):
     assert 'id="invites"' in page and f"register?invite={inv.token}" in page
     # Abschnitt steht über dem Code-Abschnitt
     assert page.index("Personal invite links") < page.index("Shared invite code")
-    assert "1 invite link not used yet" in admin.get("/admin").text  # To-do auf der Übersicht
+    assert "1 invite link not used yet" in admin.get("/fantasy/admin").text  # To-do auf der Übersicht
 
     with TestClient(app) as guest:
         r = guest.get(f"/register?invite={inv.token}")

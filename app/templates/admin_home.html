@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Admin{% endblock %}
+{% block content %}
+{% include "_core_admin_nav.html" %}
+
+<div class="stat-grid admin-stats">
+  <a href="/admin/users"><span>{{ n_users }}</span><small>Members</small></a>
+  <a href="/admin/users#invites"><span>{{ n_open_invites }}</span><small>Open invite links</small></a>
+</div>
+
+<article>
+  <h3>👥 Members &amp; invites</h3>
+  <p class="muted">Accounts work in every game. Invite people, reset passwords and manage admins here.</p>
+  <a href="/admin/users" role="button" class="outline small">Open members →</a>
+</article>
+
+{% for s in admin_sections %}
+  <article>
+    <h3>{{ s.icon }} {{ s.name }}</h3>
+    <p class="muted">{{ s.tagline }}</p>
+    <a href="{{ s.admin_href }}" role="button" class="outline small">Open {{ s.name }} admin →</a>
+  </article>
+{% endfor %}
+{% endblock %}

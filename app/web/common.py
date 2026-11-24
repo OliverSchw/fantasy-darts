@@ -17,6 +17,7 @@ from ..auth import optional_user
 from ..bracket_view import Bracket, PlayerStatus
 from ..db import get_db
 from ..flags import flag_code
+from ..platform import HOME_TABS, PLATFORM_NAME, SECTIONS, section_for_path, tab_active
 from ..config_store import invite_code, season_rules
 from ..rules import Rules, current_rules
 from ..scoring import PlayerScore, TeamScore, champion_id, player_scores, team_score
@@ -38,6 +39,11 @@ templates.env.filters["pts"] = _fmt_points
 templates.env.filters["price"] = _fmt_price
 templates.env.filters["num"] = lambda v: f"{v:g}"  # für Formularfelder: 1000 statt 1.000
 templates.env.globals["flag_code"] = flag_code
+templates.env.globals["platform_name"] = PLATFORM_NAME
+templates.env.globals["sections"] = SECTIONS
+templates.env.globals["home_tabs"] = HOME_TABS
+templates.env.globals["section_for_path"] = section_for_path
+templates.env.globals["tab_active"] = tab_active
 
 
 def local_dt(dt: datetime | None) -> datetime | None:
@@ -214,7 +220,7 @@ def render(request: Request, template: str, state: State | None = None, status_c
     flashes = request.session.pop("flash", [])
     base = {
         "flashes": flashes,
-        "user": state.user if state else None,
+        "user": state.user if state else ctx.pop("user", None),
         "rules": state.rules if state else current_rules(),
         "state": state,
         "path": request.url.path,

@@ -50,21 +50,21 @@ def test_admin_exports(db, season, rules, make_user):
     _setup(db, season, rules, make_user)
     make_user("boss", admin=True)
     with TestClient(app) as c:
-        assert c.get("/admin/export/teams", follow_redirects=False).status_code == 303  # nicht eingeloggt
+        assert c.get("/fantasy/admin/export/teams", follow_redirects=False).status_code == 303  # nicht eingeloggt
         c.post("/login", data={"username": "olli", "password": "secret123"})
-        assert c.get("/admin/export/teams").status_code == 403  # kein Admin
+        assert c.get("/fantasy/admin/export/teams").status_code == 403  # kein Admin
         c.post("/logout")
         c.post("/login", data={"username": "boss", "password": "secret123"})
 
-        r = c.get("/admin/export/teams")
+        r = c.get("/fantasy/admin/export/teams")
         assert r.status_code == 200 and "attachment" in r.headers["content-disposition"]
         assert "Bulls;olli;yes" in r.text
-        r = c.get("/admin/export/results")
+        r = c.get("/fantasy/admin/export/results")
         assert r.text.count("\n") == 2 and "Round 1;1;" in r.text  # Kopf + 1 Ergebnis
-        assert c.get("/admin/export/players").status_code == 200
-        backup = c.get("/admin/export/backup").json()
+        assert c.get("/fantasy/admin/export/players").status_code == 200
+        backup = c.get("/fantasy/admin/export/backup").json()
         assert backup["season"]["key"] == "wm2026" and len(backup["teams"]) == 1
-        assert c.get("/admin/export/nope").status_code == 404
+        assert c.get("/fantasy/admin/export/nope").status_code == 404
 
 
 def test_sqlite_refused_on_vercel(monkeypatch):

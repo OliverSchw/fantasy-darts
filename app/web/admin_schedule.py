@@ -10,7 +10,7 @@ from ..auth import require_admin
 from ..settings import get_settings
 from .common import State, flash, get_state, local_dt, redirect, render
 
-router = APIRouter(prefix="/admin/schedule")
+router = APIRouter(prefix="/fantasy/admin/schedule")
 
 
 def _round(state: State, round: int | None) -> int:
@@ -59,4 +59,4 @@ async def schedule_save(request: Request, state: State = Depends(get_state),
     flash(request, f"{changed} match time(s) saved." if changed else "Nothing changed.")
     if errors:
         flash(request, f"{errors} invalid date(s) ignored.", "error")
-    return redirect(f"/admin/schedule?round={rnd}")
+    return redirect(f"/fantasy/admin/schedule?round={rnd}")

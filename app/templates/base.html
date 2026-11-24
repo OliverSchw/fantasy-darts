@@ -3,14 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>{% block title %}Fantasy Darts{% endblock %} · Fantasy Darts</title>
+  {% set section = section_for_path(path) %}
+  {% set page_title = self.title() | trim %}
+  <title>{% if page_title %}{{ page_title }} · {% endif %}{{ section.name if section else platform_name }}</title>
   <meta name="theme-color" content="#0f5132">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="/static/icons/icon-192.png">
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="Fantasy Darts">
+  <meta name="apple-mobile-web-app-title" content="{{ platform_name }}">
   <link rel="stylesheet" href="/static/vendor/pico.min.css">
   <link rel="stylesheet" href="/static/app.css">
   {% block head %}{% endblock %}
@@ -18,12 +20,23 @@
 <body>
   <header class="topbar">
     <div class="topbar-inner">
-      <a href="/" class="brand"><img src="/static/icons/icon-192.png" alt="" width="28" height="28"> Fantasy Darts</a>
+      <a href="/" class="home-link" aria-label="{{ platform_name }} – all games" title="All games">
+        {% if section %}<span class="home-back" aria-hidden="true">‹</span>{% endif %}
+        <img src="/static/icons/icon-192.png" alt="" width="28" height="28">
+      </a>
+      {% if section %}
+        <a href="{{ section.href }}" class="brand">{{ section.name }}</a>
+      {% else %}
+        <a href="/" class="brand">{{ platform_name }}</a>
+      {% endif %}
       <nav class="topnav">
-        {% set items = [("/", "Ranking"), ("/my", "My Teams"), ("/bracket", "Bracket"), ("/schedule", "Schedule"), ("/players", "Players"), ("/insights", "Insights"), ("/rules", "Rules")] %}
-        {% for href, label in items %}
-          <a href="{{ href }}" {% if (href == "/" and path == "/") or (href != "/" and path.startswith(href)) %}aria-current="page"{% endif %}>{{ label }}</a>
-        {% endfor %}
+        {% if section %}
+          {% for href, icon, label in section.tabs + section.desktop_tabs %}
+            <a href="{{ href }}" {% if tab_active(href, path, section) %}aria-current="page"{% endif %}>{{ label }}</a>
+          {% endfor %}
+        {% else %}
+          {% for s in sections if s.ready %}<a href="{{ s.href }}">{{ s.icon }} {{ s.name }}</a>{% endfor %}
+        {% endif %}
       </nav>
       <div class="usermenu">
         {% if user %}
@@ -55,9 +68,8 @@
   </main>
 
   <nav class="tabbar" aria-label="Main">
-    {% set tabs = [("/", "🏆", "Ranking"), ("/my", "🧩", "My Teams"), ("/bracket", "🌳", "Bracket"), ("/schedule", "📅", "Schedule"), ("/players", "🎯", "Players"), ("/rules", "📜", "Rules")] %}
-    {% for href, icon, label in tabs %}
-      <a href="{{ href }}" {% if (href == "/" and path == "/") or (href != "/" and path.startswith(href)) %}aria-current="page"{% endif %}>
+    {% for href, icon, label in (section.tabs if section else home_tabs) %}
+      <a href="{{ href }}" {% if tab_active(href, path, section) %}aria-current="page"{% endif %}>
         <span class="ico">{{ icon }}</span><span>{{ label }}</span>
       </a>
     {% endfor %}

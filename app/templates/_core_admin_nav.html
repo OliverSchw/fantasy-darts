@@ -1,0 +1,8 @@
+<h1>Admin</h1>
+<nav class="admin-tabs core" aria-label="Admin">
+  <a href="/admin" {% if path == "/admin" %}aria-current="page"{% endif %}><span class="ico">🧭</span><span>Overview</span></a>
+  <a href="/admin/users" {% if path.startswith("/admin/users") %}aria-current="page"{% endif %}><span class="ico">👥</span><span>Members</span></a>
+  {% for s in sections if s.ready and s.admin_href %}
+    <a href="{{ s.admin_href }}"><span class="ico">{{ s.icon }}</span><span>{{ s.name }}</span></a>
+  {% endfor %}
+</nav>

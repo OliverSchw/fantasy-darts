@@ -5,12 +5,12 @@
 {% set is_admin = user and user.is_admin %}
 <div class="title-row">
   <h1>Bracket</h1>
-  <a href="/bracket?view=list" class="small-link">List view</a>
+  <a href="/fantasy/bracket?view=list" class="small-link">List view</a>
 </div>
 
 <nav class="round-tabs section-tabs" aria-label="Sections">
   {% for s in sections %}
-    <a href="/bracket?section={{ s.key }}" {% if s.key == current.key %}aria-current="page"{% endif %}>
+    <a href="/fantasy/bracket?section={{ s.key }}" {% if s.key == current.key %}aria-current="page"{% endif %}>
       {% if s.key == "finals" %}🏆 Finals{% else %}{{ s.label }}{% endif %}
       {% if mine_by_section[s.key] %}<small class="mine-count" title="your players still in this section">● {{ mine_by_section[s.key] }}</small>{% endif %}
     </a>
@@ -34,7 +34,7 @@
                 {% for mv in group %}
                   {% set m = mv.match %}
                   <div class="tslot">
-                    <a class="tmatch {% if m.is_played %}played{% endif %}" href="/matches/{{ m.id }}">
+                    <a class="tmatch {% if m.is_played %}played{% endif %}" href="/fantasy/matches/{{ m.id }}">
                       {{ bracket_side(mv.sides[0], state.players, state.my_player_ids, link=False) }}
                       {{ bracket_side(mv.sides[1], state.players, state.my_player_ids, link=False) }}
                       {% if m.scheduled_at and not m.is_played %}<div class="ttime">🕒 {{ m.scheduled_at | when }}</div>{% endif %}
@@ -48,7 +48,7 @@
               <div class="tmatch champion">
                 {% if current.champion and current.champion.pid %}
                   {% set p = state.players[current.champion.pid] %}
-                  <div class="bside win"><span class="bn">🏆 {{ flag(p.nation) }} <a href="/players/{{ p.id }}">{{ p.name }}</a></span></div>
+                  <div class="bside win"><span class="bn">🏆 {{ flag(p.nation) }} <a href="/fantasy/players/{{ p.id }}">{{ p.name }}</a></span></div>
                 {% else %}
                   <div class="bside tbd"><span class="bn">🏆 ?</span></div>
                 {% endif %}
@@ -65,8 +65,8 @@
   {% set idx = sections | map(attribute="key") | list %}
   {% set i = idx.index(current.key) %}
   <div class="pager">
-    {% if i > 0 %}<a href="/bracket?section={{ sections[i-1].key }}">← {{ sections[i-1].label }}</a>{% else %}<span></span>{% endif %}
-    <a href="/bracket?section={{ sections[i+1].key }}">{{ "🏆 Finals" if sections[i+1].key == "finals" else sections[i+1].label }} →</a>
+    {% if i > 0 %}<a href="/fantasy/bracket?section={{ sections[i-1].key }}">← {{ sections[i-1].label }}</a>{% else %}<span></span>{% endif %}
+    <a href="/fantasy/bracket?section={{ sections[i+1].key }}">{{ "🏆 Finals" if sections[i+1].key == "finals" else sections[i+1].label }} →</a>
   </div>
 {% endif %}
 {% endblock %}

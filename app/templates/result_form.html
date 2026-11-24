@@ -28,11 +28,11 @@
 </form>
 
 {% if m.is_played %}
-  <form method="post" action="/bracket/match/{{ m.id }}/delete" x-data="{ sure: false }">
+  <form method="post" action="/fantasy/bracket/match/{{ m.id }}/delete" x-data="{ sure: false }">
     <button type="button" class="secondary outline" x-show="!sure" @click="sure = true">Delete result…</button>
     <button type="submit" class="danger" x-show="sure" x-cloak>Really delete this result</button>
   </form>
 {% endif %}
-<a href="/matches/{{ m.id }}">← Back to match</a>
+<a href="/fantasy/matches/{{ m.id }}">← Back to match</a>
 {% endblock %}
 {% block scripts %}<script defer src="/static/vendor/alpine.min.js"></script>{% endblock %}

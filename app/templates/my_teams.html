@@ -14,7 +14,7 @@
   {% set pick = state.players[t.champion_pick_id] %}
   <article class="team-card {% if t.is_active %}active{% endif %}">
     <header>
-      <a href="/teams/{{ t.id }}"><strong>{{ t.name }}</strong></a>
+      <a href="/fantasy/teams/{{ t.id }}"><strong>{{ t.name }}</strong></a>
       {% if t.is_active %}<mark class="badge">Active</mark>{% endif %}
       <span class="pts">{{ scores[t.id] | pts }} pts</span>
     </header>
@@ -25,23 +25,23 @@
     </p>
     {% if not state.locked %}
       <footer class="actions" x-data="{ sure: false }">
-        <a href="/my/{{ t.id }}/edit" role="button" class="outline small">Edit</a>
-        {% if teams|length < rules.team.max_teams_per_user %}<a href="/my/new?copy={{ t.id }}" role="button" class="outline secondary small">Copy</a>{% endif %}
+        <a href="/fantasy/my/{{ t.id }}/edit" role="button" class="outline small">Edit</a>
+        {% if teams|length < rules.team.max_teams_per_user %}<a href="/fantasy/my/new?copy={{ t.id }}" role="button" class="outline secondary small">Copy</a>{% endif %}
         {% if not t.is_active %}
-          <form method="post" action="/my/{{ t.id }}/activate"><button class="outline small">Make active</button></form>
+          <form method="post" action="/fantasy/my/{{ t.id }}/activate"><button class="outline small">Make active</button></form>
         {% endif %}
         <button type="button" class="outline secondary small" x-show="!sure" @click="sure = true">Delete</button>
-        <form method="post" action="/my/{{ t.id }}/delete" x-show="sure" x-cloak><button class="danger small">Really delete</button></form>
+        <form method="post" action="/fantasy/my/{{ t.id }}/delete" x-show="sure" x-cloak><button class="danger small">Really delete</button></form>
       </footer>
     {% endif %}
   </article>
 {% endfor %}
 
 {% if not state.locked and teams|length < rules.team.max_teams_per_user %}
-  <a href="/my/new" role="button">＋ New team</a>
+  <a href="/fantasy/my/new" role="button">＋ New team</a>
 {% endif %}
 {% if teams|length > 1 %}
-  <p class="muted">Only your active team counts in the ranking. <a href="/compare?a={{ teams[0].id }}&b={{ teams[1].id }}">⚖️ Compare your teams</a></p>
+  <p class="muted">Only your active team counts in the ranking. <a href="/fantasy/compare?a={{ teams[0].id }}&b={{ teams[1].id }}">⚖️ Compare your teams</a></p>
 {% endif %}
 {% endblock %}
 {% block scripts %}<script defer src="/static/vendor/alpine.min.js"></script>{% endblock %}

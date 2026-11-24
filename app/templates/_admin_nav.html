@@ -1,7 +1,7 @@
-<h1>Admin</h1>
+<h1>Admin <small class="muted">· Fantasy Darts</small></h1>
 <nav class="admin-tabs" aria-label="Admin">
-  {% for href, icon, label in [("/admin", "📊", "Overview"), ("/admin/users", "👥", "Members"), ("/admin/schedule", "📅", "Schedule"), ("/admin/players", "🎯", "Players"), ("/admin/rules", "⚙️", "Rules")] %}
-    <a href="{{ href }}" {% if path == href or (href != "/admin" and path.startswith(href)) %}aria-current="page"{% endif %}>
+  {% for href, icon, label in [("/fantasy/admin", "📊", "Overview"), ("/admin", "🧭", "All admin"), ("/fantasy/admin/schedule", "📅", "Schedule"), ("/fantasy/admin/players", "🎯", "Players"), ("/fantasy/admin/rules", "⚙️", "Rules")] %}
+    <a href="{{ href }}" {% if path == href or (href not in ("/fantasy/admin", "/admin") and path.startswith(href)) %}aria-current="page"{% endif %}>
       <span class="ico">{{ icon }}</span><span>{{ label }}</span>
     </a>
   {% endfor %}

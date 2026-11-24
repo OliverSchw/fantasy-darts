@@ -8,7 +8,7 @@ from ..auth import require_user
 from ..teams import TeamInput, activate_team, delete_team, name_taken, save_team, user_teams, validate_team
 from .common import State, flash, get_state, redirect, render
 
-router = APIRouter(prefix="/my")
+router = APIRouter(prefix="/fantasy/my")
 
 
 def _own_team(state: State, team_id: int, user: models.User) -> models.Team:
@@ -21,7 +21,7 @@ def _own_team(state: State, team_id: int, user: models.User) -> models.Team:
 def _ensure_unlocked(request: Request, state: State):
     if state.locked:
         flash(request, "Teams are locked - no more changes possible.", "error")
-        return redirect("/my")
+        return redirect("/fantasy/my")
     return None
 
 
@@ -87,7 +87,7 @@ def new_team_form(request: Request, state: State = Depends(get_state), user: mod
         return r
     if len(user_teams(state.db, state.season.id, user.id)) >= state.rules.team.max_teams_per_user:
         flash(request, f"You can have at most {state.rules.team.max_teams_per_user} teams.", "error")
-        return redirect("/my")
+        return redirect("/fantasy/my")
     data = None
     if copy is not None:  # eigenes Team als Vorlage
         src = _own_team(state, copy, user)
@@ -110,7 +110,7 @@ async def create_team(request: Request, state: State = Depends(get_state), user:
         return _builder(request, state, None, data, errors)
     team = save_team(state.db, models.Team(season_id=state.season.id, user_id=user.id), data)
     flash(request, f"Team “{team.name}” created." + (" It is your active team." if team.is_active else ""))
-    return redirect("/my")
+    return redirect("/fantasy/my")
 
 
 @router.get("/{team_id}/edit")
@@ -136,7 +136,7 @@ async def update_team(team_id: int, request: Request, state: State = Depends(get
         return _builder(request, state, team, data, errors)
     save_team(state.db, team, data)
     flash(request, f"Team “{team.name}” saved.")
-    return redirect("/my")
+    return redirect("/fantasy/my")
 
 
 @router.post("/{team_id}/activate")
@@ -147,7 +147,7 @@ def activate(team_id: int, request: Request, state: State = Depends(get_state),
         return r
     activate_team(state.db, team)
     flash(request, f"“{team.name}” is now your active team.")
-    return redirect("/my")
+    return redirect("/fantasy/my")
 
 
 @router.post("/{team_id}/delete")
@@ -159,4 +159,4 @@ def delete(team_id: int, request: Request, state: State = Depends(get_state),
     name = team.name
     delete_team(state.db, team)
     flash(request, f"Team “{name}” deleted.")
-    return redirect("/my")
+    return redirect("/fantasy/my")

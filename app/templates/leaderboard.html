@@ -9,8 +9,8 @@
   </hgroup>
   {% if state.locked %}
     <div class="btn-row">
-      <a href="/insights" role="button" class="outline small">📊 Insights</a>
-      <a href="/compare" role="button" class="outline small">⚖️ Compare</a>
+      <a href="/fantasy/insights" role="button" class="outline small">📊 Insights</a>
+      <a href="/fantasy/compare" role="button" class="outline small">⚖️ Compare</a>
     </div>
   {% endif %}
 </div>
@@ -18,7 +18,7 @@
 {% if user and not state.my_team and not state.locked %}
   <article class="cta">
     <p>You don't have an active team yet.</p>
-    <a href="/my/new" role="button">Build your team</a>
+    <a href="/fantasy/my/new" role="button">Build your team</a>
   </article>
 {% endif %}
 
@@ -33,7 +33,7 @@
         <span class="rank">{{ r.rank }}</span>
         {% if user %}<a href="/users/{{ t.user_id }}" class="avatar-link" aria-label="Profile of {{ t.user.username }}">{{ avatar(t.user, user) }}</a>{% else %}{{ avatar(t.user, user) }}{% endif %}
         <span class="who">
-          {% if state.can_view_team(t) %}<a href="/teams/{{ t.id }}">{{ t.name }}</a>{% else %}{{ t.name }}{% endif %}
+          {% if state.can_view_team(t) %}<a href="/fantasy/teams/{{ t.id }}">{{ t.name }}</a>{% else %}{{ t.name }}{% endif %}
           <small>{% if user %}<a href="/users/{{ t.user_id }}" class="user-link">{{ t.user.username }}</a>{% else %}{{ t.user.username }}{% endif %} · {{ r.alive }}/{{ rules.team.squad_size }} still in</small>
         </span>
         <span class="pts">{{ r.points | pts }}{{ move(r.get("move")) }}</span>
@@ -53,14 +53,14 @@
       {% for m in open_ms[:8] %}
         <li>
           <span class="t">{{ m.scheduled_at | hm }}<small>{{ rules.tournament.round_names[m.round - 1] }}</small></span>
-          <a class="tmatch" href="/matches/{{ m.id }}">
+          <a class="tmatch" href="/fantasy/matches/{{ m.id }}">
             {{ bracket_side(state.bracket.side(m, 0), state.players, state.my_player_ids, link=False) }}
             {{ bracket_side(state.bracket.side(m, 1), state.players, state.my_player_ids, link=False) }}
           </a>
         </li>
       {% endfor %}
     </ul>
-    <a href="/schedule" class="small-link">Full schedule{% if open_ms|length > 8 %} (+{{ open_ms|length - 8 }} more){% endif %} →</a>
+    <a href="/fantasy/schedule" class="small-link">Full schedule{% if open_ms|length > 8 %} (+{{ open_ms|length - 8 }} more){% endif %} →</a>
   {% endif %}
 {% endif %}
 
@@ -71,14 +71,14 @@
       {% set w = m.winner_id %}{% set l = m.p2_id if w == m.p1_id else m.p1_id %}
       {% set ws = m.sets_p1 if w == m.p1_id else m.sets_p2 %}{% set ls = m.sets_p2 if w == m.p1_id else m.sets_p1 %}
       <li class="{% if w in state.my_player_ids or l in state.my_player_ids %}mine{% endif %}">
-        <a href="/matches/{{ m.id }}">
+        <a href="/fantasy/matches/{{ m.id }}">
           <small>{{ rules.tournament.round_names[m.round - 1] }}</small>
           <span>{{ player_name(state.players[w], link=False) }} <strong>{{ ws }}–{{ ls }}</strong> {{ player_name(state.players[l], link=False) }}</span>
         </a>
       </li>
     {% endfor %}
   </ul>
-  <a href="/bracket" class="small-link">Full bracket →</a>
+  <a href="/fantasy/bracket" class="small-link">Full bracket →</a>
 {% endif %}
-<p class="muted rules-link"><a href="/rules">📖 How points work</a></p>
+<p class="muted rules-link"><a href="/fantasy/rules">📖 How points work</a></p>
 {% endblock %}
