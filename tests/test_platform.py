@@ -26,7 +26,7 @@ def olli(db, make_user):
 def test_home_shows_sections(client, db, season):
     page = client.get("/").text
     assert "Mönninghausen Games" in page and 'href="/fantasy"' in page
-    assert "Coming soon" in page and 'href="/darts"' in page  # Beer Pong noch nicht fertig
+    assert 'href="/darts"' in page and 'href="/beerpong"' in page and "Coming soon" not in page
     assert 'href="/login"' in page
 
 
@@ -98,6 +98,7 @@ def test_section_helpers():
     assert section_for_path("/fantasy/teams/1") is fantasy
     assert section_for_path("/fantasyx") is None and section_for_path("/account") is None
     assert section_for_path("/darts/games/1").key == "darts"
-    assert section_for_path("/beerpong") is None  # noch nicht fertig -> keine eigene Navigation
+    assert section_for_path("/beerpong/games/1").key == "beerpong"
+    assert section_for_path("/beerpongx") is None
     assert tab_active("/fantasy", "/fantasy", fantasy) and not tab_active("/fantasy", "/fantasy/my", fantasy)
     assert tab_active("/fantasy/my", "/fantasy/my/new", fantasy)

@@ -7,7 +7,7 @@ landet man auf einer Startseite und wählt den Bereich:
 |---|---|---|
 | 🏆 **Fantasy Darts** – Team zur PDC-WM zusammenstellen, Ranking | `/fantasy` | fertig |
 | 🎯 **Darts** – 501 gegeneinander spielen, am Handy zählen, Stats | `/darts` | fertig |
-| 🍺 **Beer Pong** – Turniere mit Teams und Turnierbaum | `/beerpong` | geplant |
+| 🍺 **Beer Pong** – Becher live zählen, Turniere mit Teams | `/beerpong` | fertig |
 
 Konten, Login, Profilbilder, Profilseiten, Einladungen und die Mitgliederverwaltung gehören zum
 gemeinsamen Kern und gelten in jedem Bereich. Welche Bereiche es gibt (Name, Icon, Tabs, Admin-Seite),
@@ -47,6 +47,23 @@ rückt der Sieger automatisch weiter. Ohne Handy gespielt? Der Organisator (wer 
 oder ein Admin) trägt das Ergebnis direkt ein. Ergebnisse lassen sich ändern, solange das Folgematch
 noch keins hat. Die Turnier-Logik (`app/tournaments.py`) ist für alle Sportarten gleich.
 
+## Beer Pong
+
+*Beer Pong → New game*: 6 oder 10 Becher, zwei Teams mit je 1–4 Spielern (Mitglieder oder Gäste),
+optional Teamnamen. Im Spiel hat jedes Team einen großen **„Hit!“**-Knopf und **„−1“** zum Korrigieren;
+wer zuerst alle Becher trifft, gewinnt. Zuschauer sehen den Stand live.
+
+**Turniere** (*Beer Pong → Tournaments*), gleicher K.-o.-Baum wie bei Darts. Teams entweder
+- **zufällig**: Spieler antippen / Gäste eintippen, die App lost Zweierteams (gerade Anzahl nötig), oder
+- **fest**: eine Zeile pro Team, z. B. `Cup Kings: Olli, Kevin` (Name optional). Mitglieder und Gäste
+  werden am Namen erkannt, neue Namen werden Gäste.
+
+*Play this match* startet das Spiel, der Sieger rückt automatisch weiter; der Organisator kann
+Ergebnisse auch direkt eintragen (Becher pro Team, der Sieger trifft alle). **Stats** pro Spieler:
+Spiele, Siege, Siegquote, getroffene Becher pro Spiel, Becher-Differenz (zählt für jedes Teammitglied).
+
+Alle Stats (Darts und Beer Pong) stehen auch auf der Profilseite jedes Mitglieds.
+
 ## Aufbau
 
 ```
@@ -56,6 +73,8 @@ app/
   settings.py    Konfiguration über Umgebungsvariablen / .env
   avatars.py     Profilbilder verkleinern & speichern
   tournaments.py K.-o.-Turniere (Setzliste, Freilose, Weiterrücken) für alle Sportarten
+  competitors.py Teilnehmer (Mitglieder & Gäste) für Darts und Beer Pong
+  beerpong.py    Beer Pong: Spiele, Teams, Stats, Turnier-Anbindung
   darts/         Darts: Spiellogik, Checkout-Wege, Stats, Datenbank-Operationen
   rules.py       Fantasy: lädt seasons/<saison>/rules.toml
   scoring.py     Fantasy: Punkteberechnung (reine Funktionen)
@@ -65,7 +84,8 @@ app/
   cli.py         Kommandozeile (Import, User anlegen, ...)
   web/
     hub.py       Kern: Startseite, Admin-Übersicht
-    darts.py     Darts-Seiten (Spiele, Zählen, Stats)
+    darts.py     Darts-Seiten (Spiele, Zählen, Stats, Turniere)
+    beerpong.py  Beer-Pong-Seiten
     account.py   Kern: Login, Registrierung, Account, Profilbild
     members.py   Kern: Mitglieder, Einladungslinks, Einladungscode
     pages.py, my_teams.py, admin*.py   Fantasy-Seiten

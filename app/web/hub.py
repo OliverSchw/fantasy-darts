@@ -31,7 +31,8 @@ def _fantasy_status(db: Session, user: models.User | None) -> dict | None:
 @router.get("/")
 def home(request: Request, db: Session = Depends(get_db), user: models.User | None = Depends(optional_user)):
     live = db.scalar(select(func.count()).select_from(models.DartsGame).where(models.DartsGame.status == "live"))
-    status = {"fantasy": _fantasy_status(db, user), "darts": {"live": live}}
+    bp_live = db.scalar(select(func.count()).select_from(models.BeerpongGame).where(models.BeerpongGame.status == "live"))
+    status = {"fantasy": _fantasy_status(db, user), "darts": {"live": live}, "beerpong": {"live": bp_live}}
     return render(request, "hub.html", user=user, status=status)
 
 

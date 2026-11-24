@@ -37,6 +37,18 @@
     <p class="muted center">No darts games yet.</p>
   {% endif %}
 
+  <h3 class="profile-section">🍺 Beer Pong</h3>
+  {% if bp_stats %}
+    <a class="stat-grid profile-stats four" href="/beerpong/stats">
+      <div><span>{{ bp_stats.wins }}/{{ bp_stats.games }}</span><small>Won</small></div>
+      <div><span>{{ "%.0f" | format(bp_stats.win_pct) }}%</span><small>Win rate</small></div>
+      <div><span>{{ "%.1f" | format(bp_stats.cups_per_game) }}</span><small>Cups / game</small></div>
+      <div><span>{{ "%+.1f" | format(bp_stats.diff_per_game) }}</span><small>Cup diff</small></div>
+    </a>
+  {% else %}
+    <p class="muted center">No beer pong games yet.</p>
+  {% endif %}
+
   {% if person.id == user.id %}
     <a href="/account" role="button" class="outline admin-link">✏️ Change picture or password</a>
   {% endif %}

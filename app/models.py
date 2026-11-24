@@ -324,3 +324,46 @@ class TournamentMatch(Base):
     @property
     def is_played(self) -> bool:
         return self.winner_id is not None
+
+
+# ---------------------------------------------------------------- Bierpong
+
+
+class BeerpongGame(Base):
+    __tablename__ = "beerpong_games"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    cups: Mapped[int] = mapped_column(Integer, default=10)  # Becher pro Seite
+    hits1: Mapped[int] = mapped_column(Integer, default=0)  # von Team 1 getroffene Becher
+    hits2: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str] = mapped_column(String(12), default="live")  # live | finished | abandoned
+    winner_side: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 1 oder 2
+    version: Mapped[int] = mapped_column(Integer, default=0)  # zählt jede Änderung (Live-Ansicht, Doppel-Tipps)
+    team1_name: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    team2_name: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    tournament_match_id: Mapped[int | None] = mapped_column(
+        ForeignKey("tournament_matches.id", ondelete="SET NULL"), nullable=True, index=True)
+    created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    players: Mapped[list["BeerpongGamePlayer"]] = relationship(
+        cascade="all, delete-orphan", order_by="(BeerpongGamePlayer.side, BeerpongGamePlayer.position)", lazy="selectin")
+
+    def side_players(self, side: int) -> list[Competitor]:
+        return [p.competitor for p in self.players if p.side == side]
+
+    def team_name(self, side: int) -> str:
+        name = self.team1_name if side == 1 else self.team2_name
+        return name or " & ".join(c.display_name for c in self.side_players(side))
+
+
+class BeerpongGamePlayer(Base):
+    __tablename__ = "beerpong_game_players"
+
+    game_id: Mapped[int] = mapped_column(ForeignKey("beerpong_games.id", ondelete="CASCADE"), primary_key=True)
+    side: Mapped[int] = mapped_column(Integer, primary_key=True)  # 1 oder 2
+    position: Mapped[int] = mapped_column(Integer, primary_key=True)
+    competitor_id: Mapped[int] = mapped_column(ForeignKey("competitors.id"), index=True)
+
+    competitor: Mapped[Competitor] = relationship(lazy="joined")

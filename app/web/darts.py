@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 from .. import models
 from .. import tournaments as tour
 from ..auth import require_admin, require_user
+from .. import competitors
+from ..competitors import CompetitorError
 from ..darts import service
 from ..darts.checkouts import checkout_route, is_finishable, min_darts
 from ..darts.engine import START_SCORES, DartsError
@@ -52,7 +54,7 @@ def _game_summaries(games: list[models.DartsGame]) -> list[dict]:
 
 @router.get("")
 def darts_home(request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_user)):
-    me = service.competitor_for_user(db, user)
+    me = competitors.competitor_for_user(db, user)
     stats = compute_stats(db, [me.id])
     return render(request, "darts/home.html", user=user, me=me, my_stats=stats.get(me.id),
                   live=_game_summaries(_recent_games(db, 20, "live")),
@@ -69,8 +71,8 @@ def darts_games(request: Request, db: Session = Depends(get_db), user: models.Us
 
 @router.get("/new")
 def new_game_form(request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_user)):
-    me = service.competitor_for_user(db, user)
-    return render(request, "darts/new.html", user=user, competitors=service.all_competitors(db),
+    me = competitors.competitor_for_user(db, user)
+    return render(request, "darts/new.html", user=user, competitors=competitors.all_competitors(db),
                   starts=START_SCORES, form={"start": 501, "legs": 3, "players": [me.id]})
 
 
@@ -88,10 +90,10 @@ async def new_game(request: Request, db: Session = Depends(get_db), user: models
         guest = str(form.get(f"g{i}", "")).strip()
         try:
             if raw == "guest" and guest:
-                ids.append(service.create_guest(db, guest).id)
+                ids.append(competitors.create_guest(db, guest).id)
             elif raw.isdigit():
                 ids.append(int(raw))
-        except DartsError as e:
+        except (DartsError, CompetitorError) as e:
             errors.append(str(e))
     try:
         if errors:
@@ -100,7 +102,7 @@ async def new_game(request: Request, db: Session = Depends(get_db), user: models
     except DartsError as e:
         db.rollback()
         return render(request, "darts/new.html", status_code=400, user=user, error=str(e),
-                      competitors=service.all_competitors(db), starts=START_SCORES,
+                      competitors=competitors.all_competitors(db), starts=START_SCORES,
                       form={"start": start or 501, "legs": legs or 1, "players": ids})
     return redirect(f"/darts/games/{game.id}")
 
@@ -207,9 +209,9 @@ def post_abandon(game_id: int, request: Request, db: Session = Depends(get_db),
 
 @router.get("/players")
 def players_page(request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_user)):
-    competitors = service.all_competitors(db)
+    people = competitors.all_competitors(db)
     stats = compute_stats(db)
-    rows = [(c, stats[c.id]) for c in competitors if c.id in stats]  # nur wer schon geworfen hat
+    rows = [(c, stats[c.id]) for c in people if c.id in stats]  # nur wer schon geworfen hat
     rows.sort(key=lambda r: (r[1].average is None, -(r[1].average or 0)))
     return render(request, "darts/players.html", user=user, rows=rows)
 
@@ -292,7 +294,7 @@ def tournaments_page(request: Request, db: Session = Depends(get_db), user: mode
 
 @router.get("/tournaments/new")
 def new_tournament_form(request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_user)):
-    return render(request, "darts/tournament_new.html", user=user, competitors=service.all_competitors(db),
+    return render(request, "darts/tournament_new.html", user=user, competitors=competitors.all_competitors(db),
                   starts=START_SCORES, form={"start": 501, "legs": 2, "final_legs": 3, "players": [], "shuffle": True,
                                              "name": "", "guests": ""})
 
@@ -313,14 +315,14 @@ async def new_tournament(request: Request, db: Session = Depends(get_db), user: 
             raise DartsError("Pick a start score and 1-11 legs.")
         ids = list(players)
         for name in [g.strip() for g in guests_raw.replace(",", "\n").splitlines() if g.strip()]:
-            ids.append(service.create_guest(db, name).id)
+            ids.append(competitors.create_guest(db, name).id)
         t = tour.create_tournament(db, "darts", keep["name"], [[i] for i in ids],
                                    {"start": start, "legs": legs, "final_legs": final_legs}, user,
                                    shuffle=keep["shuffle"])
-    except (DartsError, tour.TournamentError) as e:
+    except (DartsError, CompetitorError, tour.TournamentError) as e:
         db.rollback()
         return render(request, "darts/tournament_new.html", status_code=400, user=user, error=str(e),
-                      competitors=service.all_competitors(db), starts=START_SCORES, form=keep)
+                      competitors=competitors.all_competitors(db), starts=START_SCORES, form=keep)
     flash(request, f"Tournament “{t.name}” is on – {len(t.entries)} players.")
     return redirect(f"/darts/tournaments/{t.id}")
 

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "beerpong/_pick.html" import bp_list %}
+{% block title %}Play{% endblock %}
+{% block content %}
+<div class="title-row">
+  <h1>Beer Pong</h1>
+  <a href="/beerpong/new" role="button" class="small">＋ New game</a>
+</div>
+{% if my_stats %}
+  <div class="stat-grid darts-me">
+    <div><span>{{ my_stats.wins }}/{{ my_stats.games }}</span><small>Games won</small></div>
+    <div><span>{{ "%.0f" | format(my_stats.win_pct) }}%</span><small>Win rate</small></div>
+    <div><span>{{ "%.1f" | format(my_stats.cups_per_game) }}</span><small>Cups / game</small></div>
+    <div><span>{{ "%+.1f" | format(my_stats.diff_per_game) }}</span><small>Cup diff</small></div>
+  </div>
+{% else %}
+  <article class="cta"><p>Count cups on your phone – everyone sees the score live.</p>
+    <a href="/beerpong/new" role="button">Start a game</a></article>
+{% endif %}
+
+<h3>🔴 Live now</h3>
+{% if live %}{{ bp_list(live, user) }}{% else %}<p class="muted">No game running right now.</p>{% endif %}
+{% if recent %}<h3>Recent games</h3>{{ bp_list(recent, user) }}{% endif %}
+<p><a href="/beerpong/tournaments" class="small-link">🏆 Tournaments →</a></p>
+{% endblock %}

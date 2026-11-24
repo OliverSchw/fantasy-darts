@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% from "beerpong/_pick.html" import team_picker %}
+{% block title %}New game{% endblock %}
+{% block content %}
+<h1>New game</h1>
+{% if error %}<p class="flash error">{{ error }}</p>{% endif %}
+<form method="post" action="/beerpong/new" class="dnew">
+  <fieldset>
+    <legend>Cups per side</legend>
+    <div class="seg" role="radiogroup" aria-label="Cups">
+      {% for c in cup_options %}<label><input type="radio" name="cups" value="{{ c }}" {% if c == form.cups %}checked{% endif %}><span>{{ c }} cups</span></label>{% endfor %}
+    </div>
+  </fieldset>
+  {{ team_picker("a", "Team 1", form.t1, competitors, "n1", form.n1) }}
+  {{ team_picker("b", "Team 2", form.t2, competitors, "n2", form.n2) }}
+  <button type="submit">🍺 Start game</button>
+</form>
+{% endblock %}
+{% block scripts %}<script defer src="/static/vendor/alpine.min.js"></script>{% endblock %}
