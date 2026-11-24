@@ -13,7 +13,7 @@ from PIL import Image, ImageDraw
 OUT = Path(__file__).resolve().parent.parent / "app" / "static" / "icons"
 S = 4096  # Zeichenfläche (4x 1024)
 
-GREEN_TOP, GREEN_BOTTOM = (25, 135, 84), (11, 61, 38)
+BG_TOP, BG_BOTTOM = (36, 112, 214), (10, 42, 92)
 GOLD, GOLD_DARK, GOLD_LIGHT = (242, 193, 78), (196, 140, 22), (255, 226, 140)
 RED, BOARD_GREEN, CREAM, BLACK = (214, 52, 60), (30, 143, 78), (243, 230, 196), (29, 29, 29)
 BEER, BEER_DARK, FOAM, GLASS = (245, 166, 35), (214, 130, 12), (255, 252, 242), (255, 255, 255)
@@ -30,8 +30,8 @@ def box(x0, y0, x1, y1):
 
 def background(size: int) -> Image.Image:
     bg = Image.new("RGB", (1, 2))
-    bg.putpixel((0, 0), GREEN_TOP)
-    bg.putpixel((0, 1), GREEN_BOTTOM)
+    bg.putpixel((0, 0), BG_TOP)
+    bg.putpixel((0, 1), BG_BOTTOM)
     return bg.resize((size, size), Image.BICUBIC)
 
 
@@ -67,8 +67,8 @@ def artwork() -> Image.Image:
 
     # --- Bierkrug rechts unten, mit dunklem Rand zur Abgrenzung
     mx0, my0, mx1, my1 = 640, 520, 820, 800
-    d.rounded_rectangle(box(mx0 - 14, my0 - 14, mx1 + 14, my1 + 14), radius=u(40), fill=GREEN_BOTTOM)
-    d.arc(box(mx1 - 50, my0 + 50, mx1 + 90, my1 - 60), 270, 90, fill=GREEN_BOTTOM, width=u(62))  # Henkel-Rand
+    d.rounded_rectangle(box(mx0 - 14, my0 - 14, mx1 + 14, my1 + 14), radius=u(40), fill=BG_BOTTOM)
+    d.arc(box(mx1 - 50, my0 + 50, mx1 + 90, my1 - 60), 270, 90, fill=BG_BOTTOM, width=u(62))  # Henkel-Rand
     d.arc(box(mx1 - 50, my0 + 50, mx1 + 90, my1 - 60), 270, 90, fill=GLASS, width=u(30))  # Henkel
     d.rounded_rectangle(box(mx0, my0, mx1, my1), radius=u(30), fill=BEER)
     d.rectangle(box(mx0 + 30, my0 + 70, mx0 + 52, my1 - 30), fill=(255, 214, 120))  # Glanz

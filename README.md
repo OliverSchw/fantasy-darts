@@ -13,6 +13,9 @@ Konten, Login, Profilbilder, Profilseiten, Einladungen und die Mitgliederverwalt
 gemeinsamen Kern und gelten in jedem Bereich. Welche Bereiche es gibt (Name, Icon, Tabs, Admin-Seite),
 steht zentral in `app/platform.py` – Startseite, Navigation und Admin übernehmen das automatisch.
 
+**Farben:** Markenfarbe ist Blau – zentral als `--pico-primary` oben in `app/static/app.css` (dazu das
+Dunkelblau der Kopfzeile). Das App-Icon erzeugt `python scripts/make_icons.py`.
+
 Die App ist eine **mobile Web-App (PWA)**: im Handy-Browser öffnen → „Zum Startbildschirm
 hinzufügen“ → läuft wie eine App, ohne App Store.
 
