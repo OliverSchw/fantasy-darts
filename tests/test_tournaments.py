@@ -143,7 +143,7 @@ def test_darts_tournament_flow(olli, db, make_user):
     db.expire_all()
     t = db.get(models.Tournament, t.id)
     assert t.status == "finished" and t.winner_entry_id == semi.entry1_id
-    assert "wins the tournament" in olli.get(f"/darts/tournaments/{t.id}").text
+    assert "Champion: <strong>" in olli.get(f"/darts/tournaments/{t.id}").text
 
     # Undo im Halbfinal-Spiel ist gesperrt, solange das Finale ein Ergebnis hat
     r = olli.post(f"/darts/games/{game.id}/undo")
@@ -178,3 +178,146 @@ def test_new_tournament_validation(olli, db):
                                                   "guests": "Kevin"})
     assert r.status_code == 400 and "2 to 64" in r.text
     assert db.scalar(select(models.Tournament)) is None
+
+
+# ---------------------------------------------------------------- Gruppenphase
+
+
+def _gt(db, n, groups, advance=2, sport="darts"):
+    return tour.create_tournament(db, sport, "Cup", [[c] for c in _guests(db, n)], {"start": 301, "legs": 1}, None,
+                                  groups=groups, advance=advance)
+
+
+def _play_groups(db, t, winner_by=lambda m: 1):
+    """Alle Gruppenspiele eintragen; winner_by(m) -> 1 oder 2."""
+    for m in list(t.group_matches):
+        if not m.is_played:
+            tour.set_result(db, t, m, *((2, 0) if winner_by(m) == 1 else (0, 2)))
+
+
+def test_groups_snake_and_round_robin(db):
+    t = _gt(db, 8, groups=2)
+    groups = {g: sorted(e.seed for e in t.entries if e.group_no == g) for g in (0, 1)}
+    assert groups == {0: [1, 4, 5, 8], 1: [2, 3, 6, 7]}  # Schlangenlinie
+    assert len(t.group_matches) == 12 and t.num_rounds == 0 and not tour.knockout_started(t)
+    pairs = {frozenset((m.entry1_id, m.entry2_id)) for m in t.group_matches}
+    assert len(pairs) == 12  # jeder gegen jeden, keine Doppel
+    # Spieltage: in den ersten 2 Spielen einer Gruppe spielt jeder genau einmal
+    g0 = [m for m in t.group_matches if m.group_no == 0]
+    assert len({g0[0].entry1_id, g0[0].entry2_id, g0[1].entry1_id, g0[1].entry2_id}) == 4
+
+
+def test_group_validation(db):
+    ids = _guests(db, 5)
+    with pytest.raises(tour.TournamentError, match="at least 6"):
+        tour.create_tournament(db, "darts", "Cup", [[i] for i in ids], {}, None, groups=3)
+    with pytest.raises(tour.TournamentError, match="at most 1"):
+        tour.create_tournament(db, "darts", "Cup", [[i] for i in ids[:4]], {}, None, groups=2, advance=2)
+
+
+def test_standings_and_crossover_knockout(db):
+    t = _gt(db, 8, groups=2)
+    seed = lambda eid: tour.entry_by_id(t, eid).seed  # noqa: E731
+    # Der besser Gesetzte gewinnt immer
+    _play_groups(db, t, winner_by=lambda m: 1 if seed(m.entry1_id) < seed(m.entry2_id) else 2)
+    table = tour.standings(t)
+    assert [s.entry.seed for s in table[0]] == [1, 4, 5, 8] and table[0][0].won == 3 and table[0][0].diff == 6
+    assert tour.knockout_started(t) and t.num_rounds == 2
+    semis = sorted((m for m in t.ko_matches if m.round == 1), key=lambda m: m.slot)
+    assert [(seed(m.entry1_id), seed(m.entry2_id)) for m in semis] == [(1, 3), (2, 4)]  # A1-B2, B1-A2
+    # Gruppenergebnisse sind jetzt gesperrt
+    with pytest.raises(tour.TournamentError, match="knockout stage has already started"):
+        tour.set_result(db, t, t.group_matches[0], 0, 2)
+    # K.-o. zurücksetzen -> Gruppen wieder änderbar, Baum entsteht neu
+    tour.reset_knockout(db, t)
+    assert not tour.knockout_started(t) and t.num_rounds == 0
+    tour.clear_result(db, t, t.group_matches[0])
+    assert not tour.knockout_started(t)
+    m = t.group_matches[0]
+    tour.set_result(db, t, m, 2, 1)
+    assert tour.knockout_started(t)
+    # Mit gespieltem K.-o.-Match lässt sich der K.-o. nicht mehr zurücksetzen
+    semi = next(m for m in t.ko_matches if m.round == 1)
+    tour.set_result(db, t, semi, 1, 0)
+    with pytest.raises(tour.TournamentError, match="already have results"):
+        tour.reset_knockout(db, t)
+
+
+def test_three_groups_fall_back_to_seeded_bracket(db):
+    t = _gt(db, 9, groups=3)  # 3 Gruppen à 3, je 2 weiter -> 6 im K.-o., 2 Freilose
+    _play_groups(db, t)
+    assert tour.knockout_started(t) and t.num_rounds == 3
+    assert len([m for m in t.ko_matches if m.bye]) == 2
+    assert all(tour.entry_by_id(t, m.winner_id) for m in t.ko_matches if m.bye)
+
+
+def test_head_to_head_breaks_ties(db):
+    t = _gt(db, 4, groups=1, advance=2)
+    e = {x.seed: x.id for x in t.entries}
+    by_pair = {frozenset((m.entry1_id, m.entry2_id)): m for m in t.group_matches}
+
+    def res(a, b, sa, sb):
+        m = by_pair[frozenset((e[a], e[b]))]
+        tour.set_result(db, t, m, *((sa, sb) if m.entry1_id == e[a] else (sb, sa)))
+    # 1 und 2 haben gleiche Bilanz (2 Siege, +2, 4 Legs); 2 hat 1 direkt geschlagen
+    res(2, 1, 1, 0); res(1, 3, 2, 1); res(1, 4, 2, 1)
+    res(2, 3, 2, 1); res(4, 2, 2, 1)
+    res(3, 4, 1, 0)
+    rows = tour.standings(t)[0]
+    top = [s.entry.seed for s in rows[:2]]
+    assert {top[0], top[1]} == {1, 2}
+    a, b = rows[0], rows[1]
+    if (a.won, a.diff, a.score_for) == (b.won, b.diff, b.score_for):
+        assert a.entry.seed == 2  # direkter Vergleich
+
+
+def test_group_tournament_via_web(olli, db):
+    r = olli.post("/darts/tournaments/new", data={"name": "Group Cup", "start": 301, "legs": 1, "final_legs": 1,
+                                                  "guests": "A1, A2, A3, A4, A5, A6", "format": "groups",
+                                                  "groups": 2, "advance": 2}, follow_redirects=False)
+    assert r.status_code == 303, r.text[:400]
+    t = db.scalar(select(models.Tournament))
+    page = olli.get(f"/darts/tournaments/{t.id}").text
+    assert "Group A" in page and "Group B" in page and "appears here once all group matches" in page
+    gm = t.group_matches[0]
+    # Gruppenspiel live spielen: Darts-Spiel mit 1 Leg (nicht die Final-Legs)
+    r = olli.post(f"/darts/tournaments/{t.id}/matches/{gm.id}/play", follow_redirects=False)
+    game = db.get(models.DartsGame, int(r.headers["location"].rsplit("/", 1)[1]))
+    assert game.legs_to_win == 1 and "Group A" in olli.get(f"/darts/games/{game.id}").text
+    _play_out(olli, db, game)
+    db.expire_all()
+    assert db.get(models.TournamentMatch, gm.id).is_played
+    # Rest per Hand -> K.-o. entsteht automatisch
+    t = db.get(models.Tournament, t.id)
+    last = None
+    for m in t.group_matches:
+        if not m.is_played:
+            last = olli.post(f"/darts/tournaments/{t.id}/matches/{m.id}/result", data={"score1": 1, "score2": 0})
+    assert "knockout stage is drawn" in last.text
+    page = olli.get(f"/darts/tournaments/{t.id}").text
+    assert "Knockout" in page and "Semi-finals" in page
+    # Gesperrtes Gruppenspiel zeigt den Grund
+    assert "reset it first" in olli.get(f"/darts/tournaments/{t.id}/matches/{gm.id}").text
+    olli.post(f"/darts/tournaments/{t.id}/knockout/reset")
+    db.expire_all()
+    assert not tour.knockout_started(db.get(models.Tournament, t.id))
+    # Ungültiges Format wird abgelehnt
+    r = olli.post("/darts/tournaments/new", data={"name": "X", "start": 301, "legs": 1, "final_legs": 1,
+                                                  "guests": "B1, B2, B3", "format": "groups", "groups": 2})
+    assert r.status_code == 400 and "at least 4" in r.text
+
+
+def test_manual_darts_result_must_match_legs(olli, db):
+    olli.post("/darts/tournaments/new", data={"name": "Legs", "start": 501, "legs": 2, "final_legs": 3,
+                                              "guests": "L1, L2, L3, L4"})
+    t = db.scalar(select(models.Tournament))
+    semi = next(m for m in t.ko_matches if m.round == 1)
+    for bad in ((5, 0), (2, 2), (1, 0), (3, 1)):
+        r = olli.post(f"/darts/tournaments/{t.id}/matches/{semi.id}/result", data={"score1": bad[0], "score2": bad[1]})
+        assert "first to 2 legs" in r.text, bad
+    olli.post(f"/darts/tournaments/{t.id}/matches/{semi.id}/result", data={"score1": 2, "score2": 1})
+    db.expire_all()
+    assert db.get(models.TournamentMatch, semi.id).is_played
+    final = next(m for m in db.get(models.Tournament, t.id).ko_matches if m.round == 2)
+    r = olli.post(f"/darts/tournaments/{t.id}/matches/{final.id}/result", data={"score1": 2, "score2": 0})
+    assert "Both sides" in r.text or "first to 3" in r.text  # Finale: first to 3

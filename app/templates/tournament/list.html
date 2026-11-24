@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Tournaments{% endblock %}
+{% block content %}
+<div class="title-row">
+  <h1>Tournaments</h1>
+  <a href="{{ sp.base }}/tournaments/new" role="button" class="small">＋ New tournament</a>
+</div>
+{% if tournaments %}
+  <ul class="dgames">
+    {% for t in tournaments %}
+      {% set w = entry_by_id(t, t.winner_entry_id) %}
+      <li>
+        <a href="{{ sp.base }}/tournaments/{{ t.id }}" class="dgame {{ 'live' if t.status == 'running' }}">
+          <span class="dgame-meta">{{ t.entries | length }} {{ sp.entries_label }} · {{ "groups + knockout" if t.has_groups else "knockout" }} · {{ t.created_at | when }}
+            {% if t.status == "running" %}<mark class="live-badge">RUNNING</mark>{% endif %}</span>
+          <span class="dgame-side"><strong class="nm">🏆 {{ t.name }}</strong></span>
+          {% if w %}<span class="dgame-side win"><span class="nm">Champion: {{ w.display_name }}</span></span>{% endif %}
+        </a>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <article class="cta"><p>No tournaments yet. Knockout or group stage – set one up in a minute.</p>
+    <a href="{{ sp.base }}/tournaments/new" role="button">Create a tournament</a></article>
+{% endif %}
+{% endblock %}

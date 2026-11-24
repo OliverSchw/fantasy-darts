@@ -102,3 +102,22 @@ def test_section_helpers():
     assert section_for_path("/beerpongx") is None
     assert tab_active("/fantasy", "/fantasy", fantasy) and not tab_active("/fantasy", "/fantasy/my", fantasy)
     assert tab_active("/fantasy/my", "/fantasy/my/new", fantasy)
+
+
+def test_login_throttle(client, db, make_user, monkeypatch):
+    from datetime import datetime, timedelta, timezone
+
+    from app import auth
+
+    make_user("olli")
+    for _ in range(auth.MAX_FAILURES):
+        assert client.post("/login", data={"username": "Olli", "password": "falsch"}).status_code == 401
+    r = client.post("/login", data={"username": "olli", "password": "secret123"})
+    assert r.status_code == 429 and "Too many wrong passwords" in r.text  # auch das richtige Passwort wartet
+    # Nach Ablauf der Sperre klappt es wieder, und der Zähler wird gelöscht
+    row = db.get(models.LoginThrottle, "olli")
+    row.locked_until = datetime.now(timezone.utc) - timedelta(seconds=1)
+    db.commit()
+    assert client.post("/login", data={"username": "olli", "password": "secret123"}, follow_redirects=False).status_code == 303
+    db.expire_all()
+    assert db.get(models.LoginThrottle, "olli") is None

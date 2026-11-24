@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from sqlalchemy import func, select
 
 from .. import models
-from ..auth import hash_password, require_admin
+from ..auth import clear_login_failures, hash_password, require_admin
 from ..avatars import delete_avatar
 from ..config_store import INVITE_KEY, get_setting, invite_code, set_setting
 from ..settings import get_settings
@@ -134,6 +134,7 @@ def reset_password(user_id: int, request: Request, password: str = Form(...),
         flash(request, f"Password must have at least {MIN_PASSWORD} characters.", "error")
     else:
         user.password_hash = hash_password(password)
+        clear_login_failures(state.db, user.username)  # hebt auch eine Login-Sperre auf
         state.db.commit()
         flash(request, f"Password for “{user.username}” changed.")
     return redirect("/admin/users")
