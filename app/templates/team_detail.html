@@ -9,9 +9,9 @@
   </hgroup>
   {% if user %}
     {% if state.my_team and state.my_team.id != team.id %}
-      <a href="/compare?a={{ state.my_team.id }}&b={{ team.id }}" role="button" class="outline small">⚖️ Compare</a>
+      <a href="/fantasy/compare?a={{ state.my_team.id }}&b={{ team.id }}" role="button" class="outline small">⚖️ Compare</a>
     {% else %}
-      <a href="/compare?a={{ team.id }}" role="button" class="outline small">⚖️ Compare</a>
+      <a href="/fantasy/compare?a={{ team.id }}" role="button" class="outline small">⚖️ Compare</a>
     {% endif %}
   {% endif %}
 </div>
@@ -55,6 +55,6 @@
   </tbody>
 </table>
 </div>
-<a href="/" class="secondary">← Back to ranking</a>
+<a href="/fantasy" class="secondary">← Back to ranking</a>
 {% endblock %}
 {% block scripts %}<script defer src="/static/sortable.js"></script>{% endblock %}

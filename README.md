@@ -1,25 +1,47 @@
-# 🎯 Fantasy Darts
+# 🎮 Mönninghausen Games
 
-Fantasy-Spiel zur PDC Darts-WM für eine private Runde. Jede:r stellt ein Team aus Spielern
-zusammen (Budget, Playmaker, Underdog, Weltmeister-Tipp), der Admin trägt die Ergebnisse
-im Turnierbaum ein, und das Ranking aktualisiert sich automatisch.
+Eine Plattform für Spiele und Turniere unserer Runde – **ein Konto für alles**. Nach dem Öffnen
+landet man auf einer Startseite und wählt den Bereich:
+
+| Bereich | Adresse | Stand |
+|---|---|---|
+| 🏆 **Fantasy Darts** – Team zur PDC-WM zusammenstellen, Ranking | `/fantasy` | fertig |
+| 🎯 **Darts** – 501 gegeneinander spielen, am Handy zählen, Stats | `/darts` | in Arbeit |
+| 🍺 **Beer Pong** – Turniere mit Teams und Turnierbaum | `/beerpong` | geplant |
+
+Konten, Login, Profilbilder, Profilseiten, Einladungen und die Mitgliederverwaltung gehören zum
+gemeinsamen Kern und gelten in jedem Bereich. Welche Bereiche es gibt (Name, Icon, Tabs, Admin-Seite),
+steht zentral in `app/platform.py` – Startseite, Navigation und Admin übernehmen das automatisch.
 
 Die App ist eine **mobile Web-App (PWA)**: im Handy-Browser öffnen → „Zum Startbildschirm
 hinzufügen“ → läuft wie eine App, ohne App Store.
+
+## Fantasy Darts
+
+Jede:r stellt ein Team aus Spielern zusammen (Budget, Playmaker, Underdog, Weltmeister-Tipp),
+der Admin trägt die Ergebnisse im Turnierbaum ein, und das Ranking aktualisiert sich automatisch.
+Fantasy Darts lag früher direkt unter `/` – alte Links (z. B. `/my`, `/bracket`) werden automatisch
+auf `/fantasy/...` umgeleitet.
 
 ## Aufbau
 
 ```
 app/
-  main.py        FastAPI-App (Einstiegspunkt, auch für Vercel)
+  main.py        FastAPI-App (Einstiegspunkt, auch für Vercel), Weiterleitung alter Adressen
+  platform.py    Welche Bereiche es gibt (Startseite, Navigation, Admin)
   settings.py    Konfiguration über Umgebungsvariablen / .env
-  rules.py       lädt seasons/<saison>/rules.toml
-  scoring.py     Punkteberechnung (reine Funktionen)
-  teams.py       Team-Validierung & Speichern
-  bracket.py     Ergebnisse eintragen, Sieger weiterreichen
-  season.py      Saison-Import aus CSV, Lock-Status
+  avatars.py     Profilbilder verkleinern & speichern
+  rules.py       Fantasy: lädt seasons/<saison>/rules.toml
+  scoring.py     Fantasy: Punkteberechnung (reine Funktionen)
+  teams.py       Fantasy: Team-Validierung & Speichern
+  bracket.py     Fantasy: Ergebnisse eintragen, Sieger weiterreichen
+  season.py      Fantasy: Saison-Import aus CSV, Lock-Status
   cli.py         Kommandozeile (Import, User anlegen, ...)
-  web/           Seiten (Routen)
+  web/
+    hub.py       Kern: Startseite, Admin-Übersicht
+    account.py   Kern: Login, Registrierung, Account, Profilbild
+    members.py   Kern: Mitglieder, Einladungslinks, Einladungscode
+    pages.py, my_teams.py, admin*.py   Fantasy-Seiten
   templates/     HTML (Jinja2) – Pico CSS + Alpine.js, kein Build-Schritt
   static/        CSS, JS, Icons, Flaggen, Service Worker
 seasons/
@@ -30,13 +52,15 @@ seasons/
 tests/
 ```
 
-**Regeln & Punkte** kann der Admin unter *Admin → Rules* direkt in der App ändern
-(solange die Teams nicht gesperrt sind). `rules.toml` ist nur die Vorlage für eine neue Saison.
-Spieler (Name, Nation, Preis, Seed) bearbeitet der Admin unter *Admin → Players*, inklusive
-Nachrücker in der Auslosung. Mitspieler melden sich per persönlichem Einmal-Link oder gemeinsamem Einladungscode selbst an (*Admin → Members*).
+**Admin-Bereich:** *Admin* (im Menü oben rechts oder auf der Account-Seite) zeigt eine Übersicht
+über alle Bereiche. **Members** (Einladen, Mitglieder verwalten) gilt für die ganze Plattform,
+jeder Bereich hat zusätzlich seinen eigenen Admin – bei Fantasy Darts mit den Tabs **Overview**
+(Zahlen, To-do-Liste, Team-Sperre, Export), **Schedule**, **Players** und **Rules**.
 
-Der Admin-Bereich hat fünf Tabs: **Overview** (Zahlen, To-do-Liste, Team-Sperre, Export),
-**Members** (Einladen, Mitglieder verwalten), **Schedule**, **Players** und **Rules**.
+**Regeln & Punkte** kann der Admin unter *Admin → Fantasy Darts → Rules* direkt in der App ändern
+(solange die Teams nicht gesperrt sind). `rules.toml` ist nur die Vorlage für eine neue Saison.
+Spieler (Name, Nation, Preis, Seed) bearbeitet der Admin unter *Admin → Fantasy Darts → Players*, inklusive
+Nachrücker in der Auslosung. Mitspieler melden sich per persönlichem Einmal-Link oder gemeinsamem Einladungscode selbst an (*Admin → Members*).
 
 **Profilbilder** lädt jede:r unter *Account* selbst hoch. Der Browser schneidet das Bild quadratisch zu,
 der Server verkleinert es auf 512×512 px (WebP, entfernt Metadaten wie GPS) und speichert es in der
@@ -114,12 +138,12 @@ weil die kostenlose Render-Postgres nach 30 Tagen gelöscht wird.
   - **Manuell:** unter *Admin → Members → Add member manually* anlegen und das Startpasswort weitergeben (jede:r kann es
     unter *Account* ändern).
 - **Teams sperren:** Teams werden zum `lock_at`-Zeitpunkt automatisch gesperrt, oder
-  manuell über den Schalter unter *Admin → Overview*. Die To-do-Liste dort zeigt, wer noch
+  manuell über den Schalter unter *Admin → Fantasy Darts → Overview*. Die To-do-Liste dort zeigt, wer noch
   kein Team hat.
 - **Ergebnisse:** *Bracket* → Runde wählen → Match antippen → Sätze + Stats eintragen.
   Der Sieger rückt automatisch in die nächste Runde. Korrigieren geht jederzeit. Den Sieger
   ändern kann man nur, solange das Folgematch noch kein Ergebnis hat.
-  Hast du unter *Schedule* Anstoßzeiten eingetragen, zeigt die To-do-Liste auf *Overview*, welche
+  Hast du unter *Schedule* Anstoßzeiten eingetragen, zeigt die To-do-Liste auf *Admin → Fantasy Darts → Overview*, welche
   Matches schon gespielt sein müssten und noch kein Ergebnis haben.
 
 ## Backup & Export
@@ -128,7 +152,7 @@ weil die kostenlose Render-Postgres nach 30 Tagen gelöscht wird.
   Abstürze oder Redeploys löschen nichts. Jede Aktion wird sofort gespeichert. Auf Vercel
   verweigert die App den Start ohne `DATABASE_URL`, damit nie versehentlich SQLite auf einem
   flüchtigen Dateisystem benutzt wird.
-- **CSV-Export** (öffnet sich direkt in Excel): *Admin → Overview → Export & backup* – Teams, Ergebnisse, Spieler.
+- **CSV-Export** (öffnet sich direkt in Excel): *Admin → Fantasy Darts → Overview → Export & backup* – Teams, Ergebnisse, Spieler.
 - **Komplett-Backup** (JSON, inkl. User mit Passwort-Hashes, Profilbildern und Einladungslinks – vertraulich behandeln):
   ```bash
   python -m app.cli backup                        # oder auf der Admin-Seite herunterladen

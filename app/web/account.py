@@ -202,5 +202,5 @@ def register(
             return _invite_gone(request)
     db.commit()
     auth.login(request, user)
-    flash(request, f"Welcome, {username}! Now build your team.")
-    return redirect("/my")
+    flash(request, f"Welcome, {username}! Pick a game to get started.")
+    return redirect("/")

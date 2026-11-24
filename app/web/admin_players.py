@@ -8,7 +8,7 @@ from ..auth import require_admin
 from ..flags import COUNTRY_CODES
 from .common import State, flash, get_state, redirect, render
 
-router = APIRouter(prefix="/admin/players")
+router = APIRouter(prefix="/fantasy/admin/players")
 
 
 def _player(state: State, player_id: int) -> models.Player:
@@ -97,7 +97,7 @@ async def create(request: Request, state: State = Depends(get_state), admin: mod
     state.db.add(p)
     state.db.commit()
     flash(request, f"Player “{p.name}” created. To put them into the draw, open a player in the draw and replace them.")
-    return redirect("/admin/players")
+    return redirect("/fantasy/admin/players")
 
 
 @router.get("/{player_id}")
@@ -121,7 +121,7 @@ async def update(player_id: int, request: Request, state: State = Depends(get_st
         setattr(p, k, v)
     state.db.commit()
     flash(request, f"“{p.name}” saved.")
-    return redirect("/admin/players")
+    return redirect("/fantasy/admin/players")
 
 
 @router.post("/{player_id}/replace")
@@ -134,7 +134,7 @@ async def replace_in_draw(player_id: int, request: Request, state: State = Depen
         new = _player(state, int(form.get("replacement_id") or 0))
     except (HTTPException, ValueError):
         flash(request, "Choose a replacement player.", "error")
-        return redirect(f"/admin/players/{p.id}")
+        return redirect(f"/fantasy/admin/players/{p.id}")
     m = _r1_match(state, p.id)
     in_draw = {pid for x in state.matches if x.round == 1 for pid in (x.p1_id, x.p2_id)}
     if m is None:
@@ -152,4 +152,4 @@ async def replace_in_draw(player_id: int, request: Request, state: State = Depen
         n = _teams_with(state, p.id)
         flash(request, f"{new.name} replaces {p.name} in the draw."
               + (f" {n} team(s) still have {p.name} and will get no points for them." if n else ""))
-    return redirect("/admin/players")
+    return redirect("/fantasy/admin/players")

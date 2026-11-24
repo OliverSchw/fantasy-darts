@@ -98,33 +98,33 @@ def test_pages_with_results(client, db, season, rules, make_user):
     make_user("olli")
     _login(client, "olli")
     form = _team_form(db, season, rules, "Bulls")
-    client.post("/my/new", data=form)
+    client.post("/fantasy/my/new", data=form)
     m = _m(db, season, 1, 0)
     save_result(db, rules, m, 3, 1, {"s171": 2}, {})
 
-    for url in ("/bracket", "/bracket?section=3", "/bracket?section=finals", "/bracket?view=list&round=2",
-                f"/players/{m.p1_id}", f"/players/{m.p2_id}", "/"):
+    for url in ("/fantasy/bracket", "/fantasy/bracket?section=3", "/fantasy/bracket?section=finals", "/fantasy/bracket?view=list&round=2",
+                f"/fantasy/players/{m.p1_id}", f"/fantasy/players/{m.p2_id}", "/fantasy", "/"):
         r = client.get(url)
         assert r.status_code == 200, url
-    assert "win margin +2" in client.get(f"/players/{m.p1_id}").text
-    assert "Latest results" in client.get("/").text
+    assert "win margin +2" in client.get(f"/fantasy/players/{m.p1_id}").text
+    assert "Latest results" in client.get("/fantasy").text
 
     # Insights erst nach dem Sperren
-    assert client.get("/insights").status_code == 403
+    assert client.get("/fantasy/insights").status_code == 403
     season.teams_locked = True
     db.commit()
-    r = client.get("/insights")
+    r = client.get("/fantasy/insights")
     assert r.status_code == 200 and "Champion picks" in r.text
 
 
 def test_copy_team(client, db, season, rules, make_user):
     make_user("olli")
     _login(client, "olli")
-    client.post("/my/new", data=_team_form(db, season, rules, "Original"))
+    client.post("/fantasy/my/new", data=_team_form(db, season, rules, "Original"))
     team = db.scalar(select(models.Team))
-    r = client.get(f"/my/new?copy={team.id}")
+    r = client.get(f"/fantasy/my/new?copy={team.id}")
     assert r.status_code == 200 and "Original (copy)" in r.text
-    assert client.get("/my/new?copy=9999").status_code == 404
+    assert client.get("/fantasy/my/new?copy=9999").status_code == 404
 
 
 def test_register_with_invite_code(client, db, monkeypatch):
@@ -135,23 +135,23 @@ def test_register_with_invite_code(client, db, monkeypatch):
                     follow_redirects=False)
     assert r.status_code == 303
     assert db.scalar(select(models.User).where(models.User.username == "neu")) is not None
-    assert client.get("/my").status_code == 200  # direkt eingeloggt
+    assert client.get("/fantasy/my").status_code == 200  # direkt eingeloggt
 
 
 def test_compare_teams(client, db, season, rules, make_user):
     make_user("olli")
     _login(client, "olli")
-    assert client.get("/compare").status_code == 200  # nur 1 Team -> Hinweis statt Vergleich
-    assert "Build a second team" in client.get("/compare").text
+    assert client.get("/fantasy/compare").status_code == 200  # nur 1 Team -> Hinweis statt Vergleich
+    assert "Build a second team" in client.get("/fantasy/compare").text
 
-    client.post("/my/new", data=_team_form(db, season, rules, "Eins"))
+    client.post("/fantasy/my/new", data=_team_form(db, season, rules, "Eins"))
     form = _team_form(db, season, rules, "Zwei")
     next_cheapest = sorted(season_players(db, season).values(), key=lambda p: p.price)[rules.team.squad_size]
     form["player_ids"] = [form["player_ids"][0], next_cheapest.id] + form["player_ids"][2:]
-    assert client.post("/my/new", data=form, follow_redirects=False).status_code == 303
+    assert client.post("/fantasy/my/new", data=form, follow_redirects=False).status_code == 303
     t1, t2 = db.scalars(select(models.Team).order_by(models.Team.id)).all()
 
-    r = client.get(f"/compare?a={t1.id}&b={t2.id}")
+    r = client.get(f"/fantasy/compare?a={t1.id}&b={t2.id}")
     assert r.status_code == 200
     assert "Shared players (14)" in r.text and "Different players (1)" in r.text
 
@@ -159,19 +159,19 @@ def test_compare_teams(client, db, season, rules, make_user):
     make_user("anna")
     client.post("/logout")
     _login(client, "anna")
-    r = client.get(f"/compare?a={t1.id}&b={t2.id}")
+    r = client.get(f"/fantasy/compare?a={t1.id}&b={t2.id}")
     assert "Eins" not in r.text and "Zwei" not in r.text
-    client.post("/my/new", data=_team_form(db, season, rules, "Annas"))
-    client.post("/my/new", data={**_team_form(db, season, rules, "Annas2")})
-    assert client.get(f"/compare?a={t1.id}&b={t2.id}").status_code == 404
+    client.post("/fantasy/my/new", data=_team_form(db, season, rules, "Annas"))
+    client.post("/fantasy/my/new", data={**_team_form(db, season, rules, "Annas2")})
+    assert client.get(f"/fantasy/compare?a={t1.id}&b={t2.id}").status_code == 404
 
 
 def test_player_page_lists_own_teams_before_lock(client, db, season, rules, make_user):
     make_user("olli")
     _login(client, "olli")
     form = _team_form(db, season, rules, "Meins")
-    client.post("/my/new", data=form)
-    r = client.get(f"/players/{form['player_ids'][0]}")
+    client.post("/fantasy/my/new", data=form)
+    r = client.get(f"/fantasy/players/{form['player_ids'][0]}")
     assert "In your teams" in r.text and "Meins" in r.text
 
 
@@ -181,7 +181,7 @@ def test_builder_contains_draw_positions(client, db, season, rules, make_user):
 
     make_user("olli")
     _login(client, "olli")
-    html = client.get("/my/new").text
+    html = client.get("/fantasy/my/new").text
     cfg = json.loads(re.search(r'<script id="builder-data" type="application/json">(.*?)</script>', html, re.S).group(1))
     assert len(cfg["draw"]["matches"]) == 64 and cfg["draw"]["matchesPerSection"] == 8
     assert cfg["draw"]["sections"][0] == "Littler"
@@ -199,18 +199,18 @@ def test_match_page_for_everyone(client, db, season, rules, make_user):
     r2 = _m(db, season, 2, 0)
 
     # nicht eingeloggt: Match-Seite mit Stats, Punkten und Links
-    r = client.get(f"/matches/{m0.id}")
+    r = client.get(f"/fantasy/matches/{m0.id}")
     assert r.status_code == 200
     assert "Fantasy points" in r.text and "+52" in r.text and "+15" in r.text  # 30+20+2 / 10+5
-    assert f"/matches/{r2.id}" in r.text  # "Next"-Link
+    assert f"/fantasy/matches/{r2.id}" in r.text  # "Next"-Link
     assert "Enter result" not in r.text and "Edit result" not in r.text
 
     # offenes Match der 2. Runde: eine Seite steht, andere ist "A / B" mit Link aufs Vor-Match
-    r = client.get(f"/matches/{r2.id}")
-    assert r.status_code == 200 and f"/matches/{m1.id}" in r.text and "Road to this match" in r.text
+    r = client.get(f"/fantasy/matches/{r2.id}")
+    assert r.status_code == 200 and f"/fantasy/matches/{m1.id}" in r.text and "Road to this match" in r.text
 
     # Baum verlinkt die Matches jetzt für alle
-    assert f'href="/matches/{m0.id}"' in client.get("/bracket?section=1").text
+    assert f'href="/fantasy/matches/{m0.id}"' in client.get("/fantasy/bracket?section=1").text
     assert client.get("/matches/999999").status_code == 404
 
 
@@ -218,5 +218,5 @@ def test_admin_sees_edit_button_on_match_page(client, db, season, make_user):
     make_user("boss", admin=True)
     _login(client, "boss")
     m0 = _m(db, season, 1, 0)
-    r = client.get(f"/matches/{m0.id}")
-    assert f"/bracket/match/{m0.id}" in r.text and "Enter result" in r.text
+    r = client.get(f"/fantasy/matches/{m0.id}")
+    assert f"/fantasy/bracket/match/{m0.id}" in r.text and "Enter result" in r.text

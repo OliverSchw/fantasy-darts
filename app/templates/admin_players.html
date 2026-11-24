@@ -7,7 +7,7 @@
 <div class="title-row">
   <p class="muted">{{ rows|length }} players · tap one to edit name, nation, price or seed.
     {% if state.locked %}Prices are frozen while teams are locked.{% endif %}</p>
-  <a href="/admin/players/new" role="button" class="small">＋ New player</a>
+  <a href="/fantasy/admin/players/new" role="button" class="small">＋ New player</a>
 </div>
 
 <div x-data="{ q: '' }">
@@ -18,7 +18,7 @@
       <tbody>
         {% for p in rows %}
           <tr data-s="{{ (p.name ~ ' ' ~ p.nation) | lower }}" x-show="!q || $el.dataset.s.includes(q.toLowerCase())">
-            <td data-v="{{ p.name }}">{{ flag(p.nation) }} <a href="/admin/players/{{ p.id }}">{{ p.name }}</a>
+            <td data-v="{{ p.name }}">{{ flag(p.nation) }} <a href="/fantasy/admin/players/{{ p.id }}">{{ p.name }}</a>
               {% if p.id not in in_draw %}<mark class="role ch">not in draw</mark>{% endif %}
               <br><small>{{ p.nation or "– no nation –" }}</small></td>
             <td class="num" data-v="{{ p.seed or '' }}">{{ p.seed or "" }}</td>

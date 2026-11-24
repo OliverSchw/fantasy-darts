@@ -1,7 +1,7 @@
 {
-  "name": "Fantasy Darts",
-  "short_name": "Fantasy Darts",
-  "description": "Fantasy game for the PDC World Darts Championship",
+  "name": "Mönninghausen Games",
+  "short_name": "MÖ Games",
+  "description": "Fantasy Darts, darts games and tournaments for the Mönninghausen crew",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

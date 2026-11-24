@@ -6,14 +6,14 @@
   {%- set sd = info.side -%}
   {%- if sd.pid -%}
     {%- set p = state.players[sd.pid] -%}
-    <a class="mh-player {% if sd.won %}win{% elif sd.lost %}lose{% endif %} {% if info.mine %}mine{% endif %}" href="/players/{{ p.id }}">
+    <a class="mh-player {% if sd.won %}win{% elif sd.lost %}lose{% endif %} {% if info.mine %}mine{% endif %}" href="/fantasy/players/{{ p.id }}">
       <span class="mh-flag">{{ flag(p.nation) }}</span>
       <strong>{{ p.name }}</strong>
       <small>{% if p.seed %}Seed {{ p.seed }} · {% endif %}{{ p.price | price }} M</small>
     </a>
   {%- elif sd.candidates -%}
     {%- set a = state.players[sd.candidates[0]] -%}{%- set b = state.players[sd.candidates[1]] -%}
-    <a class="mh-player tbd" href="/matches/{{ info.feeder.id }}">
+    <a class="mh-player tbd" href="/fantasy/matches/{{ info.feeder.id }}">
       <strong>{{ surname(a) }} / {{ surname(b) }}</strong>
       <small>Winner of that match →</small>
     </a>
@@ -24,7 +24,7 @@
 
 {% block content %}
 {% set target = rules.tournament.sets_to_win[m.round - 1] %}
-<p class="crumbs"><a href="/bracket?section={{ section }}">← Bracket</a>{% if m.scheduled_at %} · <a href="/schedule">Schedule</a>{% endif %}</p>
+<p class="crumbs"><a href="/fantasy/bracket?section={{ section }}">← Bracket</a>{% if m.scheduled_at %} · <a href="/fantasy/schedule">Schedule</a>{% endif %}</p>
 <hgroup>
   <h1>{{ rules.tournament.round_names[m.round - 1] }}</h1>
   <p>
@@ -47,7 +47,7 @@
 </div>
 
 {% if user and user.is_admin and m.p1_id and m.p2_id %}
-  <a href="/bracket/match/{{ m.id }}" role="button" class="admin-edit">{{ "✏️ Edit result" if m.is_played else "✏️ Enter result" }}</a>
+  <a href="/fantasy/bracket/match/{{ m.id }}" role="button" class="admin-edit">{{ "✏️ Edit result" if m.is_played else "✏️ Enter result" }}</a>
 {% endif %}
 
 {% if m.is_played %}
@@ -99,11 +99,11 @@
           {% set won = pm.winner_id == info.side.pid %}
           {% set opp = pm.p2_id if pm.p1_id == info.side.pid else pm.p1_id %}
           {% set sf = pm.sets_p1 if pm.p1_id == info.side.pid else pm.sets_p2 %}{% set sa = pm.sets_p2 if pm.p1_id == info.side.pid else pm.sets_p1 %}
-          <li><a href="/matches/{{ pm.id }}"><small>{{ rules.tournament.round_names[pm.round - 1] }}</small>
+          <li><a href="/fantasy/matches/{{ pm.id }}"><small>{{ rules.tournament.round_names[pm.round - 1] }}</small>
             <span>{{ sf }}–{{ sa }} vs {{ state.players[opp].name }}</span></a></li>
         {% else %}
           {% if info.feeder %}
-            <li><a href="/matches/{{ info.feeder.id }}"><small>{{ rules.tournament.round_names[info.feeder.round - 1] }}</small><span>Show previous match →</span></a></li>
+            <li><a href="/fantasy/matches/{{ info.feeder.id }}"><small>{{ rules.tournament.round_names[info.feeder.round - 1] }}</small><span>Show previous match →</span></a></li>
           {% endif %}
         {% endfor %}
       </ul>
@@ -114,7 +114,7 @@
 <!-- Wie geht es weiter? -->
 {% if nxt %}
   <h3>Next</h3>
-  <a class="next-link" href="/matches/{{ nxt.id }}">
+  <a class="next-link" href="/fantasy/matches/{{ nxt.id }}">
     The winner plays in <strong>{{ rules.tournament.round_names[nxt.round - 1] }}</strong>
     {% if nxt_other.pid %} against <strong>{{ state.players[nxt_other.pid].name }}</strong>
     {% elif nxt_other.candidates %} against <strong>{{ surname(state.players[nxt_other.candidates[0]]) }} / {{ surname(state.players[nxt_other.candidates[1]]) }}</strong>

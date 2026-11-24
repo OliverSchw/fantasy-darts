@@ -6,8 +6,8 @@
   <h1>Schedule</h1>
   {% if state.my_player_ids %}
     <div class="view-toggle">
-      <a href="/schedule" role="button" class="small {% if mine %}outline{% endif %}">All</a>
-      <a href="/schedule?mine=1" role="button" class="small {% if not mine %}outline{% endif %}">My players</a>
+      <a href="/fantasy/schedule" role="button" class="small {% if mine %}outline{% endif %}">All</a>
+      <a href="/fantasy/schedule?mine=1" role="button" class="small {% if not mine %}outline{% endif %}">My players</a>
     </div>
   {% endif %}
 </div>
@@ -15,7 +15,7 @@
 {% if not days %}
   <article class="empty">
     <p>{% if mine %}None of your players has a scheduled match.{% else %}No match times yet.{% endif %}</p>
-    <a href="/bracket" class="small-link">Show the bracket →</a>
+    <a href="/fantasy/bracket" class="small-link">Show the bracket →</a>
   </article>
 {% else %}
   {% set next = state.next_matchday() %}
@@ -28,7 +28,7 @@
           {% set s1, s2 = state.bracket.side(m, 0), state.bracket.side(m, 1) %}
           <li class="{% if m.is_played %}played{% endif %}">
             <span class="t">{{ m.scheduled_at | hm }}<small>{{ rules.tournament.round_names[m.round - 1] }}</small></span>
-            <a class="tmatch" href="/matches/{{ m.id }}">
+            <a class="tmatch" href="/fantasy/matches/{{ m.id }}">
               {{ bracket_side(s1, state.players, state.my_player_ids, link=False) }}
               {{ bracket_side(s2, state.players, state.my_player_ids, link=False) }}
             </a>

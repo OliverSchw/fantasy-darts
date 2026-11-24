@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar %}
+{% block title %}{% endblock %}
+{% block content %}
+<div class="hub-hello">
+  {% if user %}
+    <a href="/users/{{ user.id }}" class="avatar-link">{{ avatar(user, user, "lg") }}</a>
+    <div>
+      <h1>Hi {{ user.username }}!</h1>
+      <p class="muted">What do you want to play?</p>
+    </div>
+  {% else %}
+    <div>
+      <h1>{{ platform_name }}</h1>
+      <p class="muted">Games and tournaments for the crew – one account for everything.</p>
+      <a href="/login" role="button" class="small">Log in</a>
+    </div>
+  {% endif %}
+</div>
+
+<div class="hub-grid">
+  {% for s in sections %}
+    {% if s.ready %}
+      <a href="{{ s.href }}" class="hub-tile">
+        <span class="hub-ico">{{ s.icon }}</span>
+        <span class="hub-text">
+          <strong>{{ s.name }}</strong>
+          <small>{{ s.tagline }}</small>
+          {% set st = status.get(s.key) %}
+          {% if s.key == "fantasy" and st %}
+            <span class="hub-status">
+              {% if st.mine %}You're <strong>#{{ st.mine.rank }}</strong> of {{ st.rows }} · {{ st.mine.points | pts }} pts
+              {% elif user and not st.locked %}No team yet – build one now!
+              {% else %}{{ st.rows }} team{{ "s" if st.rows != 1 }} in the race{% endif %}
+            </span>
+          {% endif %}
+        </span>
+        <span class="hub-go" aria-hidden="true">›</span>
+      </a>
+    {% else %}
+      <div class="hub-tile soon" aria-disabled="true">
+        <span class="hub-ico">{{ s.icon }}</span>
+        <span class="hub-text">
+          <strong>{{ s.name }}</strong>
+          <small>{{ s.tagline }}</small>
+          <span class="hub-status">Coming soon</span>
+        </span>
+      </div>
+    {% endif %}
+  {% endfor %}
+</div>
+{% endblock %}

@@ -13,12 +13,12 @@ from .common import State, get_state, render
 router = APIRouter()
 
 
-@router.get("/")
+@router.get("/fantasy")
 def leaderboard(request: Request, state: State = Depends(get_state)):
     return render(request, "leaderboard.html", state, rows=state.leaderboard(), latest=state.latest_results())
 
 
-@router.get("/teams/{team_id}")
+@router.get("/fantasy/teams/{team_id}")
 def team_detail(team_id: int, request: Request, state: State = Depends(get_state)):
     team = state.db.get(models.Team, team_id)
     if team is None or team.season_id != state.season.id:
@@ -55,14 +55,14 @@ def _pick_counts(state: State) -> tuple[Counter, Counter, Counter, Counter]:
     return squads, pms, uds, champs
 
 
-@router.get("/players")
+@router.get("/fantasy/players")
 def players(request: Request, state: State = Depends(get_state)):
     picks = _pick_counts(state)[0] if state.locked else Counter()
     rows = sorted(state.players.values(), key=lambda p: (-state.score(p.id).points, -p.price))
     return render(request, "players.html", state, rows=rows, picks=picks, n_teams=len(state.active_teams))
 
 
-@router.get("/players/{player_id}")
+@router.get("/fantasy/players/{player_id}")
 def player_detail(player_id: int, request: Request, state: State = Depends(get_state)):
     p = state.players.get(player_id)
     if p is None:
@@ -118,7 +118,7 @@ def _comparable_teams(state: State) -> list[models.Team]:
     return sorted(teams.values(), key=lambda t: t.name.lower())
 
 
-@router.get("/compare")
+@router.get("/fantasy/compare")
 def compare(request: Request, state: State = Depends(get_state), a: int | None = None, b: int | None = None):
     options = _comparable_teams(state)
     if len(options) < 2:
@@ -155,7 +155,7 @@ def compare(request: Request, state: State = Depends(get_state), a: int | None =
                   la=la, lb=lb, shared=shared, only_a=only_a, only_b=only_b, summary=summary, alive=alive)
 
 
-@router.get("/bracket")
+@router.get("/fantasy/bracket")
 def bracket(request: Request, state: State = Depends(get_state), view: str = "tree",
             section: str | None = None, round: int | None = None):
     played = Counter(m.round for m in state.matches if m.is_played)
@@ -178,7 +178,7 @@ def bracket(request: Request, state: State = Depends(get_state), view: str = "tr
                   mine_by_section=mine_by_section)
 
 
-@router.get("/insights")
+@router.get("/fantasy/insights")
 def insights(request: Request, state: State = Depends(get_state)):
     if not state.locked and not (state.user and state.user.is_admin):
         return render(request, "message.html", state, status_code=403, title="Insights",
@@ -200,12 +200,12 @@ def insights(request: Request, state: State = Depends(get_state)):
                                key=lambda p: -state.score(p.id).points)[:5])
 
 
-@router.get("/rules")
+@router.get("/fantasy/rules")
 def rules_page(request: Request, state: State = Depends(get_state)):
     return render(request, "rules.html", state)
 
 
-@router.get("/schedule")
+@router.get("/fantasy/schedule")
 def schedule(request: Request, state: State = Depends(get_state), mine: bool = False):
     days = state.schedule_by_day()
     if mine and state.my_player_ids:
@@ -222,7 +222,7 @@ def schedule(request: Request, state: State = Depends(get_state), mine: bool = F
     return render(request, "schedule.html", state, days=days, mine=mine, unscheduled=unscheduled)
 
 
-@router.get("/matches/{match_id}")
+@router.get("/fantasy/matches/{match_id}")
 def match_detail(match_id: int, request: Request, state: State = Depends(get_state)):
     m = state.db.get(models.Match, match_id)
     if m is None or m.season_id != state.season.id:

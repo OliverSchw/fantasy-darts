@@ -6,12 +6,12 @@
 
 {% if errors %}<div class="flash error" role="alert"><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
 {% if ro %}
-  <p class="banner locked">🔒 Teams are locked, so the rules are read-only. Unlock teams under <a href="/admin">Overview</a> to change them.</p>
+  <p class="banner locked">🔒 Teams are locked, so the rules are read-only. Unlock teams under <a href="/fantasy/admin">Overview</a> to change them.</p>
 {% else %}
-  <p class="muted">Changes apply immediately to all points – also for results already entered. Players see them on the <a href="/rules" target="_blank">rules page ↗</a>.</p>
+  <p class="muted">Changes apply immediately to all points – also for results already entered. Players see them on the <a href="/fantasy/rules" target="_blank">rules page ↗</a>.</p>
 {% endif %}
 
-<form method="post" action="/admin/rules" class="rules-form">
+<form method="post" action="/fantasy/admin/rules" class="rules-form">
 <fieldset {% if ro %}disabled{% endif %}>
 
   <article>
@@ -96,7 +96,7 @@
 </form>
 
 {% if custom and not ro %}
-  <form method="post" action="/admin/rules/reset" x-data="{ sure: false }" class="reset-form">
+  <form method="post" action="/fantasy/admin/rules/reset" x-data="{ sure: false }" class="reset-form">
     <button type="button" class="outline secondary small" x-show="!sure" @click="sure = true">Reset to season defaults…</button>
     <button type="submit" class="danger small" x-show="sure" x-cloak>Really reset all rules</button>
   </form>

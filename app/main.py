@@ -5,7 +5,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
@@ -14,7 +14,7 @@ from .auth import AdminRequired, LoginRequired
 from .db import create_tables
 from .season import SeasonNotImported
 from .settings import get_settings
-from .web import account, admin, admin_players, admin_rules, admin_schedule, my_teams, pages
+from .web import account, admin, admin_players, admin_rules, admin_schedule, hub, members, my_teams, pages
 from .web.common import redirect, render
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -36,6 +36,29 @@ app.add_middleware(
     same_site="lax",
     https_only=settings.secure_cookies,
 )
+
+
+# Fantasy Darts lag früher direkt unter "/". Alte Links, Lesezeichen und offene Tabs werden
+# dauerhaft auf /fantasy/... umgeleitet (GET mit 301; Formulare mit 308, damit sie nicht verloren gehen).
+LEGACY_FANTASY_PATHS = ("/teams", "/players", "/compare", "/bracket", "/insights", "/rules", "/schedule",
+                        "/matches", "/my", "/admin/schedule", "/admin/players", "/admin/rules", "/admin/export",
+                        "/admin/lock")
+
+
+def legacy_fantasy_url(path: str) -> str | None:
+    if any(path == p or path.startswith(p + "/") for p in LEGACY_FANTASY_PATHS):
+        return "/fantasy" + path
+    return None
+
+
+@app.middleware("http")
+async def redirect_legacy_fantasy(request: Request, call_next):
+    target = legacy_fantasy_url(request.url.path)
+    if target is None:
+        return await call_next(request)
+    if request.url.query:
+        target += "?" + request.url.query
+    return RedirectResponse(target, status_code=301 if request.method in ("GET", "HEAD") else 308)
 
 
 # Service-Worker und Manifest müssen im Wurzelverzeichnis liegen (Scope der PWA).
@@ -60,8 +83,10 @@ def healthz():
     return {"ok": True}
 
 
+app.include_router(hub.router)
 app.include_router(pages.router)
 app.include_router(account.router)
+app.include_router(members.router)
 app.include_router(my_teams.router)
 app.include_router(admin.router)
 app.include_router(admin_players.router)

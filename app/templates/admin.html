@@ -6,8 +6,8 @@
 <div class="stat-grid admin-stats">
   <a href="/admin/users"><span>{{ n_users }}</span><small>Members</small></a>
   <div><span>{{ n_teams }}</span><small>Active teams</small></div>
-  <a href="/bracket"><span>{{ played }}/{{ total_matches }}</span><small>Results entered</small></a>
-  <a href="/admin/schedule"><span>{{ scheduled }}/{{ total_matches }}</span><small>Matches scheduled</small></a>
+  <a href="/fantasy/bracket"><span>{{ played }}/{{ total_matches }}</span><small>Results entered</small></a>
+  <a href="/fantasy/admin/schedule"><span>{{ scheduled }}/{{ total_matches }}</span><small>Matches scheduled</small></a>
 </div>
 
 <article>
@@ -19,10 +19,10 @@
         {{ without_team|join(", ") }}</li>
     {% endif %}
     {% if waiting %}{% set _ = todo.append(1) %}
-      <li><a href="/bracket">{{ waiting }} match{{ "es" if waiting != 1 }} waiting for a result →</a></li>
+      <li><a href="/fantasy/bracket">{{ waiting }} match{{ "es" if waiting != 1 }} waiting for a result →</a></li>
     {% endif %}
     {% if not state.locked and not rules.lock_at %}{% set _ = todo.append(1) %}
-      <li>No automatic team lock set – <a href="/admin/rules">set the tournament start →</a></li>
+      <li>No automatic team lock set – <a href="/fantasy/admin/rules">set the tournament start →</a></li>
     {% endif %}
     {% if n_open_invites %}{% set _ = todo.append(1) %}
       <li><a href="/admin/users#invites">{{ n_open_invites }} invite link{{ "s" if n_open_invites != 1 }} not used yet →</a></li>
@@ -41,9 +41,9 @@
       {% if rules.lock_at %}They lock automatically on <strong>{{ rules.lock_at.strftime("%d.%m.%Y at %H:%M") }}</strong>.{% endif %}</p>
   {% endif %}
   {% if auto_locked %}
-    <p class="muted">To reopen the teams, move the lock time under <a href="/admin/rules">Rules &amp; points</a>.</p>
+    <p class="muted">To reopen the teams, move the lock time under <a href="/fantasy/admin/rules">Rules &amp; points</a>.</p>
   {% else %}
-    <form method="post" action="/admin/lock">
+    <form method="post" action="/fantasy/admin/lock">
       <label>
         <input type="checkbox" role="switch" name="locked" value="true" {% if state.season.teams_locked %}checked{% endif %} onchange="this.form.submit()">
         Lock teams now (manually)
@@ -56,10 +56,10 @@
 <article>
   <h3>💾 Export &amp; backup</h3>
   <div class="btn-row left">
-    <a href="/admin/export/teams" role="button" class="outline small" download>Teams (CSV)</a>
-    <a href="/admin/export/results" role="button" class="outline small" download>Results (CSV)</a>
-    <a href="/admin/export/players" role="button" class="outline small" download>Players (CSV)</a>
-    <a href="/admin/export/backup" role="button" class="small" download>Full backup (JSON)</a>
+    <a href="/fantasy/admin/export/teams" role="button" class="outline small" download>Teams (CSV)</a>
+    <a href="/fantasy/admin/export/results" role="button" class="outline small" download>Results (CSV)</a>
+    <a href="/fantasy/admin/export/players" role="button" class="outline small" download>Players (CSV)</a>
+    <a href="/fantasy/admin/export/backup" role="button" class="small" download>Full backup (JSON)</a>
   </div>
   <p class="muted">CSV files open directly in Excel. The full backup can be restored into a new database with
     <code>python -m app.cli restore-backup &lt;file&gt;</code>. It contains password hashes – keep it private.</p>

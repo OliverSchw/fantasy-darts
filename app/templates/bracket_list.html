@@ -4,12 +4,12 @@
 {% block content %}
 <div class="title-row">
   <h1>Bracket</h1>
-  <a href="/bracket" class="small-link">Tree view</a>
+  <a href="/fantasy/bracket" class="small-link">Tree view</a>
 </div>
 <nav class="round-tabs" aria-label="Rounds">
   {% for name in rules.tournament.round_names %}
     {% set r = loop.index %}
-    <a href="/bracket?view=list&round={{ r }}" {% if r == rnd %}aria-current="page"{% endif %}>
+    <a href="/fantasy/bracket?view=list&round={{ r }}" {% if r == rnd %}aria-current="page"{% endif %}>
       {{ name }}<small>{{ played[r] or 0 }}/{{ rules.matches_in_round(r) }}</small>
     </a>
   {% endfor %}
@@ -19,7 +19,7 @@
 <div class="matches">
   {% for mv in matches %}
     {% set m = mv.match %}
-    <a class="match tmatch {% if m.is_played %}played{% endif %}" href="/matches/{{ m.id }}">
+    <a class="match tmatch {% if m.is_played %}played{% endif %}" href="/fantasy/matches/{{ m.id }}">
       {{ bracket_side(mv.sides[0], state.players, state.my_player_ids, link=False) }}
       {{ bracket_side(mv.sides[1], state.players, state.my_player_ids, link=False) }}
       {% if m.scheduled_at and not m.is_played %}<div class="ttime">🕒 {{ m.scheduled_at | when }}</div>{% endif %}

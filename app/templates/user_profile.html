@@ -16,7 +16,7 @@
       <div><span>{{ row.alive }}/{{ rules.team.squad_size }}</span><small>Still in</small></div>
     </div>
     <p class="profile-team">Team:
-      {% if state.can_view_team(t) %}<a href="/teams/{{ t.id }}"><strong>{{ t.name }}</strong></a>
+      {% if state.can_view_team(t) %}<a href="/fantasy/teams/{{ t.id }}"><strong>{{ t.name }}</strong></a>
       {% else %}<strong>{{ t.name }}</strong> <small class="muted">– visible once teams are locked</small>{% endif %}
     </p>
   {% else %}
@@ -27,5 +27,5 @@
     <a href="/account" role="button" class="outline admin-link">✏️ Change picture or password</a>
   {% endif %}
 </article>
-<a href="/" class="secondary">← Back to ranking</a>
+<a href="/fantasy" class="secondary">← Back to ranking</a>
 {% endblock %}

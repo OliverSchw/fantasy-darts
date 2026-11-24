@@ -39,27 +39,27 @@ def test_admin_sets_times_and_everyone_sees_them(admin, db, season, make_user):
     m0, m1 = (db.scalar(select(models.Match).where(models.Match.round == 1, models.Match.slot == s)) for s in (0, 1))
     r2 = db.scalar(select(models.Match).where(models.Match.round == 2, models.Match.slot == 0))
 
-    assert admin.get("/admin/schedule?round=1").status_code == 200
-    admin.post("/admin/schedule?round=1", data={f"time_{m0.id}": _local_input(today_1930),
+    assert admin.get("/fantasy/admin/schedule?round=1").status_code == 200
+    admin.post("/fantasy/admin/schedule?round=1", data={f"time_{m0.id}": _local_input(today_1930),
                                                f"time_{m1.id}": _local_input(today_1930 + timedelta(hours=1))})
     # Runde 2 schon ansetzen, obwohl die Spieler noch offen sind
-    admin.post("/admin/schedule?round=2", data={f"time_{r2.id}": _local_input(today_1930 + timedelta(days=2))})
+    admin.post("/fantasy/admin/schedule?round=2", data={f"time_{r2.id}": _local_input(today_1930 + timedelta(days=2))})
     db.expire_all()
     assert db.get(models.Match, m0.id).scheduled_at is not None
 
     with TestClient(app) as guest:
-        page = guest.get("/schedule").text
+        page = guest.get("/fantasy/schedule").text
         assert "19:30" in page and "20:30" in page and "Today" in page
         p0 = db.get(models.Player, m0.p1_id)
         assert p0.name in page
         assert " / " in page  # Runde 2: "A / B"
-        home = guest.get("/").text
+        home = guest.get("/fantasy").text
 
         assert "19:30" in home and "Full schedule" in home
-        assert "today 19:30" in guest.get(f"/players/{p0.id}").text
+        assert "today 19:30" in guest.get(f"/fantasy/players/{p0.id}").text
 
     # Zeit wieder entfernen
-    admin.post("/admin/schedule?round=1", data={f"time_{m1.id}": ""})
+    admin.post("/fantasy/admin/schedule?round=1", data={f"time_{m1.id}": ""})
     db.expire_all()
     assert db.get(models.Match, m1.id).scheduled_at is None
 
@@ -79,8 +79,8 @@ def test_schedule_filter_my_players(db, season, make_user):
 
     with TestClient(app) as c:
         c.post("/login", data={"username": "olli", "password": "secret123"})
-        all_page = c.get("/schedule").text
-        mine_page = c.get("/schedule?mine=1").text
+        all_page = c.get("/fantasy/schedule").text
+        mine_page = c.get("/fantasy/schedule?mine=1").text
     name9 = players[m9.p1_id].name
     assert name9 in all_page and name9 not in mine_page
     assert players[m0.p1_id].name in mine_page
@@ -90,6 +90,6 @@ def test_schedule_admin_only(db, make_user):
     make_user("olli")
     with TestClient(app) as c:
         c.post("/login", data={"username": "olli", "password": "secret123"})
-        assert c.get("/admin/schedule").status_code == 403
-        assert c.post("/admin/schedule", data={}).status_code == 403
-        assert c.get("/schedule").status_code == 200
+        assert c.get("/fantasy/admin/schedule").status_code == 403
+        assert c.post("/fantasy/admin/schedule", data={}).status_code == 403
+        assert c.get("/fantasy/schedule").status_code == 200

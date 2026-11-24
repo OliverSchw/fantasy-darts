@@ -16,21 +16,21 @@
 
 <form method="get" class="cmp-pick">
   <select name="a" onchange="this.form.submit()" aria-label="First team">{{ team_option_list(ta.id) }}</select>
-  <a href="/compare?a={{ tb.id }}&b={{ ta.id }}" class="swap" title="Swap" aria-label="Swap teams">⇄</a>
+  <a href="/fantasy/compare?a={{ tb.id }}&b={{ ta.id }}" class="swap" title="Swap" aria-label="Swap teams">⇄</a>
   <select name="b" onchange="this.form.submit()" aria-label="Second team">{{ team_option_list(tb.id) }}</select>
   <noscript><button type="submit">Compare</button></noscript>
 </form>
 
 {% set diff = sa.total - sb.total %}
 <div class="cmp-head">
-  <a class="cmp-team {% if diff > 0 %}lead{% endif %}" href="/teams/{{ ta.id }}">
+  <a class="cmp-team {% if diff > 0 %}lead{% endif %}" href="/fantasy/teams/{{ ta.id }}">
     <strong>{{ ta.name }}</strong><small>{{ ta.user.username }}</small>
     <span class="big">{{ sa.total | pts }}</span><small>{{ alive[ta.id] }}/{{ rules.team.squad_size }} still in</small>
   </a>
   <div class="cmp-diff">
     {% if diff == 0 %}<span>=</span>{% else %}<span>{{ "+" if diff > 0 else "−" }}{{ diff | abs | pts }}</span>{% endif %}
   </div>
-  <a class="cmp-team {% if diff < 0 %}lead{% endif %}" href="/teams/{{ tb.id }}">
+  <a class="cmp-team {% if diff < 0 %}lead{% endif %}" href="/fantasy/teams/{{ tb.id }}">
     <strong>{{ tb.name }}</strong><small>{{ tb.user.username }}</small>
     <span class="big">{{ sb.total | pts }}</span><small>{{ alive[tb.id] }}/{{ rules.team.squad_size }} still in</small>
   </a>

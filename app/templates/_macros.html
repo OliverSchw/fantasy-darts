@@ -18,7 +18,7 @@
 {% macro player_name(p, score=None, link=True, mine=False) -%}
   {%- set cls = "champ" if score and score.is_champion else ("out" if score and score.eliminated else "") -%}
   <span class="pname {{ cls }}{% if mine %} mine{% endif %}">
-    {{- flag(p.nation) }} {% if link %}<a href="/players/{{ p.id }}">{{ p.name }}</a>{% else %}{{ p.name }}{% endif %}
+    {{- flag(p.nation) }} {% if link %}<a href="/fantasy/players/{{ p.id }}">{{ p.name }}</a>{% else %}{{ p.name }}{% endif %}
     {%- if p.seed and p.seed <= 32 %} <small class="seed">({{ p.seed }})</small>{% endif %}
     {%- if score and score.is_champion %} 🏆{% endif -%}
   </span>
@@ -29,7 +29,7 @@
   {%- if side.pid -%}
     {%- set p = players[side.pid] -%}
     <div class="bside {% if side.won %}win{% elif side.lost %}lose{% endif %} {% if side.pid in mine_ids %}mine{% endif %}">
-      <span class="bn">{{ flag(p.nation) }} {% if link %}<a href="/players/{{ p.id }}">{{ p.name }}</a>{% else %}{{ p.name }}{% endif %}{% if p.seed and p.seed <= 32 %} <small class="seed">{{ p.seed }}</small>{% endif %}</span>
+      <span class="bn">{{ flag(p.nation) }} {% if link %}<a href="/fantasy/players/{{ p.id }}">{{ p.name }}</a>{% else %}{{ p.name }}{% endif %}{% if p.seed and p.seed <= 32 %} <small class="seed">{{ p.seed }}</small>{% endif %}</span>
       <span class="sets">{% if side.won or side.lost %}{{ side.sets }}{% endif %}</span>
     </div>
   {%- elif side.candidates -%}
