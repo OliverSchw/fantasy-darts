@@ -70,7 +70,9 @@ def service_worker():
 
 @app.get("/manifest.webmanifest", include_in_schema=False)
 def manifest():
-    return FileResponse(STATIC_DIR / "manifest.webmanifest", media_type="application/manifest+json")
+    # no-cache: Handys sollen geänderte Farben/Icons sofort mitbekommen
+    return FileResponse(STATIC_DIR / "manifest.webmanifest", media_type="application/manifest+json",
+                        headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/favicon.ico", include_in_schema=False)

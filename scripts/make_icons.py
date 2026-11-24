@@ -1,8 +1,8 @@
 """Erzeugt die App-Icons von Mönninghausen Games: Pokal mit Dartscheibe + Dart, daneben ein Bierkrug.
 
 Aufruf: python scripts/make_icons.py  (schreibt nach app/static/icons/)
-Nach einer Änderung die Versionsnummer ?v=... in base.html und manifest.webmanifest erhöhen,
-sonst zeigen Browser und Handys das alte Bild aus dem Cache.
+Nach einer Änderung die Versionsnummer ?v=... in base.html (Icons und Manifest-Link) und in
+manifest.webmanifest erhöhen, sonst zeigen Browser und Handys das alte Bild aus dem Cache.
 Gezeichnet wird in 4-facher Größe und dann herunterskaliert (glatte Kanten).
 """
 
