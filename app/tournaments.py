@@ -363,3 +363,78 @@ def running(db: Session, sport: str, limit: int = 3) -> list[models.Tournament]:
     return list(db.scalars(select(models.Tournament).where(models.Tournament.sport == sport,
                                                            models.Tournament.status == "running")
                            .order_by(models.Tournament.created_at.desc()).limit(limit)))
+
+
+# ---------------------------------------------------------------- Turnier-Stats pro Teilnehmer
+
+
+@dataclass
+class EntryResult:
+    entry: models.TournamentEntry
+    played: int = 0
+    won: int = 0
+    lost: int = 0
+    score_for: int = 0
+    score_against: int = 0
+    out_round: int | None = None  # K.-o.-Runde, in der verloren wurde
+    out_in_groups: bool = False
+    place: str = "Still in"
+    rank: int = 0  # für die Sortierung: 0 = Champion, kleiner = besser
+
+    @property
+    def diff(self) -> int:
+        return self.score_for - self.score_against
+
+
+def entry_results(t: models.Tournament) -> list[EntryResult]:
+    """Bilanz und Platzierung jedes Eintrags über das ganze Turnier (Gruppe + K.-o., ohne Freilose)."""
+    res = {e.id: EntryResult(e) for e in t.entries}
+    for m in t.matches:
+        if not m.is_played or m.bye:
+            continue
+        for eid, sf, sa in ((m.entry1_id, m.score1, m.score2), (m.entry2_id, m.score2, m.score1)):
+            r = res[eid]
+            r.played += 1
+            r.score_for += sf
+            r.score_against += sa
+            if m.winner_id == eid:
+                r.won += 1
+            else:
+                r.lost += 1
+                if m.group_no is None:
+                    r.out_round = m.round
+    n = t.num_rounds
+    in_ko = {eid for m in t.ko_matches for eid in (m.entry1_id, m.entry2_id) if eid}
+    for r in res.values():
+        if t.winner_entry_id == r.entry.id:
+            r.place, r.rank = "Champion", 0
+        elif r.out_round is not None:
+            left = n - r.out_round  # 0 = im Finale verloren
+            r.place = "Runner-up" if left == 0 else round_title(r.out_round, n).replace("Round of", "Last")
+            r.rank = 1 + left
+        elif t.has_groups and knockout_started(t) and r.entry.id not in in_ko:
+            r.out_in_groups, r.place, r.rank = True, "Group stage", 100
+        else:
+            r.place, r.rank = "Still in", 50
+    return sorted(res.values(), key=lambda r: (r.rank, -r.won, -r.diff, -r.score_for, r.entry.seed))
+
+
+def organizes_match(db: Session, match_id: int | None, user: models.User | None) -> bool:
+    """Ist der User Organisator des Turniers, zu dem dieses Match gehört?"""
+    if not match_id or user is None:
+        return False
+    tm = db.get(models.TournamentMatch, match_id)
+    return tm is not None and can_organize(user, db.get(models.Tournament, tm.tournament_id))
+
+
+def hall_of_fame(db: Session, sport: str) -> list[tuple[models.Competitor, int]]:
+    """Turniersiege pro Teilnehmer (bei Teams zählt der Titel für jedes Mitglied)."""
+    titles: dict[int, int] = {}
+    people: dict[int, models.Competitor] = {}
+    for t in db.scalars(select(models.Tournament).where(models.Tournament.sport == sport,
+                                                        models.Tournament.status == "finished")):
+        champ = entry_by_id(t, t.winner_entry_id)
+        for c in champ.competitors if champ else []:
+            titles[c.id] = titles.get(c.id, 0) + 1
+            people[c.id] = c
+    return sorted(((people[cid], n) for cid, n in titles.items()), key=lambda x: (-x[1], x[0].display_name.lower()))

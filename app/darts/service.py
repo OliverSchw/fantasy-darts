@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
 from .. import models
 from .. import tournaments as tour
@@ -40,11 +40,13 @@ def game_state(game: models.DartsGame) -> GameState:
 
 
 def can_manage(user: models.User | None, game: models.DartsGame) -> bool:
-    """Wer das Spiel angelegt hat, Mitspieler mit Konto und Admins (zählen, rückgängig, abbrechen)."""
+    """Zählen, rückgängig, abbrechen: wer das Spiel angelegt hat, Mitspieler mit Konto, Admins und bei
+    Turnierspielen der Organisator des Turniers. Alle anderen schauen nur zu."""
     if user is None or game.status == "abandoned":
         return False
     return (user.is_admin or game.created_by_id == user.id
-            or any(p.competitor.user_id == user.id for p in game.players))
+            or any(p.competitor.user_id == user.id for p in game.players)
+            or tour.organizes_match(object_session(game), game.tournament_match_id, user))
 
 
 def can_score(user: models.User | None, game: models.DartsGame) -> bool:

@@ -5,6 +5,14 @@
   <h1>Tournaments</h1>
   <a href="{{ sp.base }}/tournaments/new" role="button" class="small">＋ New tournament</a>
 </div>
+{% if fame %}
+  <article class="t-fame">
+    <h3>🏆 Hall of fame</h3>
+    <ol>
+      {% for c, n in fame[:8] %}<li><strong>{{ c.display_name }}</strong> <span class="muted">{{ n }} title{{ "s" if n != 1 }}</span></li>{% endfor %}
+    </ol>
+  </article>
+{% endif %}
 {% if tournaments %}
   <ul class="dgames">
     {% for t in tournaments %}

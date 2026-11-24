@@ -336,6 +336,22 @@ def _darts_live_ids(db: Session, match_ids: list[int]) -> set[int]:
         models.DartsGame.tournament_match_id.in_(match_ids), models.DartsGame.status == "live")))
 
 
+def _darts_tournament_stats(db: Session, t: models.Tournament) -> dict[int, dict]:
+    """Average, 180er ... jedes Spielers, nur aus den Darts-Spielen dieses Turniers (nicht abgebrochen)."""
+    game_ids = list(db.scalars(select(models.DartsGame.id).where(
+        models.DartsGame.tournament_match_id.in_([m.id for m in t.matches]), models.DartsGame.status != "abandoned")))
+    if not game_ids:
+        return {}
+    stats = compute_stats(db, [c.id for e in t.entries for c in e.competitors], game_ids=game_ids)
+    out = {}
+    for e in t.entries:
+        s = stats.get(e.competitors[0].id) if e.competitors else None
+        if s:
+            out[e.id] = {"average": s.average, "max180": s.max180, "high_finish": s.high_finish or None,
+                         "checkout_pct": s.checkout_pct}
+    return out
+
+
 def _darts_settings(t: models.Tournament) -> str:
     s = {**service.TOURNAMENT_DEFAULTS, **(t.settings or {})}
     return f"{s['start']} · first to {s['legs']}, final first to {s['final_legs']}"
@@ -350,4 +366,7 @@ add_tournament_routes(router, Sport(
     live_match_ids=_darts_live_ids, summary=_darts_settings,
     max_score=lambda t, tm: service.legs_for(t, tm),
     manual_hint="For a match played without the app: legs won by each player.",
+    extra_columns=(("average", "Avg", "avg"), ("max180", "180s", "int"), ("high_finish", "HF", "int"),
+                   ("checkout_pct", "CO%", "pct")),
+    extra_stats=_darts_tournament_stats,
 ))

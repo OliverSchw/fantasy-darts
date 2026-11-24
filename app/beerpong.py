@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
 from . import models
 from . import tournaments as tour
@@ -46,7 +46,8 @@ def can_manage(user: models.User | None, game: models.BeerpongGame) -> bool:
     if user is None or game.status == "abandoned":
         return False
     return (user.is_admin or game.created_by_id == user.id
-            or any(p.competitor.user_id == user.id for p in game.players))
+            or any(p.competitor.user_id == user.id for p in game.players)
+            or tour.organizes_match(object_session(game), game.tournament_match_id, user))
 
 
 def _tournament_of(db: Session, game: models.BeerpongGame):

@@ -196,4 +196,7 @@ add_tournament_routes(router, Sport(
     live_match_ids=_bp_live_ids, summary=lambda t: f"{t.settings.get('cups', 10)} cups",
     max_score=lambda t, tm: int(t.settings.get("cups", 10)),
     manual_hint="Cups hit by each team – the winner hits all of them.",
+    extra_columns=(("cups_per_game", "Cups/game", "dec"),),
+    extra_stats=lambda db, t: {r.entry.id: {"cups_per_game": r.score_for / r.played if r.played else None}
+                               for r in tour.entry_results(t)},
 ))
