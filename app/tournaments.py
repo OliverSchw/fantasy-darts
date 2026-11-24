@@ -74,7 +74,7 @@ def create_tournament(db: Session, sport: str, name: str, entries: list[list[int
     for m in [m for m in t.matches if m.round == 1]:
         if (m.entry1_id is None) != (m.entry2_id is None):  # Freilos
             m.bye = True
-            _set_winner(t, m, m.entry1_id or m.entry2_id, 0, 0)
+            advance_winner(t, m, m.entry1_id or m.entry2_id, 0, 0)
     db.commit()
     db.refresh(t)
     return t
@@ -88,7 +88,7 @@ def next_match(t: models.Tournament, m: models.TournamentMatch) -> models.Tourna
     return _match_at(t, m.round + 1, m.slot // 2)
 
 
-def _set_winner(t: models.Tournament, m: models.TournamentMatch, winner_id: int, s1: int, s2: int) -> None:
+def advance_winner(t: models.Tournament, m: models.TournamentMatch, winner_id: int, s1: int, s2: int) -> None:
     m.winner_id, m.score1, m.score2 = winner_id, s1, s2
     m.updated_at = datetime.now(timezone.utc)
     nxt = next_match(t, m)
@@ -114,7 +114,7 @@ def set_result(db: Session, t: models.Tournament, m: models.TournamentMatch, sco
         raise TournamentError("The next match already has a result – reset that one first.")
     if score1 < 0 or score2 < 0 or score1 == score2:
         raise TournamentError("Enter a result with a winner (no draws).")
-    _set_winner(t, m, m.entry1_id if score1 > score2 else m.entry2_id, score1, score2)
+    advance_winner(t, m, m.entry1_id if score1 > score2 else m.entry2_id, score1, score2)
     db.commit()
 
 

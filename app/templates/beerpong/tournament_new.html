@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% from "_macros.html" import cavatar %}
+{% block title %}New tournament{% endblock %}
+{% block content %}
+<h1>New tournament</h1>
+{% if error %}<p class="flash error">{{ error }}</p>{% endif %}
+<form method="post" action="/beerpong/tournaments/new" class="dnew" x-data='{ "mode": {{ form.mode | tojson }} }'>
+  <fieldset>
+    <legend>Tournament</legend>
+    <input name="name" value="{{ form.name }}" placeholder="Name, e.g. Summer Pong 2027" maxlength="80" required aria-label="Name">
+    <div class="seg" role="radiogroup" aria-label="Cups">
+      {% for c in cup_options %}<label><input type="radio" name="cups" value="{{ c }}" {% if c == form.cups %}checked{% endif %}><span>{{ c }} cups</span></label>{% endfor %}
+    </div>
+    <small class="muted">Knockout. With an odd number of teams the top seeds get a bye.</small>
+  </fieldset>
+
+  <fieldset>
+    <legend>Teams</legend>
+    <div class="seg" role="radiogroup" aria-label="How to build teams">
+      <label><input type="radio" name="mode" value="random" x-model="mode"><span>🎲 Random pairs</span></label>
+      <label><input type="radio" name="mode" value="fixed" x-model="mode"><span>✍️ Fixed teams</span></label>
+    </div>
+    <div x-show="mode === 'random'">
+      <div class="pick-grid">
+        {% for c in competitors %}
+          <label class="pick-chip"><input type="checkbox" name="players" value="{{ c.id }}" {% if c.id in form.players %}checked{% endif %}>
+            {{ cavatar(c, user, "xs") }} <span>{{ c.display_name }}</span></label>
+        {% endfor %}
+      </div>
+      <label>New guests <small class="muted">(separated by commas)</small>
+        <textarea name="guests" rows="2" placeholder="Kevin, Marco">{{ form.guests }}</textarea></label>
+      <small class="muted">The app shuffles everyone into teams of two – you need an even number of players.</small>
+    </div>
+    <div x-show="mode === 'fixed'" x-cloak>
+      <label>One team per line
+        <textarea name="teams" rows="5" placeholder="Cup Kings: Olli, Kevin&#10;Anna, Tim">{{ form.teams }}</textarea></label>
+      <small class="muted">“Name: player, player” – the name is optional. Members and guests are recognised by name, new names become guests.</small>
+    </div>
+    <label><input type="checkbox" name="shuffle" value="1" {% if form.shuffle %}checked{% endif %}> Random draw
+      <small class="muted">– otherwise the order is the seeding</small></label>
+  </fieldset>
+  <button type="submit">🏆 Create tournament</button>
+</form>
+{% endblock %}
+{% block scripts %}<script defer src="/static/vendor/alpine.min.js"></script>{% endblock %}

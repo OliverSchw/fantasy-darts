@@ -681,3 +681,21 @@ table.dstats .th-sort::after { font-size: 0.6em; }
 .tm-result { display: grid; grid-template-columns: 1fr 1fr; gap: 0 0.6rem; align-items: end; }
 .tm-result button { grid-column: 1 / -1; }
 .tmatch.is-live { border-color: #dc3545; }
+
+/* --- Bierpong ---------------------------------------------------------- */
+.bp-board { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-bottom: 0.8rem; }
+.bp-team { border: 2px solid var(--pico-muted-border-color); border-radius: calc(var(--pico-border-radius) * 1.5);
+  background: var(--pico-card-background-color); padding: 0.7rem 0.6rem; text-align: center; min-width: 0; display: flex; flex-direction: column; }
+.bp-team.won { border-color: var(--fd-gold); }
+.bp-name { font-weight: 700; font-size: 0.95rem; overflow-wrap: anywhere; }
+.bp-faces { display: flex; justify-content: center; gap: 0.2rem; margin: 0.35rem 0; }
+.bp-hits { font-size: 3rem; font-weight: 800; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.bp-cups { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.2rem; margin: 0.4rem auto 0.15rem; max-width: 7.5rem; }
+.bp-togo { display: block; font-size: 0.72rem; color: var(--pico-muted-color); margin-bottom: 0.5rem; }
+.bp-cups .cup { width: 0.85rem; height: 0.85rem; border-radius: 50%; background: #dc3545; box-shadow: inset 0 -2px 0 rgba(0,0,0,.2); }
+.bp-cups .cup.hit { background: var(--pico-muted-border-color); box-shadow: none; }
+.bp-team form { margin: auto 0 0; display: flex; flex-direction: column; gap: 0.35rem; }
+.bp-hit { margin: 0; padding: 0.9rem 0; font-size: 1.25rem; font-weight: 800; }
+.bp-undo { margin: 0; }
+.bp-teams { padding-left: 1.1rem; }
+.bp-teams li { margin-bottom: 0.2rem; }

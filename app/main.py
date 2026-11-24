@@ -14,7 +14,7 @@ from .auth import AdminRequired, LoginRequired
 from .db import create_tables
 from .season import SeasonNotImported
 from .settings import get_settings
-from .web import account, admin, admin_players, admin_rules, admin_schedule, darts, hub, members, my_teams, pages
+from .web import account, admin, admin_players, admin_rules, admin_schedule, beerpong, darts, hub, members, my_teams, pages
 from .web.common import redirect, render
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -88,6 +88,7 @@ app.include_router(pages.router)
 app.include_router(account.router)
 app.include_router(members.router)
 app.include_router(darts.router)
+app.include_router(beerpong.router)
 app.include_router(my_teams.router)
 app.include_router(admin.router)
 app.include_router(admin_players.router)

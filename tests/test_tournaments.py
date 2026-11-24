@@ -4,14 +4,14 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from app import models
+from app import competitors, models
 from app import tournaments as tour
 from app.darts import service
 from app.main import app
 
 
 def _guests(db, n):
-    return [service.create_guest(db, f"Player {i}").id for i in range(1, n + 1)]
+    return [competitors.create_guest(db, f"Player {i}").id for i in range(1, n + 1)]
 
 
 def _t(db, n, **kw):

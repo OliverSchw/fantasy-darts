@@ -41,8 +41,11 @@ SECTIONS: tuple[Section, ...] = (
         tabs=(("/darts", "🎯", "Play"), ("/darts/games", "🕒", "Games"), ("/darts/tournaments", "🏆", "Tournaments"),
               ("/darts/players", "📈", "Stats")),
     ),
-    Section(key="beerpong", name="Beer Pong", icon="🍺", href="/beerpong",
-            tagline="Run beer pong tournaments with teams and a bracket.", ready=False),
+    Section(
+        key="beerpong", name="Beer Pong", icon="🍺", href="/beerpong",
+        tagline="Count cups live, run tournaments with teams and a bracket.",
+        tabs=(("/beerpong", "🍺", "Play"), ("/beerpong/tournaments", "🏆", "Tournaments"), ("/beerpong/stats", "📈", "Stats")),
+    ),
 )
 
 # Untere Leiste auf der Startseite und den gemeinsamen Seiten (Account, Profile, Admin)

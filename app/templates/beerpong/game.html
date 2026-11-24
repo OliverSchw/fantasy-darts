@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% from "_macros.html" import cavatar %}
+{% block title %}{{ g.team_name(1) }} vs {{ g.team_name(2) }}{% endblock %}
+{% block content %}
+{% if tinfo %}<p class="dg-tour"><a href="/beerpong/tournaments/{{ tinfo.t.id }}">🏆 {{ tinfo.t.name }}</a> · {{ tinfo.title }}</p>{% endif %}
+<div class="dg-head">
+  <span>{{ g.cups }} cups · first to hit them all</span>
+  {% if g.status == "live" %}<mark class="live-badge">LIVE</mark>{% elif g.status == "abandoned" %}<mark class="role ch">abandoned</mark>{% endif %}
+</div>
+
+<div class="bp-board">
+  {% for side in (1, 2) %}
+    {% set hits = g.hits1 if side == 1 else g.hits2 %}
+    <div class="bp-team {% if g.winner_side == side %}won{% endif %}">
+      <div class="bp-name">{{ g.team_name(side) }}</div>
+      <div class="bp-faces">{% for c in g.side_players(side) %}{{ cavatar(c, user, "sm") }}{% endfor %}</div>
+      <div class="bp-hits">{% if g.winner_side == side %}🏆 {% endif %}{{ hits }}</div>
+      <div class="bp-cups" aria-label="{{ g.cups - hits }} cups left for the other team">
+        {% for i in range(g.cups) %}<span class="cup {% if i < hits %}hit{% endif %}"></span>{% endfor %}
+      </div>
+      {% if g.status == "live" %}<small class="bp-togo">{{ g.cups - hits }} to go</small>{% endif %}
+      {% if can_manage %}
+        <form method="post" action="/beerpong/games/{{ g.id }}/hit" onsubmit="this.dataset.busy = 1">
+          <input type="hidden" name="side" value="{{ side }}"><input type="hidden" name="v" value="{{ g.version }}">
+          <button name="delta" value="1" class="bp-hit" {% if g.status != "live" %}disabled{% endif %}>🍺 Hit!</button>
+          <button name="delta" value="-1" class="outline secondary small bp-undo" {% if not hits %}disabled{% endif %} aria-label="Take one cup back">−1</button>
+        </form>
+      {% endif %}
+    </div>
+  {% endfor %}
+</div>
+
+{% if g.status == "finished" %}
+  <article class="dg-winner">
+    <p>🍺 Winner: <strong>{{ g.team_name(g.winner_side) }}</strong> · {{ [g.hits1, g.hits2] | max }}:{{ [g.hits1, g.hits2] | min }}</p>
+    {% if tinfo %}<a href="/beerpong/tournaments/{{ tinfo.t.id }}" role="button" class="small">Back to the bracket</a>
+    {% else %}<a href="/beerpong/new" role="button" class="small">New game</a>{% endif %}
+  </article>
+{% elif g.status == "live" and not can_manage %}
+  <p class="muted dg-hint">Live – the score updates automatically.</p>
+{% endif %}
+
+{% if can_manage and g.status == "live" %}
+  <details class="dg-more">
+    <summary class="small-link">More…</summary>
+    <form method="post" action="/beerpong/games/{{ g.id }}/abandon" onsubmit="return confirm('Abandon this game? It will not count for the stats.')">
+      <button class="danger small">Abandon game</button>
+    </form>
+  </details>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>window.LIVE = {{ {"url": "/beerpong/games/" ~ g.id ~ "/version", "v": g.version, "live": g.status == "live"} | tojson }};</script>
+<script defer src="/static/live.js"></script>
+{% endblock %}

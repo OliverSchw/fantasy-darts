@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% from "_tbracket.html" import tbracket %}
+{% block title %}{{ t.name }}{% endblock %}
+{% block content %}
+<div class="title-row">
+  <hgroup>
+    <h1>🏆 {{ t.name }}</h1>
+    <p>{{ t.entries | length }} teams · {{ t.settings.cups }} cups</p>
+  </hgroup>
+</div>
+{% if winner %}
+  <article class="dg-winner"><p>🏆 Champion: <strong>{{ winner.display_name }}</strong></p></article>
+{% else %}
+  <p class="muted legend">Tap a match to start the game or enter a result.</p>
+{% endif %}
+{{ tbracket(t, cols, "/beerpong/tournaments/" ~ t.id, live, winner) }}
+
+<h3>Teams</h3>
+<ul class="bp-teams">
+  {% for e in t.entries %}<li><strong>{{ e.display_name }}</strong>{% if e.name %} <small class="muted">{{ e.competitors | map(attribute="display_name") | join(" & ") }}</small>{% endif %}</li>{% endfor %}
+</ul>
+
+{% if organizer %}
+  <details class="dg-more">
+    <summary class="small-link">Organizer options…</summary>
+    <form method="post" action="/beerpong/tournaments/{{ t.id }}/delete" onsubmit="return confirm('Delete this tournament? The games stay in the history.')">
+      <button class="danger small">Delete tournament</button>
+    </form>
+  </details>
+{% endif %}
+{% endblock %}

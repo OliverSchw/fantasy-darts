@@ -1,0 +1,46 @@
+{# Spieler-Auswahl für ein Team: bis zu 4 Felder, Mitglied/Gast aus der Liste oder neuer Gast #}
+{% macro team_picker(prefix, label, chosen, competitors, name_field, name_value) -%}
+<fieldset x-data='{ "n": {{ [chosen|length, 2]|max }}, "sel": {{ (chosen + ["", "", "", ""])[:4] | map("string") | list | tojson }} }'>
+  <legend>{{ label }}</legend>
+  <input name="{{ name_field }}" value="{{ name_value }}" placeholder="Team name (optional)" maxlength="60" aria-label="{{ label }} name">
+  {% for i in range(4) %}
+    <div class="prow" x-show="n > {{ i }}" {% if i >= [chosen|length, 2]|max %}x-cloak{% endif %}>
+      <span class="pnum">{{ i + 1 }}</span>
+      <select name="{{ prefix }}{{ i }}" x-model="sel[{{ i }}]" :disabled="n <= {{ i }}" aria-label="{{ label }} player {{ i + 1 }}">
+        <option value="">– choose –</option>
+        <optgroup label="Members">{% for c in competitors if not c.is_guest %}<option value="{{ c.id }}">{{ c.display_name }}</option>{% endfor %}</optgroup>
+        {% if competitors | selectattr("is_guest") | list %}
+          <optgroup label="Guests">{% for c in competitors if c.is_guest %}<option value="{{ c.id }}">{{ c.display_name }}</option>{% endfor %}</optgroup>
+        {% endif %}
+        <option value="guest">＋ New guest…</option>
+      </select>
+      <input name="{{ prefix }}g{{ i }}" placeholder="Guest name" maxlength="40" x-show="sel[{{ i }}] === 'guest'" x-cloak
+             :required="sel[{{ i }}] === 'guest' && n > {{ i }}" aria-label="Guest name">
+    </div>
+  {% endfor %}
+  <div class="btn-row left">
+    <button type="button" class="outline small" x-show="n < 4" @click="n++">＋ Player</button>
+    <button type="button" class="outline secondary small" x-show="n > 1" @click="n--; sel[n] = ''">− Player</button>
+  </div>
+</fieldset>
+{%- endmacro %}
+
+{# Ein Spiel in Listen #}
+{% macro bp_list(games, viewer) -%}
+<ul class="dgames">
+  {% for g in games %}
+    <li>
+      <a href="/beerpong/games/{{ g.id }}" class="dgame {{ g.status }}">
+        <span class="dgame-meta">{{ g.cups }} cups
+          {% if g.status == "live" %}<mark class="live-badge">LIVE</mark>{% else %}· {{ (g.finished_at or g.created_at) | when }}{% endif %}</span>
+        {% for side in (1, 2) %}
+          <span class="dgame-side {% if g.winner_side == side %}win{% endif %}">
+            <span class="nm">{{ g.team_name(side) }}</span>
+            <span class="legs">{{ g.hits1 if side == 1 else g.hits2 }}</span>
+          </span>
+        {% endfor %}
+      </a>
+    </li>
+  {% endfor %}
+</ul>
+{%- endmacro %}
