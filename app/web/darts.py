@@ -39,14 +39,16 @@ def _recent_games(db: Session, limit: int, status: str | None = None, competitor
 
 
 def _game_summaries(games: list[models.DartsGame]) -> list[dict]:
-    """Für Listen: Legs je Spieler aus den Aufnahmen."""
+    """Für Listen: pro Seite (Spieler bzw. Team) Name, Bilder, gewonnene Legs und ob gewonnen."""
     out = []
     for g in games:
-        legs = {p.position: 0 for p in g.players}
+        legs = [0] * g.n_sides
         for v in g.visits:
             if v.checkout:
-                legs[v.position] += 1
-        out.append({"game": g, "legs": legs})
+                legs[g.side_of(v.position)] += 1
+        sides = [{"name": g.side_name(s), "comps": [p.competitor for p in g.side_players(s)], "legs": legs[s],
+                  "win": g.status == "finished" and g.winning_side == s} for s in range(g.n_sides)]
+        out.append({"game": g, "sides": sides})
     return out
 
 
@@ -74,7 +76,7 @@ def darts_games(request: Request, db: Session = Depends(get_db), user: models.Us
 def new_game_form(request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_user)):
     me = competitors.competitor_for_user(db, user)
     return render(request, "darts/new.html", user=user, competitors=competitors.all_competitors(db),
-                  starts=START_SCORES, form={"start": 501, "legs": 3, "players": [me.id]})
+                  starts=START_SCORES, form={"start": 501, "legs": 3, "players": [me.id], "team_size": 1})
 
 
 @router.post("/new")
@@ -83,8 +85,9 @@ async def new_game(request: Request, db: Session = Depends(get_db), user: models
     try:
         start = int(form.get("start", 501))
         legs = int(form.get("legs", 1))
+        team_size = 2 if str(form.get("team_size", "1")) == "2" else 1
     except ValueError:
-        start, legs = 0, 0
+        start, legs, team_size = 0, 0, 1
     ids, errors = [], []
     for i in range(4):
         raw = str(form.get(f"p{i}", "")).strip()
@@ -99,12 +102,12 @@ async def new_game(request: Request, db: Session = Depends(get_db), user: models
     try:
         if errors:
             raise DartsError(errors[0])
-        game = service.create_game(db, start, legs, ids, user)
+        game = service.create_game(db, start, legs, ids, user, team_size=team_size)
     except DartsError as e:
         db.rollback()
         return render(request, "darts/new.html", status_code=400, user=user, error=str(e),
                       competitors=competitors.all_competitors(db), starts=START_SCORES,
-                      form={"start": start or 501, "legs": legs or 1, "players": ids})
+                      form={"start": start or 501, "legs": legs or 1, "players": ids, "team_size": team_size})
     return redirect(f"/darts/games/{game.id}")
 
 
@@ -115,17 +118,24 @@ async def new_game(request: Request, db: Session = Depends(get_db), user: models
 def game_page(game_id: int, request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_user)):
     game = _game(db, game_id)
     state = service.game_state(game)
-    players = []
-    for p in game.players:
-        last = next((v for v in reversed(game.visits) if v.position == p.position and v.leg_no == state.leg_no), None)
-        players.append({
-            "p": p, "c": p.competitor, "remaining": state.remaining[p.position], "legs": state.legs_won[p.position],
-            "turn": not state.finished and state.turn == p.position,
-            "leg_avg": leg_average(game.visits, p.competitor_id, state.leg_no),
-            "game_avg": leg_average(game.visits, p.competitor_id),
-            "last": last, "darts": sum(v.darts for v in game.visits if v.position == p.position and v.leg_no == state.leg_no),
+    # Eine Karte pro Seite (Einzel: pro Spieler, Doppel: pro Team)
+    cards = []
+    for side in range(state.n_sides):
+        members = game.side_players(side)
+        positions = {p.position for p in members}
+        leg = [v for v in game.visits if v.position in positions and v.leg_no == state.leg_no]
+        all_ = [v for v in game.visits if v.position in positions]
+        avg = lambda vs: 3 * sum(v.score for v in vs) / sum(v.darts for v in vs) if vs else None  # noqa: E731
+        cards.append({
+            "side": side, "c": members[0].competitor, "comps": [p.competitor for p in members],
+            "name": game.side_name(side), "remaining": state.remaining[side], "legs": state.legs_won[side],
+            "turn": not state.finished and state.side(state.turn) == side,
+            "thrower": game.players[state.turn].competitor.display_name
+                       if state.team_size > 1 and not state.finished and state.side(state.turn) == side else None,
+            "leg_avg": avg(leg), "game_avg": avg(all_), "last": leg[-1] if leg else None,
+            "darts": sum(v.darts for v in leg),
         })
-    rest = state.remaining[state.turn] if not state.finished else None
+    rest = state.remaining[state.side(state.turn)] if not state.finished else None
     # Verlauf des laufenden (bzw. letzten) Legs als Runden: [[visit spieler 0, visit spieler 1], ...]
     shown_leg = state.leg_no if not state.finished else (game.visits[-1].leg_no if game.visits else 1)
     leg_visits = [v for v in game.visits if v.leg_no == shown_leg]
@@ -138,7 +148,7 @@ def game_page(game_id: int, request: Request, db: Session = Depends(get_db), use
             rounds.append({})
         rounds[i][v.position] = {"v": v, "left": v.remaining_before - v.score}
     return render(
-        request, "darts/game.html", user=user, game=game, gs=state, players=players,
+        request, "darts/game.html", user=user, game=game, gs=state, cards=cards, throwers=game.players,
         can_score=service.can_score(user, game), can_manage=service.can_manage(user, game),
         rest=rest, route=checkout_route(rest) if rest else None,
         finishable=bool(rest and is_finishable(rest)), min_darts=min_darts(rest) if rest else None,
@@ -173,7 +183,8 @@ async def post_visit(game_id: int, request: Request, db: Session = Depends(get_d
         if visit.bust:
             flash(request, f"Bust! {score} was too much – no score.", "error")
         elif game.status == "finished":
-            flash(request, f"🎯 Game shot! {game.winner.display_name} wins.")
+            team = game.side_name(game.winning_side)
+            flash(request, f"🎯 Game shot! {team} {'win' if (game.team_size or 1) > 1 else 'wins'}.")
     except DartsError as e:
         db.rollback()
         flash(request, str(e), "error")

@@ -148,6 +148,7 @@ def export_platform(db: Session) -> dict:
         } for t in db.scalars(select(models.Tournament).order_by(models.Tournament.id))],
         "darts_games": [{
             "start_score": g.start_score, "legs_to_win": g.legs_to_win, "status": g.status, "winner_id": g.winner_id,
+            "team_size": g.team_size or 1, "winner_side": g.winner_side,
             "created_by_id": g.created_by_id, "created_at": _iso(g.created_at), "finished_at": _iso(g.finished_at),
             "tournament_match_id": g.tournament_match_id,
             "players": [[p.position, p.competitor_id] for p in g.players],
@@ -215,6 +216,7 @@ def restore_platform(db: Session, data: dict, user_map: dict[int, int]) -> bool:
 
     for g in data.get("darts_games", []):
         ng = models.DartsGame(start_score=g["start_score"], legs_to_win=g["legs_to_win"], status=g["status"],
+                              team_size=g.get("team_size", 1), winner_side=g.get("winner_side"),
                               winner_id=cmap.get(g["winner_id"]), created_by_id=uid(g["created_by_id"]),
                               created_at=ts(g["created_at"]), finished_at=ts(g["finished_at"]),
                               tournament_match_id=tmid(g["tournament_match_id"]))

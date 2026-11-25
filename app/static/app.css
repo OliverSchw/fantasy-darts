@@ -781,3 +781,7 @@ a.t-board:hover { border-color: var(--pico-primary); }
 .t-boardform { display: flex; gap: 0.5rem; align-items: end; margin-bottom: 0.6rem; }
 .t-boardform label { margin: 0; flex: 0 0 8rem; }
 .t-boardform input { margin: 0; }
+.dg-team { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dg-thrower { text-align: center; font-size: 0.75rem; font-weight: 700; color: var(--pico-primary); margin-bottom: 0.15rem; }
+.dg-members { font-size: 0.78rem; font-weight: 600; text-align: center; margin-top: 0.2rem; overflow-wrap: anywhere; }
+.dg-members a { color: inherit; text-decoration: none; }

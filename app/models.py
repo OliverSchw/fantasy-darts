@@ -197,8 +197,10 @@ class DartsGame(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     start_score: Mapped[int] = mapped_column(Integer, default=501)
     legs_to_win: Mapped[int] = mapped_column(Integer, default=1)
+    team_size: Mapped[int] = mapped_column(Integer, default=1)  # 2 = Doppel (A1, B1, A2, B2)
     status: Mapped[str] = mapped_column(String(12), default="live")  # live | finished | abandoned
-    winner_id: Mapped[int | None] = mapped_column(ForeignKey("competitors.id"), nullable=True)
+    winner_id: Mapped[int | None] = mapped_column(ForeignKey("competitors.id"), nullable=True)  # bei Doppel: 1. Spieler
+    winner_side: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 0, 1 ... (Seite = Position % Seiten)
     created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -210,6 +212,31 @@ class DartsGame(Base):
     visits: Mapped[list["DartsVisit"]] = relationship(
         cascade="all, delete-orphan", order_by="DartsVisit.seq", lazy="selectin")
     winner: Mapped[Competitor | None] = relationship(foreign_keys=[winner_id])
+
+    @property
+    def n_sides(self) -> int:
+        return max(1, len(self.players) // (self.team_size or 1))
+
+    def side_of(self, position: int) -> int:
+        return position % self.n_sides
+
+    def side_players(self, side: int) -> list["DartsGamePlayer"]:
+        return [p for p in self.players if self.side_of(p.position) == side]
+
+    def side_name(self, side: int) -> str:
+        return " & ".join(p.competitor.display_name for p in self.side_players(side))
+
+    @property
+    def winning_side(self) -> int | None:
+        """Gewinner-Seite (auch für ältere Spiele ohne winner_side)."""
+        if self.winner_side is not None:
+            return self.winner_side
+        p = next((p for p in self.players if p.competitor_id == self.winner_id), None)
+        return self.side_of(p.position) if p else None
+
+    def won_by(self, competitor_id: int) -> bool:
+        side = self.winning_side
+        return side is not None and any(p.competitor_id == competitor_id for p in self.side_players(side))
 
 
 class DartsGamePlayer(Base):

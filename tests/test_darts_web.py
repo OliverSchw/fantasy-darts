@@ -174,3 +174,32 @@ def test_admin_links_guest_to_account(olli, db, make_user):
     c = db.scalar(select(models.Competitor).where(models.Competitor.user_id == kev.id))
     assert c.id == kevin_guest.id and c.display_name == "kev"
     assert compute_stats(db)[c.id].ton40 == 1  # Stats sind mitgewandert
+
+
+def test_doubles_game(olli, db, make_user):
+    for n in ("anna", "ben", "cleo"):
+        make_user(n)
+    olli.get("/darts/new")  # legt Teilnehmer für alle Mitglieder an
+    ids = [_cid(db, n) for n in ("olli", "anna", "ben", "cleo")]  # T1: olli+ben, T2: anna+cleo
+    r = olli.post("/darts/new", data={"start": 301, "legs": 1, "team_size": 2,
+                                      "p0": ids[0], "p1": ids[1], "p2": ids[2], "p3": ids[3]}, follow_redirects=False)
+    assert r.status_code == 303, r.text[:300]
+    game = db.get(models.DartsGame, int(r.headers["location"].rsplit("/", 1)[1]))
+    assert game.team_size == 2 and game.side_name(0) == "olli & ben" and game.side_name(1) == "anna & cleo"
+    page = olli.get(f"/darts/games/{game.id}").text
+    assert "olli &amp; ben" in page and "olli throws" in page
+    # Reihenfolge: olli 180 (T1 Rest 121), anna 60, ben 81 (T1 Rest 40), cleo 60, olli checkt 40
+    for score, darts in ((180, None), (60, None), (81, None), (60, None), (40, 2)):
+        _visit(olli, game, score, darts); db.refresh(game)
+    assert game.status == "finished" and game.winning_side == 0
+    assert "olli &amp; ben" in olli.get("/darts").text
+    stats = compute_stats(db)
+    assert stats[ids[0]].wins == 1 and stats[ids[2]].wins == 1  # beide im Siegerteam
+    assert stats[ids[1]].wins == 0 and stats[ids[1]].games == 1
+    from app.darts.stats import head_to_head
+    assert head_to_head(db, ids[0], ids[2]).game_ids == []  # Partner sind keine Gegner
+    h = head_to_head(db, ids[0], ids[1])
+    assert (h.wins_a, h.wins_b) == (1, 0)
+    # Doppel braucht genau 4 Spieler
+    r = olli.post("/darts/new", data={"start": 301, "legs": 1, "team_size": 2, "p0": ids[0], "p1": ids[1], "p2": ids[2]})
+    assert r.status_code == 400 and "exactly 4" in r.text

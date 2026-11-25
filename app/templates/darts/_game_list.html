@@ -6,13 +6,13 @@
     {% set g = row.game %}
     <li>
       <a href="/darts/games/{{ g.id }}" class="dgame {{ g.status }}">
-        <span class="dgame-meta">{{ g.start_score }} · first to {{ g.legs_to_win }}
+        <span class="dgame-meta">{{ g.start_score }}{% if (g.team_size or 1) > 1 %} doubles{% endif %} · first to {{ g.legs_to_win }}
           {% if g.status == "live" %}<mark class="live-badge">LIVE</mark>{% else %}· {{ (g.finished_at or g.created_at) | when }}{% endif %}</span>
-        {% for p in g.players %}
-          <span class="dgame-side {% if g.winner_id == p.competitor_id %}win{% endif %}">
-            {{ cavatar(p.competitor, viewer, "xs") }}
-            <span class="nm">{{ p.competitor.display_name }}</span>
-            <span class="legs">{{ row.legs[p.position] }}</span>
+        {% for s in row.sides %}
+          <span class="dgame-side {% if s.win %}win{% endif %}">
+            {% for c in s.comps %}{{ cavatar(c, viewer, "xs") }}{% endfor %}
+            <span class="nm">{{ s.name }}</span>
+            <span class="legs">{{ s.legs }}</span>
           </span>
         {% endfor %}
       </a>
