@@ -12,7 +12,7 @@ from .. import tournaments as tour
 from .engine import DartsError, GameState, Visit, advance, make_visit, new_state, replay
 from .modes import apply_visit, new_mode_state, replay_mode
 from .bot import bot_visit, level_for
-from .throws import x01_visit
+from .throws import ask_double_darts, x01_visit
 
 
 # ---------------------------------------------------------------- Spiele
@@ -90,7 +90,7 @@ def play_bots(db: Session, game: models.DartsGame) -> list[models.DartsVisit]:
 
 
 def add_visit(db: Session, game: models.DartsGame, score: int | None, darts: int | None, seq: int,
-              throws: list[str] | None = None) -> Visit:
+              throws: list[str] | None = None, double_darts: int | None = None) -> Visit:
     """Speichert die nächste Aufnahme. seq = Anzahl Aufnahmen, die die Seite kannte (gegen Doppel-Tipps).
     Mit throws (Dart für Dart, z. B. ["T20", "T20", "D20"]) werden Punkte und Darts daraus bestimmt."""
     if game.status != "live":
@@ -100,24 +100,31 @@ def add_visit(db: Session, game: models.DartsGame, score: int | None, darts: int
     state = game_state(game)
     if _bot_to_throw(game, state):
         raise DartsError("It's the bot's turn.")
-    visit = _store_visit(db, game, state, score, darts, seq, throws)
+    visit = _store_visit(db, game, state, score, darts, seq, throws, double_darts)
     play_bots(db, game)
     return visit
 
 
 def _store_visit(db: Session, game: models.DartsGame, state: GameState, score: int | None, darts: int | None,
-                 seq: int, throws: list[str] | None) -> Visit:
+                 seq: int, throws: list[str] | None, double_darts: int | None = None) -> Visit:
+    rest = state.remaining[state.side(state.turn)]
     if throws:
         throws = [t.strip().upper() for t in throws]
         visit = x01_visit(state, throws)
+        double_darts = None  # Dart für Dart: wird aus den Darts selbst gezählt
     else:
         throws = None
         visit = make_visit(state, score, darts)
+        if double_darts is not None:
+            most = min(ask_double_darts(rest, score, visit.bust, visit.checkout), visit.darts)
+            if not (1 if visit.checkout else 0) <= double_darts <= most:
+                raise DartsError(f"At most {most} dart{'s' if most != 1 else ''} can have gone at a double here."
+                                 if most else "No dart could have gone at a double in this visit.")
     db.add(models.DartsVisit(
         game_id=game.id, seq=seq, leg_no=state.leg_no, position=visit.player,
         competitor_id=game.players[visit.player].competitor_id, score=visit.score, darts=visit.darts,
         bust=visit.bust, checkout=visit.checkout, remaining_before=state.remaining[state.side(visit.player)],
-        throws=throws,
+        throws=throws, double_darts=double_darts,
     ))
     advance(state, visit)  # Stand fortschreiben, um das Spielende zu erkennen
     if state.finished:

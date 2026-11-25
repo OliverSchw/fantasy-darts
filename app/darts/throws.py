@@ -56,3 +56,30 @@ def double_attempts(remaining_before: int, throws: list[str] | None) -> tuple[in
         if rest < 2:
             break
     return tries, hits
+
+
+# ---------------------------------------------------------------- Eingabe als Gesamtpunktzahl: "Darts aufs Doppel?"
+
+
+def _one_dart_values() -> set[int]:
+    return {m * n for m in (1, 2, 3) for n in range(1, 21)} | {25, 50}
+
+
+def max_double_darts(rest: int) -> int:
+    """Wie viele Darts einer Aufnahme höchstens aufs Doppel gehen konnten, wenn man bei `rest` beginnt:
+    3 auf einem Doppel-Rest (2-40 gerade, 50), sonst so viele, wie nach dem Vorlegen noch übrig sind."""
+    reach = {rest}
+    for darts_used in range(3):
+        if any(is_double_out(r) for r in reach):
+            return 3 - darts_used
+        reach = {r - v for r in reach for v in _one_dart_values() if r - v >= 2}
+    return 0
+
+
+def ask_double_darts(rest: int, score: int, bust: bool, checkout: bool) -> int:
+    """Lohnt die Frage "Darts aufs Doppel?" nach dieser Aufnahme? Gibt das Maximum zurück (0 = nicht fragen).
+    Ein Doppelversuch war nur möglich, wenn die Aufnahme bei höchstens 50 Rest endete, ausgecheckt oder
+    überworfen wurde - danach kann der Rest nicht mehr über 50 liegen."""
+    if not (checkout or bust or rest - score <= 50):
+        return 0
+    return max_double_darts(rest)

@@ -1,6 +1,6 @@
 // Minimaler Service Worker: macht die Seite als App installierbar und cached
 // statische Dateien. Seiten selbst kommen immer frisch vom Server.
-const CACHE = "fd-static-v28";
+const CACHE = "fd-static-v29";
 
 self.addEventListener("install", () => self.skipWaiting());
 

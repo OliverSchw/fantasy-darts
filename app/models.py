@@ -295,6 +295,8 @@ class DartsVisit(Base):
     checkout: Mapped[bool] = mapped_column(Boolean, default=False)
     remaining_before: Mapped[int] = mapped_column(Integer)
     throws: Mapped[list | None] = mapped_column(JSON, nullable=True)  # Partyspiele: Dart-Codes, z. B. ["T20", "S5", "M"]
+    # Eingabe als Gesamtpunktzahl: wie viele Darts aufs Doppel gingen (für die Doppelquote; None = nicht angegeben)
+    double_darts: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 

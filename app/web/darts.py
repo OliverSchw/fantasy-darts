@@ -13,6 +13,7 @@ from ..charts import line_chart
 from ..competitors import CompetitorError
 from ..darts import service
 from ..darts.checkouts import checkout_route, is_finishable, min_darts
+from ..darts.throws import max_double_darts
 from ..darts.engine import START_SCORES, DartsError
 from ..darts.bot import LEVELS as BOT_LEVELS
 from ..darts.modes import MODES, TRAINING, dart_label, new_mode_state
@@ -216,6 +217,7 @@ def game_page(game_id: int, request: Request, db: Session = Depends(get_db), use
         can_score=service.can_score(user, game), can_manage=service.can_manage(user, game),
         rest=rest, route=checkout_route(rest) if rest else None,
         finishable=bool(rest and is_finishable(rest)), min_darts=min_darts(rest) if rest else None,
+        max_dbl=max_double_darts(rest) if rest else 0,
         rounds=rounds, shown_leg=shown_leg, n_visits=len(game.visits), tinfo=_tournament_info(db, game),
     )
 
@@ -298,12 +300,14 @@ async def post_visit(game_id: int, request: Request, db: Session = Depends(get_d
         score = None if throws else int(str(form.get("score", "")).strip())
         darts_raw = str(form.get("darts", "")).strip()
         darts = int(darts_raw) if darts_raw and not throws else None
+        dd_raw = str(form.get("double_darts", "")).strip()
+        double_darts = int(dd_raw) if dd_raw and not throws else None
     except ValueError:
         flash(request, "Please enter a number.", "error")
         return redirect(f"/darts/games/{game.id}")
     try:
         n_before = seq + 1
-        visit = service.add_visit(db, game, score, darts, seq, throws=throws or None)
+        visit = service.add_visit(db, game, score, darts, seq, throws=throws or None, double_darts=double_darts)
         for bv in game.visits[n_before:]:
             c = game.players[bv.position].competitor
             darts_txt = " · ".join(dart_label(t) for t in bv.throws or [])

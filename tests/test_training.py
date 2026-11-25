@@ -256,3 +256,60 @@ def test_web_flow(olli, db):
     p = olli.get(f"/darts/players/{me}").text
     assert "Training" in p and "121 checkouts" in p and "Doubles hit" in p
     assert "🏋️ Training" in olli.get("/darts").text
+
+
+# ---------------------------------------------------------------- Gesamtpunktzahl + "Darts aufs Doppel?"
+
+
+def test_max_and_ask_double_darts():
+    from app.darts.throws import ask_double_darts, max_double_darts
+    assert [max_double_darts(r) for r in (40, 50, 2, 41, 60, 100, 110, 130, 170, 3)] == [3, 3, 3, 2, 2, 2, 2, 1, 1, 2]
+    assert ask_double_darts(140, 100, False, False) == 1  # 40 übrig - letzter Dart könnte aufs Doppel gegangen sein
+    assert ask_double_darts(140, 60, False, False) == 0  # 80 übrig - kein Doppelversuch möglich
+    assert ask_double_darts(32, 0, False, False) == 3
+    assert ask_double_darts(32, 40, True, False) == 3  # Bust
+    assert ask_double_darts(501, 180, False, False) == 0
+
+
+def test_double_darts_with_visit_totals(db):
+    a, b = (competitors.create_guest(db, n).id for n in ("A", "B"))
+    g = service.create_game(db, 301, 1, [a, b], None)
+    service.add_visit(db, g, 180, None, 0)
+    service.add_visit(db, g, 0, None, 1)
+    with pytest.raises(DartsError):  # von 121 aus geht höchstens 1 Dart aufs Doppel (erst zweimal vorlegen)
+        service.add_visit(db, g, 81, None, 2, double_darts=3)
+    service.add_visit(db, g, 81, None, 2, double_darts=0)  # 40 übrig, nichts aufs Doppel
+    service.add_visit(db, g, 0, None, 3)
+    service.add_visit(db, g, 0, None, 4, double_darts=3)  # dreimal D20 verfehlt
+    service.add_visit(db, g, 0, None, 5)
+    with pytest.raises(DartsError):
+        service.add_visit(db, g, 40, 2, 6, double_darts=0)  # Checkout braucht mindestens einen Dart aufs Doppel
+    with pytest.raises(DartsError):
+        service.add_visit(db, g, 40, 2, 6, double_darts=3)  # mehr als geworfen
+    service.add_visit(db, g, 40, 2, 6, double_darts=2)
+    assert g.status == "finished"
+    st = compute_stats(db)[a]
+    assert (st.double_darts, st.double_hits) == (5, 1) and st.double_pct == 20
+    # Angabe "keine Doppel-Darts möglich" wird abgelehnt
+    g2 = service.create_game(db, 301, 1, [a, b], None)
+    with pytest.raises(DartsError):
+        service.add_visit(db, g2, 60, None, 0, double_darts=1)
+
+
+def test_double_darts_web(olli, db):
+    me = competitors.competitor_for_user(db, db.scalar(select(models.User))).id
+    r = olli.post("/darts/new", data={"mode": "x01", "start": 301, "legs": 1, "p0": str(me)}, follow_redirects=False)
+    gid = int(r.headers["location"].rsplit("/", 1)[1])
+    assert "scorer(301, false, 0, 0)" in olli.get(f"/darts/games/{gid}").text  # bei 301 kein Doppel erreichbar
+    olli.post(f"/darts/games/{gid}/visit", data={"seq": 0, "score": 180})
+    assert "scorer(121, true, 3, 1)" in olli.get(f"/darts/games/{gid}").text
+    olli.post(f"/darts/games/{gid}/visit", data={"seq": 1, "score": 81, "double_darts": "1"})
+    olli.post(f"/darts/games/{gid}/visit", data={"seq": 2, "score": 40, "darts": "1", "double_darts": "1"})
+    g = db.get(models.DartsGame, gid)
+    assert [v.double_darts for v in g.visits] == [None, 1, 1] and g.status == "finished"
+    r = olli.post("/darts/new", data={"mode": "x01", "start": 301, "legs": 1, "p0": str(me)}, follow_redirects=False)
+    gid2 = int(r.headers["location"].rsplit("/", 1)[1])
+    r = olli.post(f"/darts/games/{gid2}/visit", data={"seq": 0, "score": 0, "double_darts": "x"})
+    assert r.status_code == 200 and "Please enter a number" in r.text and not db.get(models.DartsGame, gid2).visits
+    r = olli.post(f"/darts/games/{gid2}/visit", data={"seq": 0, "score": 60, "double_darts": "1"})
+    assert "No dart could have gone at a double" in r.text
