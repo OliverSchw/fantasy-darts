@@ -32,10 +32,11 @@ window.fdCaller = {
 };
 
 document.addEventListener("alpine:init", function () {
-  Alpine.data("scorer", function (rest, finishable, minDarts) {
+  Alpine.data("scorer", function (rest, finishable, minDarts, maxDbl) {
     var IMPOSSIBLE = [163, 166, 169, 172, 173, 175, 176, 178, 179];
+    function range(a, b) { var r = []; for (var i = a; i <= b; i++) r.push(i); return r; }
     return {
-      entry: "", error: "", busy: false, needDarts: false,
+      entry: "", error: "", busy: false, needDarts: false, dbl: null,
       press(d) { this.error = ""; if (this.entry.length < 3) this.entry = (this.entry + d).replace(/^0+(?=\d)/, ""); },
       back() { this.error = ""; this.entry = this.entry.slice(0, -1); },
       quick(n) { this.entry = String(n); this.ok(); },
@@ -43,17 +44,32 @@ document.addEventListener("alpine:init", function () {
         var score = parseInt(this.entry || "0", 10);
         if (score > 180 || IMPOSSIBLE.indexOf(score) >= 0) { this.error = score + " isn't possible"; return; }
         if (finishable && score === rest) { this.needDarts = true; return; }
-        this.send(score, "");
+        var left = rest - score, bust = score > rest || left === 1 || score === rest;
+        // Doppelversuch möglich? Nur wenn die Aufnahme bei höchstens 50 Rest endet (oder überworfen wurde)
+        if (maxDbl > 0 && (bust || left <= 50)) {
+          this.dbl = { score: score, darts: "", options: range(0, maxDbl),
+                       note: bust ? "Bust – how many of your darts went at a double?" : "For your double rate – " + left + " left." };
+          return;
+        }
+        this.send(score, "", "");
       },
-      send(score, darts) {
+      pickDarts(d) {  // Checkout: mit d Darts - davon mindestens einer aufs Doppel
+        this.needDarts = false;
+        var most = Math.min(d, maxDbl);
+        if (most <= 1) { this.send(rest, d, 1); return; }
+        this.dbl = { score: rest, darts: d, options: range(1, most), note: "Including the one that hit." };
+      },
+      sendDbl(k) { var x = this.dbl; this.dbl = null; this.send(x.score, x.darts, k); },
+      send(score, darts, dbl) {
         if (this.busy) return;
         this.busy = true;
         this.$refs.score.value = score;
         this.$refs.darts.value = darts;
+        this.$refs.dbl.value = dbl === undefined ? "" : dbl;
         var form = this.$refs.form;
         window.fdCaller.say(window.fdCaller.phrase(score, rest, finishable), function () { form.submit(); });
       },
-      typing() { return this.entry !== "" || this.needDarts; },
+      typing() { return this.entry !== "" || this.needDarts || !!this.dbl; },
     };
   });
 

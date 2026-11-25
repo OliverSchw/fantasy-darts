@@ -84,6 +84,11 @@ wählen; die Wahl merkt sich das Handy. Dart für Dart rechnet die App Rest, Bus
 mit einem Doppel) und zählt die **Doppelquote**: jeder Dart auf einen Rest, der mit einem Doppel ausgeht
 (2–40 gerade, bei 50 nur Würfe Richtung Bull), ist ein Versuch. Die Quote steht in den Stats und im Vergleich.
 
+**„Darts at the double?“** Auch bei *Visit total* zählt die Doppelquote: Wenn in der Aufnahme ein Doppelversuch
+möglich war (sie endet bei höchstens 50 Rest, mit Checkout oder Bust), fragt die App kurz, wie viele Darts aufs
+Doppel gingen. Die Knöpfe gehen nur so weit wie möglich: bei 40 Rest 0–3, bei 100 höchstens 2 (erst T20),
+bei 121 höchstens 1, beim Checkout ab 1. *Skip* lässt die Angabe weg.
+
 **Elo, Formkurve, Erfolge:** Jeder startet mit 1000 Elo. Nach jedem beendeten Spiel (X01 und Partyspiele)
 gewinnt der Sieger Punkte vom Verlierer, gegen Stärkere mehr als gegen Schwächere (K = 32, bei mehreren
 Gegnern aufgeteilt, im Doppel zählt der Schnitt des Teams). Unter 5 Spielen gilt die Wertung als vorläufig.

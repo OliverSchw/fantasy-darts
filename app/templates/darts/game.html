@@ -52,10 +52,11 @@
     <label><input type="radio" :checked="perDart" @change="perDart = true"><span>Dart by dart</span></label>
   </div>
   <form method="post" action="/darts/games/{{ game.id }}/visit" class="dg-pad" x-ref="form" x-show="!perDart"
-        x-data="scorer({{ rest }}, {{ 'true' if finishable else 'false' }}, {{ min_darts or 0 }})" @submit.prevent="ok()">
+        x-data="scorer({{ rest }}, {{ 'true' if finishable else 'false' }}, {{ min_darts or 0 }}, {{ max_dbl }})" @submit.prevent="ok()">
     <input type="hidden" name="seq" value="{{ n_visits }}">
     <input type="hidden" name="score" x-ref="score">
     <input type="hidden" name="darts" x-ref="darts">
+    <input type="hidden" name="double_darts" x-ref="dbl">
     <noscript><input name="score" inputmode="numeric" placeholder="Score" aria-label="Score"><button>Enter</button></noscript>
 
     <div class="dg-display" :class="{ error: error }" aria-live="polite">
@@ -80,9 +81,20 @@
       <div>
         <p><strong>Game shot!</strong> With how many darts?</p>
         <div class="btn-row">
-          {% for d in (1, 2, 3) %}{% if d >= (min_darts or 1) %}<button type="button" @click="send({{ rest }}, {{ d }})">{{ d }}</button>{% endif %}{% endfor %}
+          {% for d in (1, 2, 3) %}{% if d >= (min_darts or 1) %}<button type="button" @click="pickDarts({{ d }})">{{ d }}</button>{% endif %}{% endfor %}
         </div>
         <button type="button" class="outline secondary small" @click="needDarts = false">Cancel</button>
+      </div>
+    </div>
+
+    {# Für die Doppelquote: wie viele Darts gingen aufs Doppel? (nur wenn ein Doppelversuch möglich war) #}
+    <div class="dg-dialog" x-show="dbl" x-cloak @keydown.escape.window="dbl = null">
+      <div>
+        <p><strong>Darts at the double?</strong><br><small class="muted" x-text="dbl ? dbl.note : ''"></small></p>
+        <div class="btn-row">
+          <template x-for="k in (dbl ? dbl.options : [])" :key="k"><button type="button" @click="sendDbl(k)" x-text="k"></button></template>
+        </div>
+        <button type="button" class="outline secondary small" @click="sendDbl('')">Skip</button>
       </div>
     </div>
   </form>

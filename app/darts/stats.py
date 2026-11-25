@@ -35,7 +35,7 @@ class PlayerStats:
     best_leg: int | None = None  # wenigste Darts für ein gewonnenes Leg
     checkout_chances: int = 0  # Aufnahmen, die auf einem ausmachbaren Rest begonnen haben
     checkouts: int = 0
-    double_darts: int = 0  # nur aus Aufnahmen, die Dart für Dart eingegeben wurden
+    double_darts: int = 0  # aus Dart-für-Dart-Aufnahmen und der Angabe "Darts aufs Doppel"
     double_hits: int = 0
 
     @property
@@ -98,6 +98,9 @@ def compute_stats(db: Session, competitor_ids: list[int] | None = None,
             tries, hits = double_attempts(v.remaining_before, v.throws)
             s.double_darts += tries
             s.double_hits += hits
+        elif v.double_darts is not None:  # Gesamtpunktzahl mit Angabe "Darts aufs Doppel"
+            s.double_darts += v.double_darts
+            s.double_hits += 1 if v.checkout else 0
         if v.checkout:
             s.checkouts += 1
             s.legs_won += 1
