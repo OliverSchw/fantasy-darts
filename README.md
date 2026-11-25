@@ -81,6 +81,13 @@ Vergleich. Sind alle Gruppenspiele gespielt, entsteht der K.-o.-Baum automatisch
 pro Gruppe über Kreuz (A1–B2, B1–A2), sonst nach Bilanz gesetzt. Danach sind Gruppenergebnisse gesperrt;
 der Organisator kann den K.-o. zurücksetzen, solange dort noch nichts gespielt ist.
 
+**Format „League“** (Liga, bei Darts und Beer Pong): jeder gegen jeden, wahlweise nur Hinrunde oder
+Hin- und Rückrunde (*Home & away*, in der Rückrunde mit getauschten Seiten), aufgeteilt in **Spieltage**
+(niemand spielt zweimal am selben Spieltag, wer zuerst wirft, wechselt). Tabelle: 2 Punkte pro Sieg, dann
+Differenz, erzielte Legs/Becher, direkter Vergleich. Sind alle Spiele gespielt, ist der Tabellenerste Meister.
+Eine spätere Ergebnisänderung bestimmt den Meister neu. Die Spiele können über Tage oder Wochen verteilt
+gespielt werden; der aktuelle Spieltag ist markiert, Scheiben/Push/TV-Ansicht funktionieren wie im Turnier.
+
 **Scheiben / Tische:** Beim Anlegen festlegen, wie viele Scheiben (Darts) bzw. Tische (Beer Pong) es gibt.
 Sie werden durchnummeriert, und die App setzt automatisch das nächste spielbare Match auf jede freie
 Scheibe – niemand muss auf zwei Scheiben gleichzeitig spielen. Reihenfolge: Gruppenspiele nach Spieltag

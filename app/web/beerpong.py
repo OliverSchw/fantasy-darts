@@ -13,7 +13,7 @@ from ..auth import require_user
 from ..competitors import CompetitorError
 from ..db import get_db
 from .common import flash, redirect, render
-from .tournament_pages import Sport, add_tournament_routes, read_boards, read_format
+from .tournament_pages import Sport, add_tournament_routes, read_boards, read_format, read_league
 
 router = APIRouter(prefix="/beerpong")
 ERRORS = (bp.BeerpongError, CompetitorError, tour.TournamentError)
@@ -152,7 +152,7 @@ def bp_tournament_form(request: Request, db: Session = Depends(get_db), user: mo
     return render(request, "beerpong/tournament_new.html", user=user, competitors=competitors.all_competitors(db),
                   cup_options=bp.CUP_OPTIONS,
                   form={"name": "", "cups": 10, "mode": "random", "players": [], "guests": "", "teams": "", "shuffle": True,
-                        "format": "knockout", "groups": "", "advance": "2", "boards": 0})
+                        "format": "knockout", "groups": "", "advance": "2", "league_rounds": "1", "boards": 0})
 
 
 @router.post("/tournaments/new")
@@ -163,6 +163,7 @@ async def bp_tournament_new(request: Request, db: Session = Depends(get_db), use
             "players": [int(x) for x in form.getlist("players") if str(x).isdigit()],
             "guests": str(form.get("guests", "")), "teams": str(form.get("teams", "")), "shuffle": bool(form.get("shuffle")),
             "format": form.get("format") or "knockout", "groups": str(form.get("groups", "")), "advance": str(form.get("advance", "2")),
+            "league_rounds": str(form.get("league_rounds", "1")),
             "boards": str(form.get("boards", "0"))}
     try:
         if keep["cups"] not in bp.CUP_OPTIONS:
@@ -176,7 +177,7 @@ async def bp_tournament_new(request: Request, db: Session = Depends(get_db), use
                 ids.append(competitors.create_guest(db, name).id)
             teams, names = competitors.random_pairs(ids), None
         t = tour.create_tournament(db, "beerpong", keep["name"], teams, {"cups": keep["cups"], "boards": read_boards(form)}, user,
-                                   shuffle=keep["shuffle"], entry_names=names, groups=groups, advance=advance)
+                                   shuffle=keep["shuffle"], entry_names=names, groups=groups, advance=advance, league_rounds=read_league(form))
     except ERRORS as e:
         db.rollback()
         return render(request, "beerpong/tournament_new.html", status_code=400, user=user, error=str(e),

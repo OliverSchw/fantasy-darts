@@ -315,7 +315,17 @@ class Tournament(Base):
 
     @property
     def has_groups(self) -> bool:
-        return (self.settings or {}).get("format") == "groups"
+        """Gruppenphase (auch eine Liga ist eine einzige Gruppe - nur ohne K.-o. danach)."""
+        return (self.settings or {}).get("format") in ("groups", "league")
+
+    @property
+    def is_league(self) -> bool:
+        """Liga: jeder gegen jeden (optional mit Rückrunde) nach Spieltagen, Tabellenerster gewinnt."""
+        return (self.settings or {}).get("format") == "league"
+
+    @property
+    def matchdays(self) -> int:
+        return max((m.matchday or 0 for m in self.group_matches), default=0)
 
     @property
     def group_matches(self) -> list["TournamentMatch"]:
@@ -378,6 +388,7 @@ class TournamentMatch(Base):
     bye: Mapped[bool] = mapped_column(Boolean, default=False)  # Freilos: Gegner fehlt, Sieger steht fest
     group_no: Mapped[int | None] = mapped_column(Integer, nullable=True)  # gesetzt = Gruppenspiel
     board: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Scheibe/Tisch (1, 2 ...), automatisch zugeteilt
+    matchday: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Spieltag (1, 2 ...) der Gruppen-/Ligaspiele
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     entry1: Mapped[TournamentEntry | None] = relationship(foreign_keys=[entry1_id], lazy="joined")

@@ -70,6 +70,7 @@ def add_tournament_routes(router: APIRouter, sp: Sport) -> None:
         ts = db.scalars(select(models.Tournament).where(models.Tournament.sport == sp.key)
                         .order_by(models.Tournament.created_at.desc(), models.Tournament.id.desc())).all()
         return render(request, "tournament/list.html", user=user, sp=sp, tournaments=ts, entry_by_id=tour.entry_by_id,
+                      format_label=tour.format_label,
                       fame=tour.hall_of_fame(db, sp.key))
 
     @router.get("/tournaments/{tid:int}", name=f"{sp.key}_tournament")
@@ -82,7 +83,7 @@ def add_tournament_routes(router: APIRouter, sp: Sport) -> None:
                       winner=tour.entry_by_id(t, t.winner_entry_id), organizer=tour.can_organize(user, t),
                       ko_started=tour.knockout_started(t), match_title=tour.match_title,
                       results=tour.entry_results(t), extra=sp.extra_stats(db, t) if sp.extra_stats else {},
-                      bv=tour.board_view(t),
+                      bv=tour.board_view(t), league=tour.league_view(t) if t.is_league else None,
                       plays=any(c.user_id == user.id for e in t.entries for c in e.competitors))
 
     @router.get("/tournaments/{tid:int}/matches/{mid:int}", name=f"{sp.key}_tournament_match")
@@ -205,13 +206,20 @@ def add_tournament_routes(router: APIRouter, sp: Sport) -> None:
 
 
 def read_format(form) -> tuple[int | None, int]:
-    """Turnierformat aus dem Formular: (Anzahl Gruppen oder None für reines K.-o., Qualifikanten pro Gruppe)."""
+    """Turnierformat aus dem Formular: (Anzahl Gruppen oder None für reines K.-o./Liga, Qualifikanten pro Gruppe)."""
     if form.get("format") != "groups":
         return None, 2
     try:
         return int(form.get("groups", 2)), int(form.get("advance", 2))
     except ValueError:
         raise tour.TournamentError("Choose the number of groups and how many go through.") from None
+
+
+def read_league(form) -> int | None:
+    """Liga-Runden aus dem Formular: 1 (Hinrunde), 2 (Hin- und Rückrunde) oder None (kein Liga-Format)."""
+    if form.get("format") != "league":
+        return None
+    return 2 if str(form.get("league_rounds", "1")) == "2" else 1
 
 
 def read_boards(form) -> int:

@@ -7,7 +7,7 @@
 <div class="title-row">
   <hgroup>
     <h1>🏆 {{ t.name }}</h1>
-    <p>{{ t.entries | length }} {{ sp.label(t) }} · {{ sp.summary(t) }}{% if t.has_groups %} · {{ groups | length }} groups, top {{ t.settings.advance }} go through{% endif %}</p>
+    <p>{{ t.entries | length }} {{ sp.label(t) }} · {{ sp.summary(t) }}{% if league %} · league, {{ league.days | length }} matchdays{{ " (home & away)" if league.rounds == 2 }}{% elif t.has_groups %} · {{ groups | length }} groups, top {{ t.settings.advance }} go through{% endif %}</p>
   </hgroup>
   <a href="{{ sp.base }}/tournaments/{{ t.id }}/tv" role="button" class="outline small" target="_blank" title="Full screen for a TV or projector">📺 TV view</a>
 </div>
@@ -45,7 +45,48 @@
   {% endif %}
 {% endif %}
 
-{% if groups %}
+{% if league %}
+  <h2 class="t-stage">📋 League table</h2>
+  <div class="table-wrap">
+    <table class="compact t-table league-table">
+      <thead><tr><th>#</th><th>{{ "Team" if sp.label(t) == "teams" else "Player" }}</th><th class="num" title="played">P</th>
+        <th class="num" title="won">W</th><th class="num" title="lost">L</th><th class="num" title="{{ sp.score_label }} difference">+/−</th>
+        <th class="num" title="points (2 per win)">Pts</th></tr></thead>
+      <tbody>
+        {% for s in league.rows %}
+          <tr class="{% if loop.first and s.played %}q{% endif %}">
+            <td>{{ loop.index }}</td>
+            <td class="t-name"><span class="dname">{% if s.entry.competitors | length == 1 %}{{ cavatar(s.entry.competitors[0], user, "xs") }}{% endif %}{{ s.entry.display_name }}</span></td>
+            <td class="num">{{ s.played }}</td>
+            <td class="num">{{ s.won }}</td>
+            <td class="num">{{ s.lost }}</td>
+            <td class="num">{{ "%+d" | format(s.diff) if s.played else "–" }}</td>
+            <td class="num"><strong>{{ 2 * s.won }}</strong></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="muted legend">2 points per win · ranking: points, then {{ sp.score_label }} difference, then {{ sp.score_label }} won, then head-to-head.</p>
+
+  <h2 class="t-stage">📅 Matchdays</h2>
+  {% for d in league.days %}
+    <details class="t-day{% if d.current %} current{% endif %}" {% if d.current or (not d.done and loop.index <= (league.current or 0) + 1) %}open{% endif %}>
+      <summary><strong>Matchday {{ d.no }}</strong>
+        {% if d.current %}<mark class="t-btag">now</mark>{% elif d.done %}<small class="muted">✓ done</small>{% endif %}
+        {% if league.rounds == 2 and d.no == (league.days | length) // 2 + 1 %}<small class="muted">· second half</small>{% endif %}</summary>
+      <ul class="t-matches">
+        {% for m in d.matches %}
+          <li><a href="{{ sp.base }}/tournaments/{{ t.id }}/matches/{{ m.id }}" class="{% if m.is_played %}played{% endif %} {% if m.id in live %}is-live{% endif %}">
+            <span class="{% if m.winner_id == m.entry1_id %}w{% endif %}">{{ m.entry1.display_name }}</span>
+            <span class="t-res">{% if m.is_played %}{{ m.score1 }}:{{ m.score2 }}{% elif m.id in live %}<mark class="live-badge">LIVE</mark>{% elif m.board %}<mark class="t-btag">{{ sp.board_label[0] }}{{ m.board }}</mark>{% else %}vs{% endif %}</span>
+            <span class="{% if m.winner_id == m.entry2_id %}w{% endif %}">{{ m.entry2.display_name }}</span>
+          </a></li>
+        {% endfor %}
+      </ul>
+    </details>
+  {% endfor %}
+{% elif groups %}
   <h2 class="t-stage">Group stage</h2>
   {% if not ko_started %}<p class="muted legend">Tap a match to play it or enter the result. When all group matches are done, the knockout bracket is drawn automatically.</p>{% endif %}
   <div class="t-groups">
@@ -84,7 +125,7 @@
 {% if cols %}
   {% if groups %}<h2 class="t-stage">Knockout</h2>{% elif not winner %}<p class="muted legend">Tap a match to start the game or enter a result.</p>{% endif %}
   {{ tbracket(t, cols, sp.base ~ "/tournaments/" ~ t.id, live, winner) }}
-{% elif groups %}
+{% elif groups and not league %}
   <p class="muted center">🔒 The knockout bracket appears here once all group matches are played.</p>
 {% endif %}
 

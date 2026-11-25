@@ -864,3 +864,11 @@ a.t-board:hover { border-color: var(--pico-primary); }
 .hub-news-title { margin-top: 1.5rem; }
 .news a { text-decoration: none; color: inherit; }
 .news a:hover { color: var(--pico-primary); }
+
+/* Liga */
+.league-table td.t-name .dname { display: inline-flex; gap: 0.35rem; align-items: center; }
+.t-day { margin-bottom: 0.5rem; border: 1px solid var(--pico-muted-border-color); border-radius: var(--pico-border-radius);
+  padding: 0.4rem 0.7rem; background: var(--pico-card-background-color); }
+.t-day.current { border-color: var(--pico-primary); }
+.t-day > summary { margin: 0; }
+.t-day .t-matches { margin: 0.5rem 0 0.2rem; }
