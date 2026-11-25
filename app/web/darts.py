@@ -307,7 +307,8 @@ async def post_visit(game_id: int, request: Request, db: Session = Depends(get_d
         return redirect(f"/darts/games/{game.id}")
     try:
         n_before = seq + 1
-        visit = service.add_visit(db, game, score, darts, seq, throws=throws or None, double_darts=double_darts)
+        visit = service.add_visit(db, game, score, darts, seq, throws=throws or None, double_darts=double_darts,
+                                  require_double=True)
         for bv in game.visits[n_before:]:
             c = game.players[bv.position].competitor
             darts_txt = " · ".join(dart_label(t) for t in bv.throws or [])

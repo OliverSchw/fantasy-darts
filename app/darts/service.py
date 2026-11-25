@@ -90,7 +90,8 @@ def play_bots(db: Session, game: models.DartsGame) -> list[models.DartsVisit]:
 
 
 def add_visit(db: Session, game: models.DartsGame, score: int | None, darts: int | None, seq: int,
-              throws: list[str] | None = None, double_darts: int | None = None) -> Visit:
+              throws: list[str] | None = None, double_darts: int | None = None,
+              require_double: bool = False) -> Visit:
     """Speichert die nächste Aufnahme. seq = Anzahl Aufnahmen, die die Seite kannte (gegen Doppel-Tipps).
     Mit throws (Dart für Dart, z. B. ["T20", "T20", "D20"]) werden Punkte und Darts daraus bestimmt."""
     if game.status != "live":
@@ -100,13 +101,16 @@ def add_visit(db: Session, game: models.DartsGame, score: int | None, darts: int
     state = game_state(game)
     if _bot_to_throw(game, state):
         raise DartsError("It's the bot's turn.")
-    visit = _store_visit(db, game, state, score, darts, seq, throws, double_darts)
+    visit = _store_visit(db, game, state, score, darts, seq, throws, double_darts, require_double)
     play_bots(db, game)
     return visit
 
 
 def _store_visit(db: Session, game: models.DartsGame, state: GameState, score: int | None, darts: int | None,
-                 seq: int, throws: list[str] | None, double_darts: int | None = None) -> Visit:
+                 seq: int, throws: list[str] | None, double_darts: int | None = None,
+                 require_double: bool = False) -> Visit:
+    """require_double: bei Eingabe als Gesamtpunktzahl muss angegeben werden, wie viele Darts aufs Doppel
+    gingen, sobald ein Doppelversuch möglich war (so fragt die Web-Seite immer nach)."""
     rest = state.remaining[state.side(state.turn)]
     if throws:
         throws = [t.strip().upper() for t in throws]
@@ -115,8 +119,12 @@ def _store_visit(db: Session, game: models.DartsGame, state: GameState, score: i
     else:
         throws = None
         visit = make_visit(state, score, darts)
+        most = min(ask_double_darts(rest, score, visit.bust, visit.checkout), visit.darts)
+        if double_darts is None and require_double and most:
+            if not (visit.checkout and most == 1):
+                raise DartsError("How many darts went at the double? Please choose.")
+            double_darts = 1  # Checkout, bei dem nur der letzte Dart aufs Doppel gehen konnte
         if double_darts is not None:
-            most = min(ask_double_darts(rest, score, visit.bust, visit.checkout), visit.darts)
             if not (1 if visit.checkout else 0) <= double_darts <= most:
                 raise DartsError(f"At most {most} dart{'s' if most != 1 else ''} can have gone at a double here."
                                  if most else "No dart could have gone at a double in this visit.")

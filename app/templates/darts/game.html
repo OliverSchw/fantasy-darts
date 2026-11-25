@@ -94,7 +94,7 @@
         <div class="btn-row">
           <template x-for="k in (dbl ? dbl.options : [])" :key="k"><button type="button" @click="sendDbl(k)" x-text="k"></button></template>
         </div>
-        <button type="button" class="outline secondary small" @click="sendDbl('')">Skip</button>
+        <button type="button" class="outline secondary small" @click="dbl = null" title="Back to correct the score – nothing is saved">← Back</button>
       </div>
     </div>
   </form>

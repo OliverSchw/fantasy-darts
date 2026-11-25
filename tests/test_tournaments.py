@@ -1,6 +1,7 @@
 """K.-o.-Turniere: Setzliste, Freilose, Weiterrücken, Darts-Anbindung."""
 
 import pytest
+from conftest import double_answer
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
@@ -106,6 +107,9 @@ def _play_out(c, db, game, winner_first=True):
                 data["darts"] = 1
         else:
             data = {"score": next(loser_scores), "seq": len(game.visits)}
+        dbl = double_answer(game, data["score"], data.get("darts"))
+        if dbl is not None:
+            data["double_darts"] = dbl
         c.post(f"/darts/games/{game.id}/visit", data=data)
         db.refresh(game)
 
