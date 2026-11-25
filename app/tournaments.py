@@ -16,9 +16,9 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
-from . import models
+from . import models, push  # push: Benachrichtigung, wenn ein Match eine Scheibe bekommt
 
 
 class TournamentError(ValueError):
@@ -477,6 +477,9 @@ def _queue_key(t: models.Tournament):
     return key
 
 
+BOARD_CALLS = push.BOARD_CALLS  # Session.info: Matches, die gerade eine Scheibe bekommen haben
+
+
 def assign_boards(t: models.Tournament) -> None:
     """Freie Scheiben mit den nächsten spielbaren Matches belegen (ohne dass jemand doppelt spielt)."""
     n = board_count(t)
@@ -502,6 +505,9 @@ def assign_boards(t: models.Tournament) -> None:
         nxt.board = board
         queue.remove(nxt)
         busy_entries |= {nxt.entry1_id, nxt.entry2_id}
+        sess = object_session(t)
+        if sess is not None:  # nach dem Commit bekommen die Spieler eine Push-Nachricht (app/push.py)
+            sess.info.setdefault(BOARD_CALLS, []).append(nxt)
 
 
 def set_boards(db: Session, t: models.Tournament, n: int) -> None:

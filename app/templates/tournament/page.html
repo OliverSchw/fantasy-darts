@@ -16,6 +16,14 @@
 {% endif %}
 
 {% if bv.n and not winner %}
+  {% if plays %}
+    <div x-data="pushToggle(true)" x-show="!hidden" x-cloak class="push-banner">
+      <span>🔔 Get a message on your phone when your match is called to a {{ sp.board_label | lower }}.</span>
+      <button type="button" class="small" :disabled="busy" @click="toggle().then(() => on && setTimeout(() => hidden = true, 2500))">Turn on</button>
+      <button type="button" class="small outline secondary" @click="dismiss()" aria-label="No thanks">✕</button>
+      <p class="small-note" x-show="msg" x-text="msg"></p>
+    </div>
+  {% endif %}
   <h2 class="t-stage">🎯 {{ sp.board_label }}s</h2>
   <div class="t-boards">
     {% for b, m in bv.boards %}
@@ -131,4 +139,4 @@
   </details>
 {% endif %}
 {% endblock %}
-{% block scripts %}<script defer src="/static/sortable.js"></script>{% endblock %}
+{% block scripts %}<script defer src="/static/sortable.js"></script>{% if plays and bv.n and not winner %}<script defer src="/static/vendor/alpine.min.js"></script>{% endif %}{% endblock %}

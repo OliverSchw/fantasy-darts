@@ -29,6 +29,7 @@ class User(Base):
     avatar_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     teams: Mapped[list["Team"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    push_subscriptions: Mapped[list["PushSubscription"]] = relationship(cascade="all, delete-orphan")
 
 
 class Season(Base):
@@ -162,6 +163,19 @@ class Avatar(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     image: Mapped[bytes] = mapped_column(LargeBinary)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class PushSubscription(Base):
+    """Ein Gerät (Browser/installierte App), das Push-Benachrichtigungen bekommt - siehe app/push.py."""
+
+    __tablename__ = "push_subscriptions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    endpoint: Mapped[str] = mapped_column(String(1000), unique=True)
+    p256dh: Mapped[str] = mapped_column(String(200))
+    auth: Mapped[str] = mapped_column(String(100))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
 # ---------------------------------------------------------------- Kern: Teilnehmer an Spielen

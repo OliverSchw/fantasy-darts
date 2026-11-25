@@ -78,6 +78,8 @@
   <script>
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
   </script>
+  {% if user %}<script defer src="/static/push.js"></script>
+  <script>addEventListener("DOMContentLoaded", () => window.fdPush && fdPush.sync({{ user.username | tojson }}).catch(() => {}));</script>{% endif %}
   {% block scripts %}{% endblock %}
 </body>
 </html>
