@@ -50,6 +50,11 @@ später einem Konto zuordnen (*Stats → Spieler → Link guest to an account*),
   ein Checkout-Vorschlag (z. B. 121 → T20 · T15 · D8). *Undo* nimmt die letzte Aufnahme zurück.
 - **Zählen dürfen:** wer das Spiel angelegt hat, mitspielende Mitglieder und Admins. Alle anderen sehen
   das Spiel live – die Seite aktualisiert sich nach jeder Aufnahme automatisch (alle 3 Sekunden geprüft).
+- **🌍 Own phones (aus der Ferne spielen):** Beim Anlegen *Own phones* wählen – dann trägt jeder nur seine eigenen
+  Würfe auf seinem Handy ein (z. B. bei einem Videoanruf von zu Hause). Wer nicht dran ist, sieht „⏳ … 's turn“,
+  das Spiel aktualisiert sich von selbst, Undo nur für die eigene Aufnahme. Gäste ohne Konto zählt, wer das Spiel
+  angelegt hat. Der Ansager sagt die Aufnahme des Gegners an, sobald sie reinkommt. Unter *More…*: Link teilen
+  und – falls ein Akku leer ist – auf „ein Handy für alle“ umschalten. Standard bleibt *One phone*.
 - **Stats** (immer aus den gespeicherten Aufnahmen berechnet): 3-Dart-Average, First-9-Average,
   Siege, Legs, 180er, 140+, 100+, höchstes Finish, bestes Leg, Checkout-Quote (Checkouts geteilt durch
   Aufnahmen, die auf einem ausmachbaren Rest begonnen haben). Abgebrochene Spiele zählen nicht.

@@ -157,6 +157,25 @@ document.addEventListener("alpine:init", function () {
   });
 });
 
+// Link zum Spiel teilen (Handy: Teilen-Menü, sonst in die Zwischenablage)
+window.fdShareGame = function () {
+  var url = location.href.split("#")[0];
+  if (navigator.share) { navigator.share({ title: document.title, url: url }).catch(function () {}); return; }
+  if (navigator.clipboard) navigator.clipboard.writeText(url).then(function () { alert("Link copied – send it to the others."); });
+  else prompt("Copy this link:", url);
+};
+
+// Jeder zählt selbst: kam per Live-Update eine neue Aufnahme eines anderen rein, sagt der Ansager sie an
+(function () {
+  var cfg = window.DARTS_LIVE;
+  if (!cfg || !cfg.own || !cfg.call) return;
+  var key = "fd-heard-" + cfg.id, heard = -1;
+  try { heard = parseInt(sessionStorage.getItem(key) || "-1", 10); sessionStorage.setItem(key, String(cfg.v)); } catch (e) {}
+  if (heard >= 0 && cfg.v > heard) {
+    document.addEventListener("DOMContentLoaded", function () { window.fdCaller.say(cfg.call, function () {}); });
+  }
+})();
+
 // Live: alle 3 Sekunden fragen, ob es eine neue Aufnahme gibt - dann neu laden (nicht während man tippt).
 (function () {
   var cfg = window.DARTS_LIVE;

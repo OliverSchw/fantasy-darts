@@ -6,6 +6,7 @@
 <div class="dg-head">
   <span>{{ game.start_score }} · first to {{ game.legs_to_win }} leg{{ "s" if game.legs_to_win != 1 }}
     {% if not gs.finished %}· <strong>Leg {{ gs.leg_no }}</strong>{% endif %}</span>
+  {% if game.own_scoring and game.status == "live" %}<mark class="role" title="Everyone enters their own throws on their own phone">🌍 own phones</mark>{% endif %}
   {% if game.status == "live" %}<mark class="live-badge">LIVE</mark>
   {% elif game.status == "abandoned" %}<mark class="role ch">abandoned</mark>{% endif %}
 </div>
@@ -123,6 +124,8 @@
     <button type="submit" class="dm-send" :class="state" :disabled="!over() || busy" x-text="sendLabel()">✓ Save visit</button>
   </form>
   </div>
+{% elif waiting_for %}
+  <p class="dg-wait">⏳ <strong>{{ waiting_for }}</strong>'s turn – waiting for their throw. The score updates by itself.</p>
 {% elif game.status == "live" %}
   <p class="muted dg-hint">Live – the score updates automatically.</p>
 {% endif %}
@@ -155,11 +158,15 @@
 {% if can_manage %}
   <div class="dg-actions">
     {% if n_visits %}
-      <form method="post" action="/darts/games/{{ game.id }}/undo"><button class="outline small">↶ Undo last visit</button></form>
+      {% if can_undo %}<form method="post" action="/darts/games/{{ game.id }}/undo"><button class="outline small">↶ Undo {{ "my " if game.own_scoring }}last visit</button></form>{% endif %}
     {% endif %}
     {% if game.status == "live" %}
       <details class="dg-more">
         <summary class="small-link">More…</summary>
+        <button type="button" class="outline small" onclick="fdShareGame()">📤 Share game link</button>
+        <form method="post" action="/darts/games/{{ game.id }}/scoring">
+          <button class="outline secondary small">{{ "📱 Switch to one phone for everyone" if game.own_scoring else "🌍 Everyone scores on their own phone" }}</button>
+        </form>
         <form method="post" action="/darts/games/{{ game.id }}/abandon" onsubmit="return confirm('Abandon this game? It will not count for the stats.')">
           <button class="danger small">Abandon game</button>
         </form>
@@ -169,7 +176,8 @@
 {% endif %}
 {% endblock %}
 {% block scripts %}
-<script>window.DARTS_LIVE = {{ {"id": game.id, "v": n_visits, "live": game.status == "live"} | tojson }};</script>
+<script>window.DARTS_LIVE = {{ {"id": game.id, "v": n_visits, "live": game.status == "live", "own": game.own_scoring,
+                                 "call": opponent_call} | tojson }};</script>
 <script defer src="/static/darts.js"></script>
 <script defer src="/static/vendor/alpine.min.js"></script>
 {% endblock %}

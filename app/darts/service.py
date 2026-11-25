@@ -19,7 +19,7 @@ from .throws import ask_double_darts, x01_visit
 
 
 def create_game(db: Session, start: int, legs_to_win: int, competitor_ids: list[int],
-                created_by: models.User | None, team_size: int = 1) -> models.DartsGame:
+                created_by: models.User | None, team_size: int = 1, scoring: str | None = None) -> models.DartsGame:
     """competitor_ids in Wurfreihenfolge; Doppel (team_size 2): Team 1 = Positionen 0 und 2, Team 2 = 1 und 3.
     Bots dürfen mitspielen (mindestens ein Mensch) - sie werfen automatisch, sobald sie dran sind."""
     if len(set(competitor_ids)) != len(competitor_ids):
@@ -31,7 +31,8 @@ def create_game(db: Session, start: int, legs_to_win: int, competitor_ids: list[
     if all(c.is_bot for c in found.values()):
         raise DartsError("Add at least one human player – bots only play against people.")
     game = models.DartsGame(start_score=start, legs_to_win=legs_to_win, team_size=team_size,
-                            created_by_id=created_by.id if created_by else None)
+                            created_by_id=created_by.id if created_by else None,
+                            scoring="own" if scoring == "own" else None)
     game.players = [models.DartsGamePlayer(position=i, competitor_id=cid) for i, cid in enumerate(competitor_ids)]
     db.add(game)
     db.commit()
@@ -58,8 +59,47 @@ def can_manage(user: models.User | None, game: models.DartsGame) -> bool:
             or tour.organizes_match(object_session(game), game.tournament_match_id, user))
 
 
+def current_thrower(game: models.DartsGame) -> models.DartsGamePlayer | None:
+    """Wer gerade dran ist (None, wenn das Spiel nicht läuft)."""
+    if game.status != "live":
+        return None
+    state = game_state(game) if game.mode == "x01" else mode_state(game)
+    return None if state.finished else game.players[state.turn]
+
+
+def speaks_for(user: models.User | None, game: models.DartsGame, player: models.DartsGamePlayer | None) -> bool:
+    """Bei "jeder zählt selbst": Mitglieder nur für sich, für Gäste (ohne Konto) zählt, wer das Spiel angelegt hat
+    (oder ein Admin / der Turnier-Organisator). Für Bots niemand - die werfen selbst."""
+    if user is None or player is None:
+        return False
+    c = player.competitor
+    if c.is_bot:
+        return False
+    if c.user_id is not None:
+        return c.user_id == user.id
+    return (user.is_admin or game.created_by_id == user.id
+            or tour.organizes_match(object_session(game), game.tournament_match_id, user))
+
+
 def can_score(user: models.User | None, game: models.DartsGame) -> bool:
-    return game.status == "live" and can_manage(user, game)
+    if game.status != "live" or not can_manage(user, game):
+        return False
+    return not game.own_scoring or speaks_for(user, game, current_thrower(game))
+
+
+def _visit_to_undo(game: models.DartsGame) -> models.DartsVisit | None:
+    """Die Aufnahme, die Undo zurücknimmt (gegen Bots: die letzte eines Menschen)."""
+    bots = {p.position for p in game.players if p.competitor.is_bot}
+    return next((v for v in reversed(game.visits) if v.position not in bots), None)
+
+
+def can_undo(user: models.User | None, game: models.DartsGame) -> bool:
+    if not can_manage(user, game) or game.status == "abandoned":
+        return False
+    v = _visit_to_undo(game)
+    if v is None:
+        return False
+    return not game.own_scoring or speaks_for(user, game, game.players[v.position])
 
 
 class StaleGame(DartsError):
@@ -267,7 +307,7 @@ def _report_to_tournament(db: Session, game: models.DartsGame, side_scores: tupl
 
 
 def create_mode_game(db: Session, mode: str, competitor_ids: list[int], created_by: models.User | None,
-                     options: dict | None = None) -> models.DartsGame:
+                     options: dict | None = None, scoring: str | None = None) -> models.DartsGame:
     if len(set(competitor_ids)) != len(competitor_ids):
         raise DartsError("Each player can only take part once.")
     options = dict(options or {})
@@ -279,7 +319,8 @@ def create_mode_game(db: Session, mode: str, competitor_ids: list[int], created_
     if found != set(competitor_ids):
         raise DartsError("Unknown player.")
     game = models.DartsGame(mode=mode, options=options, start_score=0, legs_to_win=1,
-                            created_by_id=created_by.id if created_by else None)
+                            created_by_id=created_by.id if created_by else None,
+                            scoring="own" if scoring == "own" else None)
     game.players = [models.DartsGamePlayer(position=i, competitor_id=cid) for i, cid in enumerate(competitor_ids)]
     db.add(game)
     db.commit()

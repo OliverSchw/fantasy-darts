@@ -7,6 +7,7 @@
     {% if game.mode == "killer" %} · {{ game.options.lives }} lives{% endif %}
     {% if game.mode == "checkout121" %} · {{ s.n_attempts }} attempts{% endif %}
     {% if info.training %} · <small class="muted">training</small>{% endif %}</span>
+  {% if game.own_scoring and game.status == "live" %}<mark class="role" title="Everyone enters their own throws on their own phone">🌍 own phones</mark>{% endif %}
   {% if game.status == "live" %}<mark class="live-badge">LIVE</mark>{% elif game.status == "abandoned" %}<mark class="role ch">abandoned</mark>{% endif %}
 </div>
 <details class="dm-help"><summary class="small-link">How it works</summary><p class="muted">{{ info.help }}</p></details>
@@ -94,6 +95,8 @@
     <button type="submit" class="dm-send" :disabled="!darts.length || busy" x-text="darts.length === 3 ? '✓ Save visit' : '✓ Save (' + darts.length + ' dart' + (darts.length === 1 ? '' : 's') + ')'">✓ Save visit</button>
     <noscript><input name="throws" placeholder="e.g. T20,S19,M"><button>Save</button></noscript>
   </form>
+{% elif waiting_for %}
+  <p class="dg-wait">⏳ <strong>{{ waiting_for }}</strong>'s turn – waiting for their throw. The score updates by itself.</p>
 {% elif game.status == "live" %}
   <p class="muted dg-hint">Live – the score updates automatically.</p>
 {% endif %}
@@ -111,9 +114,13 @@
 
 {% if can_manage %}
   <div class="dg-actions">
-    {% if n_visits %}<form method="post" action="/darts/games/{{ game.id }}/undo"><button class="outline small">↶ Undo last visit</button></form>{% endif %}
+    {% if n_visits %}{% if can_undo %}<form method="post" action="/darts/games/{{ game.id }}/undo"><button class="outline small">↶ Undo {{ "my " if game.own_scoring }}last visit</button></form>{% endif %}{% endif %}
     {% if game.status == "live" %}
       <details class="dg-more"><summary class="small-link">More…</summary>
+        <button type="button" class="outline small" onclick="fdShareGame()">📤 Share game link</button>
+        <form method="post" action="/darts/games/{{ game.id }}/scoring">
+          <button class="outline secondary small">{{ "📱 Switch to one phone for everyone" if game.own_scoring else "🌍 Everyone scores on their own phone" }}</button>
+        </form>
         <form method="post" action="/darts/games/{{ game.id }}/abandon" onsubmit="return confirm('Abandon this game?')"><button class="danger small">Abandon game</button></form>
       </details>
     {% endif %}
@@ -121,7 +128,8 @@
 {% endif %}
 {% endblock %}
 {% block scripts %}
-<script>window.DARTS_LIVE = {{ {"id": game.id, "v": n_visits, "live": game.status == "live"} | tojson }};</script>
+<script>window.DARTS_LIVE = {{ {"id": game.id, "v": n_visits, "live": game.status == "live", "own": game.own_scoring,
+                                 "call": opponent_call} | tojson }};</script>
 <script defer src="/static/darts.js"></script>
 <script defer src="/static/vendor/alpine.min.js"></script>
 {% endblock %}
