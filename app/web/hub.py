@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .. import models
+from .. import feed, models
 from ..auth import optional_user, require_admin
 from ..config_store import season_rules
 from ..db import get_db
@@ -32,7 +32,7 @@ def home(request: Request, db: Session = Depends(get_db), user: models.User | No
     live = db.scalar(select(func.count()).select_from(models.DartsGame).where(models.DartsGame.status == "live"))
     bp_live = db.scalar(select(func.count()).select_from(models.BeerpongGame).where(models.BeerpongGame.status == "live"))
     status = {"fantasy": _fantasy_status(db, user), "darts": {"live": live}, "beerpong": {"live": bp_live}}
-    return render(request, "hub.html", user=user, status=status)
+    return render(request, "hub.html", user=user, status=status, news=feed.news(db, limit=8) if user else [])
 
 
 @router.get("/admin")

@@ -55,6 +55,17 @@ später einem Konto zuordnen (*Stats → Spieler → Link guest to an account*),
   Aufnahmen, die auf einem ausmachbaren Rest begonnen haben). Abgebrochene Spiele zählen nicht.
 - Spiellogik in `app/darts/` (engine, checkouts, stats, service) – reine Funktionen mit eigenen Tests.
 
+**Elo, Formkurve, Erfolge:** Jeder startet mit 1000 Elo. Nach jedem beendeten Spiel (X01 und Partyspiele)
+gewinnt der Sieger Punkte vom Verlierer, gegen Stärkere mehr als gegen Schwächere (K = 32, bei mehreren
+Gegnern aufgeteilt, im Doppel zählt der Schnitt des Teams). Unter 5 Spielen gilt die Wertung als vorläufig.
+Auf der Spielerseite: Elo und Platz, **Formkurve** (Average der letzten 30 X01-Spiele, ● gewonnen /
+○ verloren), Elo-Verlauf und 16 **Erfolge** (180, Ton-up finish, Big Fish 170, Bull-Finish, Short leg,
+Sixty/Eighty club, Party animal, Champion …) mit Datum. Alles wird wie die Stats aus den Spielen
+berechnet (`app/darts/rating.py`, `app/darts/achievements.py`).
+
+**📰 Neuigkeiten** (Startseite und Darts): Turniersieger, Ergebnisse mit Elo-Änderung, 180er, Finishes
+ab 100 und neue Erfolge der letzten 30 Tage (`app/feed.py`).
+
 **Turniere** (*Darts → Tournaments*): Name, Startwert, „First to X Legs“ (fürs Finale extra einstellbar),
 Mitglieder antippen und Gäste eintippen, optional zufällig losen. Es entsteht ein K.-o.-Baum mit
 üblicher Setzliste (1 gegen den Letzten …); bei ungerader Teilnehmerzahl bekommen die Topgesetzten

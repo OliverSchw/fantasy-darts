@@ -1,0 +1,12 @@
+{# Neuigkeiten-Liste (app/feed.py) #}
+{% macro news_list(items) -%}
+<ul class="news">
+  {% for i in items %}
+    <li>
+      <span class="news-ico" aria-hidden="true">{{ i.icon }}</span>
+      {% if i.url %}<a href="{{ i.url }}">{{ i.text }}</a>{% else %}<span>{{ i.text }}</span>{% endif %}
+      <small class="muted">{{ i.at | when }}</small>
+    </li>
+  {% endfor %}
+</ul>
+{%- endmacro %}

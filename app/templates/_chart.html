@@ -1,0 +1,23 @@
+{# Liniendiagramm aus app/charts.py: eine Linie, Punkte mit Tooltip (antippen/hover), dezente Achse. #}
+{% macro line(ch, title, desc) -%}
+<figure class="chart">
+  <svg viewBox="0 0 {{ ch.w }} {{ ch.h }}" role="img" aria-label="{{ title }}: {{ desc }}">
+    {% for t in ch.ticks %}
+      <line class="ch-grid" x1="{{ ch.left }}" x2="{{ ch.right }}" y1="{{ '%.1f' | format(t.y) }}" y2="{{ '%.1f' | format(t.y) }}"/>
+      <text class="ch-tick" x="{{ ch.left - 5 }}" y="{{ '%.1f' | format(t.y + 3) }}" text-anchor="end">{{ t.label }}</text>
+    {% endfor %}
+    {% if ch.baseline is not none %}<line class="ch-base" x1="{{ ch.left }}" x2="{{ ch.right }}" y1="{{ '%.1f' | format(ch.baseline) }}" y2="{{ '%.1f' | format(ch.baseline) }}"/>{% endif %}
+    <path class="ch-line" d="{{ ch.path }}"/>
+    {% for p in ch.points %}
+      <g class="ch-pt{{ ' hollow' if p.hollow }}" tabindex="0">
+        <title>{{ p.label }}</title>
+        <circle class="ch-hit" cx="{{ '%.1f' | format(p.x) }}" cy="{{ '%.1f' | format(p.y) }}" r="9"/>
+        {% if ch.markers or loop.last %}<circle class="ch-dot" cx="{{ '%.1f' | format(p.x) }}" cy="{{ '%.1f' | format(p.y) }}" r="4"/>{% endif %}
+      </g>
+    {% endfor %}
+    <text class="ch-tick" x="{{ ch.left }}" y="{{ ch.h - 4 }}">{{ ch.first }}</text>
+    <text class="ch-tick" x="{{ ch.right }}" y="{{ ch.h - 4 }}" text-anchor="end">{{ ch.last }}</text>
+  </svg>
+  <figcaption class="ch-tip" aria-live="polite"></figcaption>
+</figure>
+{%- endmacro %}

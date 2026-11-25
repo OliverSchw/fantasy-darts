@@ -86,6 +86,7 @@ def _fmt_day(d: date) -> str:
 templates.env.filters["when"] = _fmt_when
 templates.env.filters["hm"] = lambda dt: f"{local_dt(dt):%H:%M}" if dt else ""
 templates.env.filters["day"] = _fmt_day
+templates.env.filters["day_short"] = lambda dt: f"{local_dt(dt):%d.%m.%Y}" if dt else ""
 
 
 def flash(request: Request, message: str, category: str = "ok") -> None:

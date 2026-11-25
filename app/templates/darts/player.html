@@ -2,6 +2,7 @@
 {% from "_macros.html" import cavatar %}
 {% from "darts/_stats_grid.html" import stats_grid %}
 {% from "darts/_game_list.html" import game_list %}
+{% import "_chart.html" as chart %}
 {% block title %}{{ c.display_name }}{% endblock %}
 {% block content %}
 <div class="profile-head">
@@ -11,11 +12,30 @@
   {% if not (c.user and c.user.id == user.id) %}<a href="/darts/compare?b={{ c.id }}" role="button" class="outline small">⚖️ Compare with me</a>{% endif %}
 </div>
 
+{% if c.id in elo.ratings %}
+  <div class="stat-grid elo-row">
+    <div><span>{{ elo.rating(c.id) | round | int }}</span><small>Elo rating</small></div>
+    <div>{% set rk = elo.rank(c.id) %}<span>{{ "#%d" | format(rk) if rk else "–" }}</span>
+      <small>{% if rk %}Elo rank{% else %}Provisional ({{ elo.games.get(c.id, 0) }}/5 games){% endif %}</small></div>
+    <div><span>{{ earned | length }}/{{ achievements | length }}</span><small>Achievements</small></div>
+  </div>
+{% endif %}
+
 <h3>X01 <small class="muted">(301 / 501 / 701)</small></h3>
 {% if stats %}
   {{ stats_grid(stats) }}
 {% else %}
   <p class="muted center">No X01 games yet.</p>
+{% endif %}
+
+{% if form_chart %}
+  <h3>Form <small class="muted">average per game, last {{ form_chart.points | length }}</small></h3>
+  {{ chart.line(form_chart, "Average per game", "3-dart average of the last " ~ (form_chart.points | length) ~ " X01 games") }}
+  <p class="muted small-note">● won · ○ lost – tap a point for details.</p>
+{% endif %}
+{% if elo_chart %}
+  <h3>Elo <small class="muted">after each game</small></h3>
+  {{ chart.line(elo_chart, "Elo rating", "Elo rating after each of the last " ~ (elo_chart.points | length) ~ " games, dashed line = start (1000)") }}
 {% endif %}
 
 {% if records %}
@@ -24,6 +44,17 @@
     {% for key, (w, n) in records.items() %}<div><span>{{ w }}/{{ n }}</span><small>{{ darts_modes[key].name }} won</small></div>{% endfor %}
   </div>
 {% endif %}
+
+<h3>Achievements <small class="muted">{{ earned | length }} of {{ achievements | length }}</small></h3>
+<ul class="badges">
+  {% for key, (icon, name, desc) in achievements.items() %}
+    {% set e = earned.get(key) %}
+    <li class="{{ 'got' if e else 'locked' }}" title="{{ desc }}">
+      <span class="b-ico" aria-hidden="true">{{ icon }}</span>
+      <span class="b-txt"><strong>{{ name }}</strong><small>{% if e %}{{ e.at | day_short }}{% else %}{{ desc }}{% endif %}</small></span>
+    </li>
+  {% endfor %}
+</ul>
 
 {% if games %}
   <h3>Recent games</h3>
@@ -46,3 +77,4 @@
   </article>
 {% endif %}
 {% endblock %}
+{% block scripts %}<script defer src="/static/chart.js"></script>{% endblock %}

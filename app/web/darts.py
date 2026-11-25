@@ -8,15 +8,18 @@ from sqlalchemy.orm import Session
 from .. import models
 from .. import tournaments as tour
 from ..auth import require_admin, require_user
-from .. import competitors
+from .. import competitors, feed
+from ..charts import line_chart
 from ..competitors import CompetitorError
 from ..darts import service
 from ..darts.checkouts import checkout_route, is_finishable, min_darts
 from ..darts.engine import START_SCORES, DartsError
 from ..darts.modes import MODES, dart_label, new_mode_state
+from ..darts.achievements import ACHIEVEMENTS, compute_achievements
+from ..darts.rating import START, compute_elo, form_curve
 from ..darts.stats import compare_rows, compute_stats, head_to_head, mode_records
 from ..db import get_db
-from .common import flash, redirect, render
+from .common import flash, local_dt, redirect, render
 from .tournament_pages import Sport, add_tournament_routes, read_boards, read_format
 
 router = APIRouter(prefix="/darts")
@@ -60,7 +63,9 @@ def _game_summaries(games: list[models.DartsGame]) -> list[dict]:
 def darts_home(request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_user)):
     me = competitors.competitor_for_user(db, user)
     stats = compute_stats(db, [me.id])
+    elo = compute_elo(db)
     return render(request, "darts/home.html", user=user, me=me, my_stats=stats.get(me.id),
+                  my_elo=elo.rating(me.id) if me.id in elo.ratings else None, news=feed.news(db, "darts", 6, results=False),
                   live=_game_summaries(_recent_games(db, 20, "live")), running=tour.running(db, "darts"),
                   recent=_game_summaries(_recent_games(db, 8, "finished")))
 
@@ -283,7 +288,7 @@ def players_page(request: Request, db: Session = Depends(get_db), user: models.U
     stats = compute_stats(db)
     rows = [(c, stats[c.id]) for c in people if c.id in stats]  # nur wer schon geworfen hat
     rows.sort(key=lambda r: (r[1].average is None, -(r[1].average or 0)))
-    return render(request, "darts/players.html", user=user, rows=rows)
+    return render(request, "darts/players.html", user=user, rows=rows, elo=compute_elo(db))
 
 
 def _pick(db: Session, raw: str | None) -> models.Competitor | None:
@@ -316,9 +321,20 @@ def player_page(competitor_id: int, request: Request, db: Session = Depends(get_
     stats = compute_stats(db, [c.id]).get(c.id)
     users = (db.scalars(select(models.User).order_by(func.lower(models.User.username))).all()
              if user.is_admin and c.is_guest else [])
+    elo = compute_elo(db)
+    form = form_curve(db, c.id)
+    hist = elo.history.get(c.id, [])[-30:]
+    earned = {e.key: e for e in compute_achievements(db).get(c.id, [])}
     return render(request, "darts/player.html", user=user, c=c, stats=stats, link_users=users,
                   records=mode_records(db, [c.id]).get(c.id, {}),
-                  games=_game_summaries(_recent_games(db, 15, competitor_id=c.id)))
+                  games=_game_summaries(_recent_games(db, 15, competitor_id=c.id)),
+                  elo=elo, form_chart=line_chart(
+                      [(p.average, f"{local_dt(p.at):%d.%m.} · {p.average:.1f} avg · {'won' if p.won else 'lost'}",
+                        not p.won) for p in form], fmt="{:.0f}"),
+                  elo_chart=line_chart(
+                      [(p.rating, f"{local_dt(p.at):%d.%m.} · {p.rating:.0f} ({p.delta:+.0f})", p.delta < 0)
+                       for p in hist], baseline=START),
+                  achievements=ACHIEVEMENTS, earned=earned)
 
 
 @router.post("/players/{competitor_id}/link")

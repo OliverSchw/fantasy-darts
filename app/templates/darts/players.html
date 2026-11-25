@@ -3,13 +3,14 @@
 {% block title %}Stats{% endblock %}
 {% block content %}
 <div class="title-row"><h1>Stats</h1><a href="/darts/compare" role="button" class="outline small">⚖️ Compare</a></div>
-<p class="muted sort-hint">Tap a column title to sort. Average = points per 3 darts, abandoned games don't count.</p>
+<p class="muted sort-hint">Tap a column title to sort. Average = points per 3 darts, Elo starts at 1000 (* = fewer than 5 games). Abandoned games don't count.</p>
 {% if not rows %}<article class="cta"><p>No darts thrown yet.</p><a href="/darts/new" role="button">Start a game</a></article>{% else %}
 <div class="table-wrap">
   <table class="striped compact rowlinks sortable dstats" data-sort-key="darts-players">
     <thead><tr>
       <th data-sort="text">Player</th>
       <th class="num" data-sort="num" data-default="desc">Avg</th>
+      <th class="num" data-sort="num" title="Elo rating (from 1000, * = fewer than 5 games)">Elo</th>
       <th class="num" data-sort="num">Won</th>
       <th class="num" data-sort="num">180s</th>
       <th class="num" data-sort="num">Finish</th>
@@ -21,6 +22,7 @@
           <td data-v="{{ c.display_name }}"><span class="dname">{{ cavatar(c, user, "xs") }}
             <a href="/darts/players/{{ c.id }}">{{ c.display_name }}</a>{% if c.is_guest %}<small class="muted">guest</small>{% endif %}</span></td>
           <td class="num" data-v="{{ s.average if s and s.average is not none else '' }}"><strong>{{ avg(s.average if s else none) }}</strong></td>
+          <td class="num" data-v="{{ elo.rating(c.id) | round | int if c.id in elo.ratings else '' }}">{% if c.id in elo.ratings %}{{ elo.rating(c.id) | round | int }}{% if elo.provisional(c.id) %}<small class="muted">*</small>{% endif %}{% else %}–{% endif %}</td>
           <td class="num" data-v="{{ s.wins if s else '' }}">{% if s and s.games %}{{ s.wins }}/{{ s.games }}{% else %}–{% endif %}</td>
           <td class="num" data-v="{{ s.max180 if s else '' }}">{{ s.max180 if s else "–" }}</td>
           <td class="num" data-v="{{ s.high_finish if s and s.high_finish else '' }}">{{ s.high_finish if s and s.high_finish else "–" }}</td>
