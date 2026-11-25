@@ -56,14 +56,28 @@ def artwork() -> Image.Image:
     for r, col in ((118, BLACK), (106, RED), (92, CREAM), (70, BOARD_GREEN), (56, CREAM), (32, RED), (15, BOARD_GREEN)):
         d.ellipse(box(bx - r, by - r, bx + r, by + r), fill=col)
 
-    # --- Dart (steckt im Bull, kommt von rechts oben)
-    tip = (bx + 6, by - 6)
-    tail = (bx + 230, by - 230)
-    d.line([(u(tip[0]), u(tip[1])), (u(tail[0]), u(tail[1]))], fill=(214, 220, 228), width=u(20))
-    d.line([(u(tip[0] + 40), u(tip[1] - 40)), (u(tip[0] + 110), u(tip[1] - 110))], fill=(90, 98, 110), width=u(30))  # Griff
-    fx, fy = tail
-    d.polygon([(u(fx - 30), u(fy + 30)), (u(fx + 40), u(fy - 70)), (u(fx + 70), u(fy - 40))], fill=RED)  # Flight
-    d.polygon([(u(fx - 30), u(fy + 30)), (u(fx + 60), u(fy + 10)), (u(fx + 20), u(fy - 30))], fill=(170, 30, 40))
+    # --- Dart (steckt im Bull, kommt von rechts oben): Spitze, Barrel, Schaft, Flight
+    import math
+    ang = math.radians(-45)  # Richtung von der Spitze zum Flight (nach rechts oben)
+    dx, dy = math.cos(ang), math.sin(ang)
+    nx, ny = -dy, dx  # senkrecht dazu
+
+    def pt(a, b=0.0):
+        """Punkt a Einheiten entlang des Darts (ab der Spitze) und b Einheiten seitlich."""
+        return (u(bx + a * dx + b * nx), u(by + a * dy + b * ny))
+
+    def segment(a0, a1, width, color):
+        d.line([pt(a0), pt(a1)], fill=color, width=u(width))
+
+    segment(-6, 44, 9, (214, 220, 228))  # Spitze (steckt ein Stück in der Scheibe)
+    segment(40, 132, 34, (78, 86, 98))  # Barrel
+    for a in range(52, 128, 14):  # Rillen im Barrel
+        d.line([pt(a, -16), pt(a, 16)], fill=(52, 58, 68), width=u(5))
+    segment(130, 252, 15, (30, 34, 40))  # Schaft (lang genug, dass das Flight frei über dem Pokalrand steht)
+    # Flight: zwei gleich geformte Flügel, symmetrisch zur Achse
+    for side, col in ((1, RED), (-1, (170, 30, 40))):
+        d.polygon([pt(236, 0), pt(256, side * 30), pt(322, side * 58), pt(332, side * 50), pt(332, 0)], fill=col)
+    d.line([pt(236), pt(332)], fill=(120, 20, 30), width=u(6))  # Mittelnaht
 
     # --- Bierkrug rechts unten, mit dunklem Rand zur Abgrenzung
     mx0, my0, mx1, my1 = 640, 520, 820, 800

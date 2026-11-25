@@ -7,9 +7,9 @@
   {% set page_title = self.title() | trim %}
   <title>{% if page_title %}{{ page_title }} · {% endif %}{{ section.name if section else platform_name }}</title>
   <meta name="theme-color" content="#0b3769">
-  <link rel="manifest" href="/manifest.webmanifest?v=3">
-  <link rel="icon" href="/static/icons/icon-192.png?v=3">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png?v=3">
+  <link rel="manifest" href="/manifest.webmanifest?v=4">
+  <link rel="icon" href="/static/icons/icon-192.png?v=4">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png?v=4">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="{{ platform_name }}">
@@ -22,7 +22,7 @@
     <div class="topbar-inner">
       <a href="/" class="home-link" aria-label="{{ platform_name }} – all games" title="All games">
         {% if section %}<span class="home-back" aria-hidden="true">‹</span>{% endif %}
-        <img src="/static/icons/logo-128.png?v=3" alt="" width="28" height="28">
+        <img src="/static/icons/logo-128.png?v=4" alt="" width="28" height="28">
       </a>
       {% if section %}
         <a href="{{ section.href }}" class="brand">{{ section.name }}</a>
