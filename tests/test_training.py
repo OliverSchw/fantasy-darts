@@ -303,8 +303,10 @@ def test_double_darts_web(olli, db):
     assert "scorer(301, false, 0, 0)" in olli.get(f"/darts/games/{gid}").text  # bei 301 kein Doppel erreichbar
     olli.post(f"/darts/games/{gid}/visit", data={"seq": 0, "score": 180})
     assert "scorer(121, true, 3, 1)" in olli.get(f"/darts/games/{gid}").text
+    r = olli.post(f"/darts/games/{gid}/visit", data={"seq": 1, "score": 81})  # Angabe fehlt -> Pflicht
+    assert "How many darts went at the double" in r.text and len(db.get(models.DartsGame, gid).visits) == 1
     olli.post(f"/darts/games/{gid}/visit", data={"seq": 1, "score": 81, "double_darts": "1"})
-    olli.post(f"/darts/games/{gid}/visit", data={"seq": 2, "score": 40, "darts": "1", "double_darts": "1"})
+    olli.post(f"/darts/games/{gid}/visit", data={"seq": 2, "score": 40, "darts": "1"})  # nur 1 möglich -> automatisch
     g = db.get(models.DartsGame, gid)
     assert [v.double_darts for v in g.visits] == [None, 1, 1] and g.status == "finished"
     r = olli.post("/darts/new", data={"mode": "x01", "start": 301, "legs": 1, "p0": str(me)}, follow_redirects=False)

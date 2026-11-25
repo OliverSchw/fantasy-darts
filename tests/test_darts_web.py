@@ -1,6 +1,7 @@
 """Darts-Bereich über die Web-Oberfläche."""
 
 import pytest
+from conftest import double_answer
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
@@ -49,6 +50,9 @@ def _visit(c, game, score, darts=None, seq=None):
     data = {"score": score, "seq": len(game.visits) if seq is None else seq}
     if darts:
         data["darts"] = darts
+    dbl = double_answer(game, score, darts)
+    if dbl is not None:
+        data["double_darts"] = dbl
     return c.post(f"/darts/games/{game.id}/visit", data=data)
 
 

@@ -50,3 +50,20 @@ def make_user(db):
         return u
 
     return _make
+
+
+def double_answer(game, score, darts=None):
+    """So antwortet ein Spieler in Tests auf "Darts at the double?": 1 beim Checkout, sonst 0 - und nur, wenn
+    die Seite überhaupt fragen würde (sonst None)."""
+    from app.darts import service
+    from app.darts.engine import make_visit
+    from app.darts.throws import ask_double_darts
+    st = service.game_state(game)
+    rest = st.remaining[st.side(st.turn)]
+    try:
+        v = make_visit(st, score, darts)
+    except Exception:
+        return None
+    if not ask_double_darts(rest, score, v.bust, v.checkout):
+        return None
+    return 1 if v.checkout else 0
