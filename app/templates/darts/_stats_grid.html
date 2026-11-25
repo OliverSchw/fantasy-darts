@@ -11,5 +11,6 @@
   <div><span>{{ s.high_finish or "–" }}</span><small>Highest finish</small></div>
   <div><span>{{ s.best_leg or "–" }}</span><small>Best leg (darts)</small></div>
   <div><span>{{ ("%.0f" | format(s.checkout_pct)) ~ "%" if s.checkout_pct is not none else "–" }}</span><small>Checkout rate{% if s.checkout_chances %} · {{ s.checkouts }}/{{ s.checkout_chances }}{% endif %}</small></div>
+  {% if s.double_darts %}<div><span>{{ "%.0f" | format(s.double_pct) }}%</span><small>Doubles hit · {{ s.double_hits }}/{{ s.double_darts }} darts</small></div>{% endif %}
 </div>
 {%- endmacro %}

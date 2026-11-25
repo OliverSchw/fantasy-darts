@@ -4,7 +4,9 @@
 {% block content %}
 <div class="dg-head">
   <span><strong>{{ info.name }}</strong>{% if game.mode == "shanghai" and not s.finished %} · round {{ s.shanghai_round }} of {{ s.rounds }} – target <strong>{{ s.shanghai_number() }}</strong>{% endif %}
-    {% if game.mode == "killer" %} · {{ game.options.lives }} lives{% endif %}</span>
+    {% if game.mode == "killer" %} · {{ game.options.lives }} lives{% endif %}
+    {% if game.mode == "checkout121" %} · {{ s.n_attempts }} attempts{% endif %}
+    {% if info.training %} · <small class="muted">training</small>{% endif %}</span>
   {% if game.status == "live" %}<mark class="live-badge">LIVE</mark>{% elif game.status == "abandoned" %}<mark class="role ch">abandoned</mark>{% endif %}
 </div>
 <details class="dm-help"><summary class="small-link">How it works</summary><p class="muted">{{ info.help }}</p></details>
@@ -29,17 +31,21 @@
 {% else %}
   <div class="dg-board n{{ rows | length }}">
     {% for r in rows %}
-      <div class="dg-player {% if r.turn %}turn{% endif %} {% if r.won %}won{% endif %} {% if not r.alive %}dm-out{% endif %}">
+      <div class="dg-player {% if r.turn %}turn{% endif %} {% if r.won and rows | length > 1 %}won{% endif %} {% if r.out %}dm-out{% endif %}">
         <div class="dg-name">{{ cavatar(r.c, user, "xs") }} <a href="/darts/players/{{ r.c.id }}">{{ r.c.display_name }}</a>
           {% if game.mode == "killer" %}<span class="dg-legs" title="number">{{ r.number }}</span>{% endif %}</div>
         <div class="dg-rest">
-          {% if r.won %}🏆
+          {% if game.mode == "bobs27" %}{{ r.points }}{% if r.won and rows | length > 1 %} 🏆{% endif %}
+          {% elif game.mode == "checkout121" %}{% if s.finished %}{{ r.hits }}/{{ s.n_attempts }}{% if r.won and rows | length > 1 %} 🏆{% endif %}{% else %}{{ r.rest }}{% endif %}
+          {% elif r.won %}🏆
           {% elif game.mode == "atc" %}{{ "Bull" if r.target == 25 else r.target }}
           {% elif game.mode == "shanghai" %}{{ r.points }}
           {% elif game.mode == "killer" %}<span class="dm-lives">{% if r.alive %}{{ "❤️" * r.lives }}{% else %}💀{% endif %}</span>{% endif %}
         </div>
         <div class="dg-sub">
-          {% if game.mode == "atc" %}<span>target</span>{% elif game.mode == "shanghai" %}<span>points</span>
+          {% if game.mode == "bobs27" %}<span>{% if r.out %}out{% elif s.finished or r.round > 21 %}points{% else %}points · next D{{ "B" if r.bob_target == 25 else r.bob_target }}{% endif %}</span>
+          {% elif game.mode == "checkout121" %}<span>{% if s.finished %}checkouts · best {{ r.highest or "–" }}{% else %}left · attempt {{ r.attempt }}/{{ s.n_attempts }} · ✓ {{ r.hits }}{% endif %}</span>
+          {% elif game.mode == "atc" %}<span>target</span>{% elif game.mode == "shanghai" %}<span>points</span>
           {% elif game.mode == "killer" %}<span>{% if not r.alive %}out{% elif r.killer %}🔪 killer{% else %}hit D{{ r.number }}{% endif %}</span>{% endif %}
           {% if r.last %}<span>last {% for t in r.last.throws or [] %}{{ dart_label(t) }}{{ " " if not loop.last }}{% endfor %}</span>{% endif %}
         </div>
@@ -50,7 +56,10 @@
 
 {% if s.finished %}
   <article class="dg-winner">
-    <p>🏆 <strong>{{ rows[s.winner].c.display_name }}</strong> wins {{ info.name }}!</p>
+    {% if rows | length == 1 and game.mode == "bobs27" %}<p>🎯 Finished with <strong>{{ rows[0].points }}</strong> points{{ " – out" if rows[0].out }}.</p>
+    {% elif rows | length == 1 and game.mode == "checkout121" %}<p>🎯 <strong>{{ rows[0].hits }} of {{ s.n_attempts }}</strong> checkouts{% if rows[0].highest %} · highest {{ rows[0].highest }}{% endif %}.</p>
+    {% elif rows | length == 1 %}<p>🎯 <strong>{{ rows[0].c.display_name }}</strong> finished {{ info.name }}!</p>
+    {% else %}<p>🏆 <strong>{{ rows[s.winner].c.display_name }}</strong> wins {{ info.name }}!</p>{% endif %}
     <a href="/darts/new" role="button" class="small">New game</a>
   </article>
 {% endif %}
@@ -60,7 +69,10 @@
   <p class="dg-hint"><strong>{{ cur.c.display_name }}</strong> to throw
     {% if game.mode == "atc" %}– target <strong>{{ "Bull" if cur.target == 25 else cur.target }}</strong>
     {% elif game.mode == "shanghai" %}– only the <strong>{{ s.shanghai_number() }}</strong> counts
-    {% elif game.mode == "killer" %}– {% if cur.killer %}hunt the others' doubles{% else %}hit <strong>D{{ cur.number }}</strong> to become a killer{% endif %}{% endif %}</p>
+    {% elif game.mode == "killer" %}– {% if cur.killer %}hunt the others' doubles{% else %}hit <strong>D{{ cur.number }}</strong> to become a killer{% endif %}
+    {% elif game.mode == "bobs27" %}– round {{ cur.round }}/21, aim at <strong>{{ "Bull" if cur.bob_target == 25 else "D" ~ cur.bob_target }}</strong>
+    {% elif game.mode == "checkout121" %}– attempt {{ cur.attempt }}/{{ s.n_attempts }}, visit {{ cur.visit_no }}/3: <strong>{{ cur.rest }}</strong> left
+      {% if route %}· <span class="dg-route">{{ route | join(" · ") }}</span>{% endif %}{% endif %}</p>
   <form method="post" action="/darts/games/{{ game.id }}/throws" class="dm-pad" x-ref="form" x-data="dartPad()" @submit.prevent="send()">
     <input type="hidden" name="seq" value="{{ n_visits }}">
     <input type="hidden" name="throws" x-ref="throws">

@@ -57,6 +57,66 @@ document.addEventListener("alpine:init", function () {
     };
   });
 
+  // X01: Eingabe als Gesamtpunktzahl oder Dart für Dart - die Wahl merkt sich das Gerät
+  Alpine.data("x01Input", function () {
+    var saved = false;
+    try { saved = localStorage.getItem("fd-x01-input") === "darts"; } catch (e) {}
+    return {
+      perDart: saved,
+      init() {
+        this.$watch("perDart", function (v) { try { localStorage.setItem("fd-x01-input", v ? "darts" : "total"); } catch (e) {} });
+      },
+    };
+  });
+
+  // X01 Dart für Dart: Rest mitrechnen, Bust/Checkout erkennen (Double-out), dann abschicken
+  Alpine.data("x01Pad", function (rest) {
+    function value(code) {
+      if (code === "M") return [0, 0];
+      if (code === "SB") return [1, 25];
+      if (code === "DB") return [2, 25];
+      return ["SDT".indexOf(code[0]) + 1, parseInt(code.slice(1), 10)];
+    }
+    return {
+      darts: [], mult: "S", busy: false, state: "",
+      push(code) { if (!this.over()) this.darts.push(code); this.mult = "S"; this.update(); },
+      add(n) { this.push(this.mult + n); },
+      addBull(inner) { this.push(inner ? "DB" : "SB"); },
+      label(code) {
+        if (code === "M") return "Miss";
+        if (code === "SB") return "25";
+        if (code === "DB") return "Bull";
+        return (code[0] === "S" ? "" : code[0]) + code.slice(1);
+      },
+      total() { return this.darts.reduce(function (t, c) { var v = value(c); return t + v[0] * v[1]; }, 0); },
+      update() {
+        var left = rest - this.total(), last = this.darts.length ? value(this.darts[this.darts.length - 1]) : null;
+        this.state = left === 0 && last && last[0] === 2 ? "checkout" : (left < 2 && this.darts.length ? "bust" : "");
+      },
+      over() { this.update(); return this.state !== "" || this.darts.length >= 3; },
+      status() {
+        this.update();
+        if (this.state === "checkout") return "🎯 Game shot!";
+        if (this.state === "bust") return "Bust – no score";
+        return (rest - this.total()) + " left" + (this.darts.length ? " · " + this.total() + " scored" : "");
+      },
+      sendLabel() {
+        if (this.state === "checkout") return "✓ Game shot";
+        if (this.state === "bust") return "✓ Save bust";
+        return this.darts.length === 3 ? "✓ Save " + this.total() : "Enter " + (3 - this.darts.length) + " more dart" + (this.darts.length === 2 ? "" : "s");
+      },
+      send() {
+        if (!this.over() || this.busy) return;
+        this.busy = true;
+        this.$refs.throws.value = this.darts.join(",");
+        var form = this.$refs.dform, score = this.state === "bust" ? rest + 1 : this.total();
+        window.fdCaller.say(window.fdCaller.phrase(score, rest, this.state === "checkout"),
+                            function () { form.submit(); });
+      },
+      typing() { return this.darts.length > 0; },
+    };
+  });
+
   // Partyspiele: Darts einzeln eingeben (Faktor + Zahl), max. 3, dann abschicken
   Alpine.data("dartPad", function () {
     return {
@@ -86,8 +146,8 @@ document.addEventListener("alpine:init", function () {
   var cfg = window.DARTS_LIVE;
   if (!cfg || !cfg.live) return;
   function busyTyping() {
-    var el = document.querySelector("[x-data^='scorer'], [x-data^='dartPad']");
-    return el && el._x_dataStack && el._x_dataStack[0].typing();
+    var els = document.querySelectorAll("[x-data^='scorer'], [x-data^='dartPad'], [x-data^='x01Pad']");
+    return Array.prototype.some.call(els, function (el) { return el._x_dataStack && el._x_dataStack[0].typing(); });
   }
   setInterval(function () {
     if (document.hidden || busyTyping()) return;

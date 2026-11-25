@@ -13,6 +13,8 @@ from sqlalchemy.orm import Session
 
 from .. import models
 from .checkouts import is_finishable
+from .modes import TRAINING, replay_mode
+from .throws import double_attempts
 
 
 @dataclass
@@ -33,6 +35,12 @@ class PlayerStats:
     best_leg: int | None = None  # wenigste Darts für ein gewonnenes Leg
     checkout_chances: int = 0  # Aufnahmen, die auf einem ausmachbaren Rest begonnen haben
     checkouts: int = 0
+    double_darts: int = 0  # nur aus Aufnahmen, die Dart für Dart eingegeben wurden
+    double_hits: int = 0
+
+    @property
+    def double_pct(self) -> float | None:
+        return 100 * self.double_hits / self.double_darts if self.double_darts else None
 
     @property
     def average(self) -> float | None:
@@ -86,6 +94,10 @@ def compute_stats(db: Session, competitor_ids: list[int] | None = None,
             s.tons += 1
         if is_finishable(v.remaining_before):
             s.checkout_chances += 1
+        if v.throws:
+            tries, hits = double_attempts(v.remaining_before, v.throws)
+            s.double_darts += tries
+            s.double_hits += hits
         if v.checkout:
             s.checkouts += 1
             s.legs_won += 1
@@ -128,6 +140,7 @@ COMPARE_ROWS = (
     ("high_finish", "Highest finish", True, "int"),
     ("best_leg", "Best leg (darts)", False, "int"),
     ("checkout_pct", "Checkout rate", True, "pct"),
+    ("double_pct", "Doubles hit", True, "pct"),
 )
 
 
@@ -190,7 +203,7 @@ def mode_records(db: Session, competitor_ids: list[int]) -> dict[int, dict[str, 
     """Siege/Spiele pro Partyspiel-Modus: {competitor_id: {"cricket": (wins, games), ...}} (nur beendete Spiele)."""
     out: dict[int, dict[str, list[int]]] = {}
     games = db.scalars(select(models.DartsGame).where(models.DartsGame.status == "finished",
-                                                      models.DartsGame.mode != "x01"))
+                                                      models.DartsGame.mode.not_in(["x01", *TRAINING])))
     for g in games:
         for p in g.players:
             if p.competitor_id not in competitor_ids:
@@ -199,3 +212,31 @@ def mode_records(db: Session, competitor_ids: list[int]) -> dict[int, dict[str, 
             rec[1] += 1
             rec[0] += g.won_by(p.competitor_id)
     return {cid: {m: (w, n) for m, (w, n) in recs.items()} for cid, recs in out.items()}
+
+
+# ---------------------------------------------------------------- Training (Bob's 27, 121 Checkout)
+
+
+def training_records(db: Session, competitor_id: int) -> dict[str, dict]:
+    """Bestwerte pro Trainingsmodus aus beendeten Spielen:
+    bobs27 -> {"games", "best", "avg"}, checkout121 -> {"games", "best_hits", "attempts", "hits", "highest"}."""
+    out: dict[str, dict] = {}
+    game_ids = select(models.DartsGamePlayer.game_id).where(models.DartsGamePlayer.competitor_id == competitor_id)
+    games = db.scalars(select(models.DartsGame).where(models.DartsGame.id.in_(game_ids),
+                                                      models.DartsGame.status == "finished",
+                                                      models.DartsGame.mode.in_(TRAINING)))
+    for g in games:
+        pos = next(p.position for p in g.players if p.competitor_id == competitor_id)
+        s = replay_mode(g.mode, len(g.players), g.options or {}, [v.throws or [] for v in g.visits])
+        r = out.setdefault(g.mode, {"games": 0})
+        r["games"] += 1
+        if g.mode == "bobs27":
+            r["best"] = max(r.get("best", s.points[pos]), s.points[pos])
+            r["total"] = r.get("total", 0) + s.points[pos]
+            r["avg"] = r["total"] / r["games"]
+        else:
+            r["best_hits"] = max(r.get("best_hits", 0), s.successes[pos])
+            r["hits"] = r.get("hits", 0) + s.successes[pos]
+            r["attempts"] = r.get("attempts", 0) + s.attempts[pos]
+            r["highest"] = max(r.get("highest", 0), s.best[pos])
+    return out

@@ -14,10 +14,10 @@ from ..competitors import CompetitorError
 from ..darts import service
 from ..darts.checkouts import checkout_route, is_finishable, min_darts
 from ..darts.engine import START_SCORES, DartsError
-from ..darts.modes import MODES, dart_label, new_mode_state
+from ..darts.modes import MODES, TRAINING, dart_label, new_mode_state
 from ..darts.achievements import ACHIEVEMENTS, compute_achievements
 from ..darts.rating import START, compute_elo, form_curve
-from ..darts.stats import compare_rows, compute_stats, head_to_head, mode_records
+from ..darts.stats import compare_rows, compute_stats, head_to_head, mode_records, training_records
 from ..db import get_db
 from .common import flash, local_dt, redirect, render
 from .tournament_pages import Sport, add_tournament_routes, read_boards, read_format, read_league
@@ -77,13 +77,17 @@ def darts_games(request: Request, db: Session = Depends(get_db), user: models.Us
 
 # ---------------------------------------------------------------- Neues Spiel
 
+PARTY_MODES = {k: m for k, m in MODES.items() if k not in TRAINING}  # Training gibt es nicht als Turnier
+
 
 @router.get("/new")
-def new_game_form(request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_user)):
+def new_game_form(request: Request, mode: str = "x01", db: Session = Depends(get_db),
+                  user: models.User = Depends(require_user)):
     me = competitors.competitor_for_user(db, user)
     return render(request, "darts/new.html", user=user, competitors=competitors.all_competitors(db),
                   starts=START_SCORES, modes=MODES,
-                  form={"start": 501, "legs": 3, "players": [me.id], "team_size": 1, "mode": "x01", "lives": 3, "rounds": 7})
+                  form={"start": 501, "legs": 3, "players": [me.id], "team_size": 1,
+                        "mode": mode if mode in MODES else "x01", "lives": 3, "rounds": 7, "attempts": 10})
 
 
 @router.post("/new")
@@ -94,8 +98,9 @@ async def new_game(request: Request, db: Session = Depends(get_db), user: models
         legs = int(form.get("legs", 1))
         team_size = 2 if str(form.get("team_size", "1")) == "2" else 1
         lives, rounds = int(form.get("lives", 3) or 3), int(form.get("rounds", 7) or 7)
+        attempts = int(form.get("attempts", 10) or 10)
     except ValueError:
-        start, legs, team_size, lives, rounds = 0, 0, 1, 3, 7
+        start, legs, team_size, lives, rounds, attempts = 0, 0, 1, 3, 7, 10
     mode = str(form.get("mode", "x01"))
     mode = mode if mode in MODES else "x01"
     ids, errors = [], []
@@ -115,14 +120,15 @@ async def new_game(request: Request, db: Session = Depends(get_db), user: models
         if mode == "x01":
             game = service.create_game(db, start, legs, ids, user, team_size=team_size)
         else:
-            opts = {"lives": lives} if mode == "killer" else ({"rounds": rounds} if mode == "shanghai" else {})
+            opts = ({"lives": lives} if mode == "killer" else {"rounds": rounds} if mode == "shanghai"
+                    else {"attempts": attempts} if mode == "checkout121" else {})
             game = service.create_mode_game(db, mode, ids, user, opts)
     except DartsError as e:
         db.rollback()
         return render(request, "darts/new.html", status_code=400, user=user, error=str(e),
                       competitors=competitors.all_competitors(db), starts=START_SCORES, modes=MODES,
                       form={"start": start or 501, "legs": legs or 1, "players": ids, "team_size": team_size,
-                            "mode": mode, "lives": lives, "rounds": rounds})
+                            "mode": mode, "lives": lives, "rounds": rounds, "attempts": attempts})
     return redirect(f"/darts/games/{game.id}")
 
 
@@ -185,11 +191,18 @@ def _mode_page(request: Request, db: Session, user: models.User, game: models.Da
             "target": s.target[i] if s.target else None,
             "lives": s.lives[i] if s.lives else None, "killer": s.killer[i] if s.killer else None,
             "number": s.numbers[i] if s.numbers else None, "alive": s.alive(i),
+            "out": (game.mode == "killer" and not s.alive(i)) or (game.mode == "bobs27" and s.points[i] <= 0),
             "last": next((v for v in reversed(game.visits) if v.position == i), None),
         })
+        if game.mode == "bobs27":
+            rows[-1].update(round=min(s.rounds_done[i] + 1, 21), bob_target=s.bobs_target(i))
+        elif game.mode == "checkout121":
+            rows[-1].update(rest=s.rest[i], visit_no=s.attempt_visits[i] + 1, attempt=min(s.attempts[i] + 1, s.n_attempts),
+                            hits=s.successes[i], done=s.attempts[i], highest=s.best[i])
     return render(request, "darts/game_mode.html", user=user, game=game, s=s, rows=rows, info=MODES[game.mode],
                   can_score=service.can_score(user, game), can_manage=service.can_manage(user, game),
                   n_visits=len(game.visits), dart_label=dart_label,
+                  route=checkout_route(s.rest[s.turn]) if game.mode == "checkout121" and not s.finished else None,
                   history=list(reversed(game.visits[-12:])))
 
 
@@ -207,10 +220,15 @@ async def post_throws(game_id: int, request: Request, db: Session = Depends(get_
         seq = int(str(form.get("seq", "-1")))
         result = service.add_mode_visit(db, game, throws, seq)
         for msg in result["log"]:
-            if msg in ("Shanghai!", "Killer!"):
+            if msg in ("Shanghai!", "Killer!", "Checkout!"):
                 flash(request, f"🎯 {msg}")
+            elif msg == "bust":
+                flash(request, "Bust – no score.", "error")
         if game.status == "finished":
-            flash(request, f"🏆 {game.side_name(game.winning_side)} wins {MODES[game.mode]['name']}!")
+            if game.mode in TRAINING and len(game.players) == 1:
+                flash(request, f"🎯 {MODES[game.mode]['name']} finished!")
+            else:
+                flash(request, f"🏆 {game.side_name(game.winning_side)} wins {MODES[game.mode]['name']}!")
     except (DartsError, ValueError) as e:
         db.rollback()
         flash(request, str(e) if isinstance(e, DartsError) else "Invalid input.", "error")
@@ -233,18 +251,19 @@ async def post_visit(game_id: int, request: Request, db: Session = Depends(get_d
     if not service.can_score(user, game):
         raise HTTPException(403, "Only the players and whoever started the game can score.")
     form = await request.form()
+    throws = [t for t in str(form.get("throws", "")).split(",") if t.strip()]
     try:
-        score = int(str(form.get("score", "")).strip())
         seq = int(str(form.get("seq", "-1")))
+        score = None if throws else int(str(form.get("score", "")).strip())
         darts_raw = str(form.get("darts", "")).strip()
-        darts = int(darts_raw) if darts_raw else None
+        darts = int(darts_raw) if darts_raw and not throws else None
     except ValueError:
         flash(request, "Please enter a number.", "error")
         return redirect(f"/darts/games/{game.id}")
     try:
-        visit = service.add_visit(db, game, score, darts, seq)
+        visit = service.add_visit(db, game, score, darts, seq, throws=throws or None)
         if visit.bust:
-            flash(request, f"Bust! {score} was too much – no score.", "error")
+            flash(request, "Bust! No score." if throws else f"Bust! {score} was too much – no score.", "error")
         elif game.status == "finished":
             team = game.side_name(game.winning_side)
             flash(request, f"🎯 Game shot! {team} {'win' if (game.team_size or 1) > 1 else 'wins'}.")
@@ -334,7 +353,7 @@ def player_page(competitor_id: int, request: Request, db: Session = Depends(get_
                   elo_chart=line_chart(
                       [(p.rating, f"{local_dt(p.at):%d.%m.} · {p.rating:.0f} ({p.delta:+.0f})", p.delta < 0)
                        for p in hist], baseline=START),
-                  achievements=ACHIEVEMENTS, earned=earned)
+                  achievements=ACHIEVEMENTS, earned=earned, training=training_records(db, c.id))
 
 
 @router.post("/players/{competitor_id}/link")
@@ -383,7 +402,7 @@ def _tournament_info(db: Session, game: models.DartsGame) -> dict | None:
 @router.get("/tournaments/new")
 def new_tournament_form(request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_user)):
     return render(request, "darts/tournament_new.html", user=user, competitors=competitors.all_competitors(db),
-                  starts=START_SCORES, modes=MODES,
+                  starts=START_SCORES, modes=PARTY_MODES,
                   form={"start": 501, "legs": 2, "final_legs": 3, "players": [], "shuffle": True,
                         "name": "", "guests": "", "format": "knockout", "groups": "", "advance": "2", "league_rounds": "1",
                         "boards": 0, "mode": "x01", "teams": "singles", "team_text": "", "lives": 3, "rounds": 7})
@@ -403,7 +422,7 @@ async def new_tournament(request: Request, db: Session = Depends(get_db), user: 
             "format": form.get("format") or "knockout", "groups": str(form.get("groups", "")), "advance": str(form.get("advance", "2")),
             "league_rounds": str(form.get("league_rounds", "1")),
             "boards": str(form.get("boards", "0")),
-            "mode": form.get("mode") if form.get("mode") in MODES else "x01",
+            "mode": form.get("mode") if form.get("mode") in PARTY_MODES else "x01",
             "teams": form.get("teams") if form.get("teams") in ("random", "fixed") else "singles",
             "team_text": str(form.get("team_text", "")),
             "lives": int(form.get("lives") or 3) if str(form.get("lives", "3")).isdigit() else 3,
@@ -440,7 +459,7 @@ async def new_tournament(request: Request, db: Session = Depends(get_db), user: 
     except (DartsError, CompetitorError, tour.TournamentError) as e:
         db.rollback()
         return render(request, "darts/tournament_new.html", status_code=400, user=user, error=str(e),
-                      competitors=competitors.all_competitors(db), starts=START_SCORES, modes=MODES, form=keep)
+                      competitors=competitors.all_competitors(db), starts=START_SCORES, modes=PARTY_MODES, form=keep)
     flash(request, f"Tournament “{t.name}” is on – {len(t.entries)} {'teams' if keep['teams'] != 'singles' else 'players'}.")
     return redirect(f"/darts/tournaments/{t.id}")
 

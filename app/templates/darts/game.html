@@ -46,7 +46,12 @@
           @click="on = window.fdCaller.toggle()" :aria-pressed="on" x-text="on ? '🔊 Caller' : '🔇 Caller'" title="Announce 180s, ton-plus scores, busts and game shots">🔊 Caller</button>
   <p class="dg-hint"><strong>{{ cur.competitor.display_name }}</strong> to throw – {{ rest }} left
     {% if route %}· <span class="dg-route">{{ route | join(" · ") }}</span>{% endif %}</p>
-  <form method="post" action="/darts/games/{{ game.id }}/visit" class="dg-pad" x-ref="form"
+  <div x-data="x01Input()">
+  <div class="seg dg-mode" role="radiogroup" aria-label="Input">
+    <label><input type="radio" :checked="!perDart" @change="perDart = false" checked><span>Visit total</span></label>
+    <label><input type="radio" :checked="perDart" @change="perDart = true"><span>Dart by dart</span></label>
+  </div>
+  <form method="post" action="/darts/games/{{ game.id }}/visit" class="dg-pad" x-ref="form" x-show="!perDart"
         x-data="scorer({{ rest }}, {{ 'true' if finishable else 'false' }}, {{ min_darts or 0 }})" @submit.prevent="ok()">
     <input type="hidden" name="seq" value="{{ n_visits }}">
     <input type="hidden" name="score" x-ref="score">
@@ -81,6 +86,31 @@
       </div>
     </div>
   </form>
+
+  {# Dart für Dart: Punkte, Bust und Checkout rechnet die App; dazu gibt es die Doppelquote #}
+  <form method="post" action="/darts/games/{{ game.id }}/visit" class="dm-pad dg-perdart" x-ref="dform" x-show="perDart" x-cloak
+        x-data="x01Pad({{ rest }})" @submit.prevent="send()">
+    <input type="hidden" name="seq" value="{{ n_visits }}">
+    <input type="hidden" name="throws" x-ref="throws">
+    <div class="dm-chips" aria-live="polite">
+      <template x-for="i in 3" :key="i"><span class="dm-chip" :class="{ on: darts[i-1] }" x-text="darts[i-1] ? label(darts[i-1]) : 'Dart ' + i"></span></template>
+    </div>
+    <p class="dg-left" :class="state" x-text="status()">{{ rest }} left</p>
+    <div class="seg dm-mult" role="radiogroup" aria-label="Multiplier">
+      {% for k, lbl in (("S", "Single"), ("D", "Double"), ("T", "Triple")) %}
+        <label><input type="radio" value="{{ k }}" x-model="mult"><span>{{ lbl }}</span></label>
+      {% endfor %}
+    </div>
+    <div class="dm-nums">
+      {% for n in range(1, 21) %}<button type="button" class="outline secondary" @click="add('{{ n }}')" :disabled="over()">{{ n }}</button>{% endfor %}
+      <button type="button" class="outline secondary" @click="addBull(false)" :disabled="over()">25</button>
+      <button type="button" class="outline secondary" @click="addBull(true)" :disabled="over()">Bull</button>
+      <button type="button" class="outline secondary dm-miss" @click="push('M')" :disabled="over()">Miss</button>
+      <button type="button" class="outline secondary" @click="darts.pop()" :disabled="!darts.length" aria-label="Remove last dart">⌫</button>
+    </div>
+    <button type="submit" class="dm-send" :class="state" :disabled="!over() || busy" x-text="sendLabel()">✓ Save visit</button>
+  </form>
+  </div>
 {% elif game.status == "live" %}
   <p class="muted dg-hint">Live – the score updates automatically.</p>
 {% endif %}

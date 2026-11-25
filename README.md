@@ -55,6 +55,19 @@ später einem Konto zuordnen (*Stats → Spieler → Link guest to an account*),
   Aufnahmen, die auf einem ausmachbaren Rest begonnen haben). Abgebrochene Spiele zählen nicht.
 - Spiellogik in `app/darts/` (engine, checkouts, stats, service) – reine Funktionen mit eigenen Tests.
 
+**🏋️ Training** (*Darts → Training* oder im Spiel-Formular unter „Training“, allein oder bis zu 4):
+- **Bob's 27:** Doppel-Training. Start mit 27 Punkten, Runde 1 auf D1, Runde 2 auf D2 … zum Schluss Bull.
+  Jeder Treffer bringt den Wert des Doppels, kein Treffer in einer Runde zieht ihn ab. Bei 0 oder weniger ist man raus.
+- **121 Checkout:** 121 mit 9 Darts ausmachen (Double-out). Geschafft → nächstes Ziel eins höher, sonst eins
+  tiefer (nie unter 121). 5, 10 oder 20 Versuche; der Checkout-Vorschlag steht immer dabei.
+Training zählt nicht für Elo und Siege; auf der Spielerseite stehen die Bestwerte (bester Bob's-27-Score,
+Checkouts/Versuche und höchstes geschafftes Ziel).
+
+**X01 Dart für Dart:** Im Spiel zwischen *Visit total* (Punktzahl eintippen) und *Dart by dart* (S/D/T + Zahl)
+wählen; die Wahl merkt sich das Handy. Dart für Dart rechnet die App Rest, Bust und Checkout selbst (Checkout nur
+mit einem Doppel) und zählt die **Doppelquote**: jeder Dart auf einen Rest, der mit einem Doppel ausgeht
+(2–40 gerade, bei 50 nur Würfe Richtung Bull), ist ein Versuch. Die Quote steht in den Stats und im Vergleich.
+
 **Elo, Formkurve, Erfolge:** Jeder startet mit 1000 Elo. Nach jedem beendeten Spiel (X01 und Partyspiele)
 gewinnt der Sieger Punkte vom Verlierer, gegen Stärkere mehr als gegen Schwächere (K = 32, bei mehreren
 Gegnern aufgeteilt, im Doppel zählt der Schnitt des Teams). Unter 5 Spielen gilt die Wertung als vorläufig.
