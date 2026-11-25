@@ -11,6 +11,7 @@ from .. import models
 from .. import tournaments as tour
 from .engine import DartsError, GameState, Visit, advance, make_visit, new_state, replay
 from .modes import apply_visit, new_mode_state, replay_mode
+from .throws import x01_visit
 
 
 # ---------------------------------------------------------------- Spiele
@@ -60,18 +61,26 @@ class StaleGame(DartsError):
     """Jemand anderes hat in der Zwischenzeit gezählt (oder doppelt abgeschickt)."""
 
 
-def add_visit(db: Session, game: models.DartsGame, score: int, darts: int | None, seq: int) -> Visit:
-    """Speichert die nächste Aufnahme. seq = Anzahl Aufnahmen, die die Seite kannte (gegen Doppel-Tipps)."""
+def add_visit(db: Session, game: models.DartsGame, score: int | None, darts: int | None, seq: int,
+              throws: list[str] | None = None) -> Visit:
+    """Speichert die nächste Aufnahme. seq = Anzahl Aufnahmen, die die Seite kannte (gegen Doppel-Tipps).
+    Mit throws (Dart für Dart, z. B. ["T20", "T20", "D20"]) werden Punkte und Darts daraus bestimmt."""
     if game.status != "live":
         raise DartsError("This game is not running any more.")
     if seq != len(game.visits):
         raise StaleGame("The game was updated in the meantime – here is the latest score.")
     state = game_state(game)
-    visit = make_visit(state, score, darts)
+    if throws:
+        throws = [t.strip().upper() for t in throws]
+        visit = x01_visit(state, throws)
+    else:
+        throws = None
+        visit = make_visit(state, score, darts)
     db.add(models.DartsVisit(
         game_id=game.id, seq=seq, leg_no=state.leg_no, position=visit.player,
         competitor_id=game.players[visit.player].competitor_id, score=visit.score, darts=visit.darts,
         bust=visit.bust, checkout=visit.checkout, remaining_before=state.remaining[state.side(visit.player)],
+        throws=throws,
     ))
     advance(state, visit)  # Stand fortschreiben, um das Spielende zu erkennen
     if state.finished:

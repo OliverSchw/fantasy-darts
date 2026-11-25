@@ -45,6 +45,16 @@
   </div>
 {% endif %}
 
+{% if training %}
+  <h3>Training</h3>
+  <div class="stat-grid">
+    {% if training.bobs27 %}{% set b = training.bobs27 %}
+      <div><span>{{ b.best }}</span><small>Bob's 27 best · ⌀ {{ "%.0f" | format(b.avg) }} in {{ b.games }}</small></div>{% endif %}
+    {% if training.checkout121 %}{% set k = training.checkout121 %}
+      <div><span>{{ k.hits }}/{{ k.attempts }}</span><small>121 checkouts{% if k.highest %} · highest {{ k.highest }}{% endif %}</small></div>{% endif %}
+  </div>
+{% endif %}
+
 <h3>Achievements <small class="muted">{{ earned | length }} of {{ achievements | length }}</small></h3>
 <ul class="badges">
   {% for key, (icon, name, desc) in achievements.items() %}

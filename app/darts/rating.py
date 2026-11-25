@@ -104,11 +104,12 @@ def compute_elo(db: Session, games: list[models.DartsGame] | None = None) -> Elo
 
 def _compute_elo(games: list[models.DartsGame]) -> Elo:
     elo = Elo()
+    from .modes import TRAINING
     for g in games:
         n = g.n_sides
         win = g.winning_side
-        if n < 2 or win is None:
-            continue  # Solo-Training zählt nicht
+        if n < 2 or win is None or g.mode in TRAINING:
+            continue  # Solo-Spiele und Training zählen nicht
         sides = [[p.competitor_id for p in g.side_players(s)] for s in range(n)]
         side_rating = [sum(elo.rating(c) for c in side) / len(side) for side in sides]
         change = [0.0] * n

@@ -26,6 +26,12 @@
     <a href="/darts/new" role="button">Start a game</a></article>
 {% endif %}
 
+<div class="d-training">
+  <span>🏋️ Training</span>
+  <a href="/darts/new?mode=bobs27" role="button" class="outline small">Bob's 27</a>
+  <a href="/darts/new?mode=checkout121" role="button" class="outline small">121 Checkout</a>
+</div>
+
 <h3>🔴 Live now</h3>
 {% if live %}
   {{ game_list(live, user) }}

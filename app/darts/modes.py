@@ -24,8 +24,20 @@ MODES = {
     "killer": {"name": "Killer", "min": 2, "max": 4,
                "help": "Everyone gets a number and lives. Hit your own double to become a killer – then every double "
                        "of an opponent's number costs them a life (your own double costs you one). Last one standing wins."},
+    # Training (allein oder bis zu 4): zählt nicht für Elo und Siege
+    "bobs27": {"name": "Bob's 27", "min": 1, "max": 4, "training": True,
+               "help": "Doubles practice. Start with 27 points. Round 1 throw at D1, round 2 at D2 … then the Bull. "
+                       "Every hit adds the double's value, no hit in a round subtracts it. At 0 or below you're out. "
+                       "Best score after 21 rounds wins."},
+    "checkout121": {"name": "121 Checkout", "min": 1, "max": 4, "training": True,
+                    "help": "Checkout practice. Check out 121 with 9 darts (double out). Made it: the next target is "
+                            "one higher. Missed: one lower (never below 121). Most checkouts after the set number of "
+                            "attempts wins, then the highest target reached."},
 }
+TRAINING = {k for k, m in MODES.items() if m.get("training")}
 CRICKET_TARGETS = (20, 19, 18, 17, 16, 15, 25)
+BOBS_TARGETS = tuple(range(1, 21)) + (25,)
+CHECKOUT_START = 121
 
 
 def parse_dart(code: str) -> tuple[int, int]:
@@ -65,6 +77,13 @@ class ModeState:
     killer: list[bool] = field(default_factory=list)
     numbers: list[int] = field(default_factory=list)
     log: list[str] = field(default_factory=list)  # kurze Meldungen der letzten Aufnahme (z. B. "Shanghai!")
+    # Training: Bob's 27 (Runde pro Spieler) / 121 Checkout (Ziel, Rest, Aufnahmen im Versuch, Treffer)
+    rounds_done: list[int] = field(default_factory=list)
+    rest: list[int] = field(default_factory=list)
+    attempt_visits: list[int] = field(default_factory=list)
+    attempts: list[int] = field(default_factory=list)  # abgeschlossene Versuche
+    successes: list[int] = field(default_factory=list)
+    best: list[int] = field(default_factory=list)  # höchstes geschafftes Ziel
 
     @property
     def finished(self) -> bool:
@@ -84,7 +103,21 @@ class ModeState:
         return (rnd - 1) % 20 + 1
 
     def alive(self, p: int) -> bool:
-        return self.mode != "killer" or self.lives[p] > 0
+        if self.mode == "killer":
+            return self.lives[p] > 0
+        if self.mode == "bobs27":
+            return self.points[p] > 0 and self.rounds_done[p] < len(BOBS_TARGETS)
+        if self.mode == "checkout121":
+            return self.attempts[p] < self.n_attempts
+        return True
+
+    # ---- Bob's 27 / 121 Checkout
+    def bobs_target(self, p: int) -> int:
+        return BOBS_TARGETS[min(self.rounds_done[p], len(BOBS_TARGETS) - 1)]
+
+    @property
+    def n_attempts(self) -> int:
+        return int(self.options.get("attempts", 10))
 
 
 def new_mode_state(mode: str, n: int, options: dict | None = None) -> ModeState:
@@ -110,6 +143,14 @@ def new_mode_state(mode: str, n: int, options: dict | None = None) -> ModeState:
         if not nums or len(nums) != n or len(set(nums)) != n or not all(1 <= x <= 20 for x in nums):
             raise DartsError("Killer needs a different number (1–20) for every player.")
         s.numbers, s.lives, s.killer = list(nums), [lives] * n, [False] * n
+    elif mode == "bobs27":
+        s.points, s.rounds_done = [27] * n, [0] * n
+    elif mode == "checkout121":
+        if s.n_attempts not in (5, 10, 20):
+            raise DartsError("121 Checkout is played with 5, 10 or 20 attempts.")
+        s.target = [CHECKOUT_START] * n
+        s.rest = [CHECKOUT_START] * n
+        s.attempt_visits, s.attempts, s.successes, s.best = [0] * n, [0] * n, [0] * n, [0] * n
     return s
 
 
@@ -139,6 +180,66 @@ def _cricket_won(s: ModeState, p: int) -> bool:
     return all(v >= 3 for v in s.marks[p].values()) and all(s.points[p] >= s.points[o] for o in range(s.n) if o != p)
 
 
+def _finish_training(s: ModeState) -> None:
+    """Wenn keiner mehr werfen kann: Sieger bestimmen (Gleichstand: wer zuerst dran war)."""
+    if any(s.alive(p) for p in range(s.n)):
+        return
+    if s.mode == "bobs27":
+        key = lambda p: s.points[p]  # noqa: E731
+    else:
+        key = lambda p: (s.successes[p], s.best[p])  # noqa: E731
+    s.winner = max(range(s.n), key=key)
+
+
+def _bobs27_visit(s: ModeState, p: int, darts: list[tuple[int, int]]) -> int:
+    if len(darts) != 3:
+        raise DartsError("Enter all 3 darts (use “Miss” for darts outside).")
+    target = s.bobs_target(p)
+    value = 2 * target
+    hits = sum(1 for m, n_ in darts if m == 2 and n_ == target)
+    change = hits * value if hits else -value
+    s.points[p] += change
+    s.rounds_done[p] += 1
+    if s.points[p] <= 0:
+        s.log.append("out")
+    return change
+
+
+def _checkout_visit(s: ModeState, p: int, darts: list[tuple[int, int]]) -> int:
+    """Eine Aufnahme im 121-Versuch: Double-out, Bust setzt auf den Rest vor der Aufnahme zurück."""
+    rest = s.rest[p]
+    scored, done = 0, None
+    for i, (m, n_) in enumerate(darts):
+        if done:
+            raise DartsError("The visit was already over – leave out the remaining darts.")
+        left = rest - scored - m * n_
+        if left == 0 and m == 2:
+            done = "checkout"
+        elif left < 2:
+            done = "bust"
+        scored += m * n_
+    if not done and len(darts) < 3:
+        raise DartsError("Enter all 3 darts (use “Miss” for darts outside).")
+    s.attempt_visits[p] += 1
+    if done == "checkout":
+        s.successes[p] += 1
+        s.best[p] = max(s.best[p], s.target[p])
+        s.log.append("Checkout!")
+        s.target[p] += 1
+    elif done == "bust":
+        s.log.append("bust")
+        scored = 0
+    else:
+        s.rest[p] = rest - scored
+    if done == "checkout" or s.attempt_visits[p] >= 3:  # Versuch vorbei
+        if done != "checkout":
+            s.target[p] = max(CHECKOUT_START, s.target[p] - 1)
+        s.attempts[p] += 1
+        s.attempt_visits[p] = 0
+        s.rest[p] = s.target[p]
+    return scored if done != "bust" else 0
+
+
 def apply_visit(s: ModeState, throws: list[str]) -> dict:
     """Wendet eine Aufnahme (1-3 Dart-Codes) für den Spieler an, der dran ist.
     Weniger als 3 Darts nur, wenn das Spiel damit endet. Gibt {"points": ..., "won": bool} zurück."""
@@ -149,6 +250,19 @@ def apply_visit(s: ModeState, throws: list[str]) -> dict:
     darts = [parse_dart(t) for t in throws]
     p, gained = s.turn, 0
     s.log = []
+    if s.mode in TRAINING:
+        if s.mode == "bobs27":
+            gained = _bobs27_visit(s, p, darts)
+        else:
+            attempt_before = s.attempts[p]
+            gained = _checkout_visit(s, p, darts)
+        s.visits += 1
+        won = "Checkout!" in s.log
+        _finish_training(s)
+        # Bob's 27: nach jeder Runde der Nächste. 121: ein Versuch (bis zu 3 Aufnahmen) am Stück.
+        if not s.finished and (s.mode == "bobs27" or s.attempts[p] != attempt_before or not s.alive(p)):
+            _next_turn(s)
+        return {"points": gained, "won": won}
     for i, (mult, num) in enumerate(darts):
         if s.finished:
             raise DartsError("The game was already decided – leave out the remaining darts.")

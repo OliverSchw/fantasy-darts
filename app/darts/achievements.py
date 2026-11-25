@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .. import models
-from .modes import parse_dart
+from .modes import TRAINING, parse_dart
 from .rating import aware, cached
 
 # Schlüssel: (Symbol, Name, Beschreibung)
@@ -113,7 +113,8 @@ def _compute(db: Session) -> dict[int, list[Earned]]:
                             earn(v.competitor_id, "twelve", v_at, g.id)
         if g.status != "finished":
             continue
-        winners = {p.competitor_id for p in g.players if g.won_by(p.competitor_id)} if g.n_sides > 1 else set()
+        winners = ({p.competitor_id for p in g.players if g.won_by(p.competitor_id)}
+                   if g.n_sides > 1 and g.mode not in TRAINING else set())
         for p in g.players:
             cid = p.competitor_id
             played[cid] = played.get(cid, 0) + 1

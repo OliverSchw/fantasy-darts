@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from . import models
 from .darts.achievements import compute_achievements
+from .darts.modes import TRAINING
 from .darts.rating import aware, compute_elo
 
 DAYS = 30
@@ -43,7 +44,7 @@ def darts_items(db: Session, since: datetime) -> list[Item]:
                                                       models.DartsGame.finished_at >= since)).all()
     for g in games:
         at = aware(g.finished_at or g.created_at)
-        if at < since or g.n_sides < 2 or g.winning_side is None:
+        if at < since or g.n_sides < 2 or g.winning_side is None or g.mode in TRAINING:
             continue
         win = g.winning_side
         losers = [g.side_name(s) for s in range(g.n_sides) if s != win]

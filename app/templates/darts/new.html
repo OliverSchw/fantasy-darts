@@ -14,7 +14,12 @@
     <legend>Game</legend>
     <select name="mode" x-model="mode" aria-label="Game">
       <option value="x01">X01 – 301 / 501 / 701</option>
-      {% for key, m in modes.items() %}<option value="{{ key }}">{{ m.name }}</option>{% endfor %}
+      <optgroup label="Party games">
+        {% for key, m in modes.items() if not m.training %}<option value="{{ key }}">{{ m.name }}</option>{% endfor %}
+      </optgroup>
+      <optgroup label="Training">
+        {% for key, m in modes.items() if m.training %}<option value="{{ key }}">{{ m.name }}</option>{% endfor %}
+      </optgroup>
     </select>
     {% for key, m in modes.items() %}<small class="muted dm-modehelp" x-show="mode === '{{ key }}'" x-cloak>{{ m.help }} ({{ m.min }}–{{ m.max }} players)</small>{% endfor %}
     <div x-show="mode === 'killer'" x-cloak class="stepper">
@@ -25,6 +30,11 @@
     <div x-show="mode === 'shanghai'" x-cloak class="stepper">
       <span>Rounds</span>
       <select name="rounds" aria-label="Rounds">{% for r in (7, 10, 20) %}<option value="{{ r }}" {% if r == form.rounds %}selected{% endif %}>{{ r }}</option>{% endfor %}</select>
+    </div>
+    <div x-show="mode === 'checkout121'" x-cloak class="stepper">
+      <span>Attempts</span>
+      <select name="attempts" aria-label="Attempts">{% for a in (5, 10, 20) %}<option value="{{ a }}" {% if a == form.attempts %}selected{% endif %}>{{ a }}</option>{% endfor %}</select>
+      <small class="muted">9 darts each</small>
     </div>
     <div x-show="mode === 'x01'">
     <div class="seg" role="radiogroup" aria-label="Start score">
@@ -74,7 +84,7 @@
       <button type="button" class="outline small" x-show="n < 4 && !(doubles && mode === 'x01')" @click="n++">＋ Player</button>
       <button type="button" class="outline secondary small" x-show="n > 1 && !(doubles && mode === 'x01')" @click="n--; sel[n] = ''">− Player</button>
     </div>
-    <small class="muted" x-show="!doubles || mode !== 'x01'">1 player = practice (X01, Around the Clock, Shanghai).</small>
+    <small class="muted" x-show="!doubles || mode !== 'x01'">1 player = practice (X01, Around the Clock, Shanghai, training).</small>
     <small class="muted">Guests don't need an account – an admin can link them to one later.</small>
   </fieldset>
 

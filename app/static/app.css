@@ -872,3 +872,14 @@ a.t-board:hover { border-color: var(--pico-primary); }
 .t-day.current { border-color: var(--pico-primary); }
 .t-day > summary { margin: 0; }
 .t-day .t-matches { margin: 0.5rem 0 0.2rem; }
+
+/* X01 Dart für Dart */
+.dg-mode { margin-bottom: 0.6rem; }
+.dg-left { text-align: center; font-weight: 700; font-size: 1.1rem; margin: 0.3rem 0 0.5rem; font-variant-numeric: tabular-nums; }
+.dg-left.bust { color: var(--pico-del-color, #c62828); }
+.dg-left.checkout { color: var(--pico-ins-color, #2e7d32); }
+.dm-send.bust { background: var(--pico-del-color, #c62828); border-color: var(--pico-del-color, #c62828); }
+.dm-send.checkout { background: var(--pico-ins-color, #2e7d32); border-color: var(--pico-ins-color, #2e7d32); }
+.d-training { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin: -0.4rem 0 1rem; }
+.d-training > span { font-weight: 600; font-size: 0.9rem; margin-right: 0.2rem; }
+.d-training [role=button] { margin: 0; }
