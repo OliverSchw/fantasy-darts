@@ -760,3 +760,24 @@ table.compact.t-table th, table.compact.t-table td { padding: 0.3rem 0.35rem; fo
 .t-fame h3 { font-size: 1rem; margin-bottom: 0.4rem; }
 .t-fame ol { margin: 0; padding-left: 1.3rem; }
 .t-fame li { margin-bottom: 0.15rem; }
+
+/* Scheiben / Tische */
+.t-boards { display: grid; gap: 0.4rem; margin-bottom: 0.6rem; }
+@media (min-width: 640px) { .t-boards { grid-template-columns: repeat(2, 1fr); } }
+.t-board { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 0.7rem; align-items: center;
+  padding: 0.5rem 0.75rem; border: 1px solid var(--pico-muted-border-color); border-radius: var(--pico-border-radius);
+  background: var(--pico-card-background-color); text-decoration: none; color: inherit; }
+a.t-board:hover { border-color: var(--pico-primary); }
+.t-board.is-live { border-color: #dc3545; }
+.t-board.free { opacity: 0.6; }
+.t-bno { grid-row: 1 / 3; font-weight: 800; font-size: 0.8rem; background: var(--pico-primary); color: #fff; border-radius: 0.5rem;
+  padding: 0.35rem 0.5rem; text-align: center; min-width: 4.2rem; }
+.t-board.free .t-bno { background: var(--pico-muted-color); }
+.t-bm { font-size: 0.92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.t-bst { font-size: 0.75rem; color: var(--pico-muted-color); }
+.t-next { font-size: 0.85rem; margin-bottom: 1rem; }
+.t-btag { background: var(--pico-primary); color: #fff; font-size: 0.68rem; font-weight: 700; padding: 0.05rem 0.35rem; border-radius: 999px; }
+.t-onboard { text-align: center; font-size: 1.05rem; padding: 0.5rem; border: 2px solid var(--pico-primary); border-radius: var(--pico-border-radius); }
+.t-boardform { display: flex; gap: 0.5rem; align-items: end; margin-bottom: 0.6rem; }
+.t-boardform label { margin: 0; flex: 0 0 8rem; }
+.t-boardform input { margin: 0; }

@@ -108,6 +108,7 @@ def create_tournament(db: Session, sport: str, name: str, entries: list[list[int
         _build_bracket(t, _seeded_slots(t.entries))
     else:
         _build_groups(t, groups)
+    assign_boards(t)
     db.commit()
     db.refresh(t)
     return t
@@ -191,14 +192,15 @@ def advance_winner(t: models.Tournament, m: models.TournamentMatch, winner_id: i
     if m.group_no is not None:
         if not knockout_started(t) and all(x.is_played for x in t.group_matches):
             _build_bracket(t, _knockout_slots(t))
-        return
-    nxt = next_match(t, m)
-    if nxt is None:  # Finale
-        t.status, t.winner_entry_id, t.finished_at = "finished", winner_id, datetime.now(timezone.utc)
-    elif m.slot % 2 == 0:
-        nxt.entry1_id = winner_id
     else:
-        nxt.entry2_id = winner_id
+        nxt = next_match(t, m)
+        if nxt is None:  # Finale
+            t.status, t.winner_entry_id, t.finished_at = "finished", winner_id, datetime.now(timezone.utc)
+        elif m.slot % 2 == 0:
+            nxt.entry1_id = winner_id
+        else:
+            nxt.entry2_id = winner_id
+    assign_boards(t)
 
 
 def can_change(t: models.Tournament, m: models.TournamentMatch) -> bool:
@@ -243,6 +245,8 @@ def clear_result(db: Session, t: models.Tournament, m: models.TournamentMatch, c
         else:
             nxt.entry2_id = None
     m.winner_id, m.score1, m.score2, m.updated_at = None, 0, 0, datetime.now(timezone.utc)
+    m.board = None  # Match muss neu gespielt werden -> kommt wieder in die Warteschlange
+    assign_boards(t)
     if commit:
         db.commit()
 
@@ -257,6 +261,7 @@ def reset_knockout(db: Session, t: models.Tournament) -> None:
         t.matches.remove(m)
         db.delete(m)
     t.status, t.winner_entry_id, t.finished_at = "running", None, None
+    assign_boards(t)
     db.commit()
 
 
@@ -438,3 +443,83 @@ def hall_of_fame(db: Session, sport: str) -> list[tuple[models.Competitor, int]]
             titles[c.id] = titles.get(c.id, 0) + 1
             people[c.id] = c
     return sorted(((people[cid], n) for cid, n in titles.items()), key=lambda x: (-x[1], x[0].display_name.lower()))
+
+
+# ---------------------------------------------------------------- Scheiben / Tische
+
+
+def board_count(t: models.Tournament) -> int:
+    return int((t.settings or {}).get("boards") or 0)
+
+
+def _playable(m: models.TournamentMatch) -> bool:
+    return m.entry1_id is not None and m.entry2_id is not None and not m.is_played and not m.bye
+
+
+def _queue_key(t: models.Tournament):
+    """Reihenfolge der Warteschlange: Gruppenspiele nach Spieltag, innerhalb eines Spieltags die Gruppen
+    abwechselnd (A, B, C, A, B, C ...), danach K.-o. nach Runde."""
+    per_round: dict[int, int] = {}
+    index: dict[int, int] = {}
+    seen: dict[int, int] = {}
+    for g in {e.group_no for e in t.entries if e.group_no is not None}:
+        per_round[g] = max(1, sum(1 for e in t.entries if e.group_no == g) // 2)
+    for m in sorted(t.group_matches, key=lambda m: m.slot):
+        index[m.id or id(m)] = seen.get(m.group_no, 0)
+        seen[m.group_no] = seen.get(m.group_no, 0) + 1
+
+    def key(m: models.TournamentMatch):
+        if m.group_no is not None:
+            k = index.get(m.id or id(m), 0)
+            per = per_round.get(m.group_no, 1)
+            return (0, k // per, k % per, m.group_no)  # Spieltag, dann Gruppen abwechselnd (A, B, A, B ...)
+        return (1, m.round, m.slot, 0)
+    return key
+
+
+def assign_boards(t: models.Tournament) -> None:
+    """Freie Scheiben mit den nächsten spielbaren Matches belegen (ohne dass jemand doppelt spielt)."""
+    n = board_count(t)
+    if n <= 0:
+        return
+    for m in t.matches:
+        if m.board is None or m.is_played:
+            continue
+        # Scheiben, die es nicht (mehr) gibt, und Matches, denen (z. B. nach einem Reset davor) wieder ein
+        # Gegner fehlt, geben ihre Scheibe frei - sie kommen später ganz normal wieder in die Warteschlange.
+        if m.board > n or not _playable(m):
+            m.board = None
+    active = [m for m in t.matches if m.board is not None and _playable(m)]
+    busy_boards = {m.board for m in active}
+    busy_entries = {eid for m in active for eid in (m.entry1_id, m.entry2_id)}
+    queue = sorted((m for m in t.matches if m.board is None and _playable(m)), key=_queue_key(t))
+    for board in range(1, n + 1):
+        if board in busy_boards:
+            continue
+        nxt = next((m for m in queue if m.entry1_id not in busy_entries and m.entry2_id not in busy_entries), None)
+        if nxt is None:
+            break
+        nxt.board = board
+        queue.remove(nxt)
+        busy_entries |= {nxt.entry1_id, nxt.entry2_id}
+
+
+def set_boards(db: Session, t: models.Tournament, n: int) -> None:
+    if not 0 <= n <= 32:
+        raise TournamentError("Choose between 0 (no boards) and 32.")
+    t.settings = {**(t.settings or {}), "boards": n}
+    if n == 0:
+        for m in t.matches:
+            if not m.is_played:
+                m.board = None
+    assign_boards(t)
+    db.commit()
+
+
+def board_view(t: models.Tournament, limit: int = 6) -> dict:
+    """Für die Anzeige: was auf welcher Scheibe läuft, und was als Nächstes kommt."""
+    n = board_count(t)
+    on_board = {m.board: m for m in t.matches if m.board is not None and _playable(m)}
+    queue = sorted((m for m in t.matches if m.board is None and _playable(m)), key=_queue_key(t))
+    return {"n": n, "boards": [(b, on_board.get(b)) for b in range(1, n + 1)], "queue": queue[:limit],
+            "waiting": len(queue)}

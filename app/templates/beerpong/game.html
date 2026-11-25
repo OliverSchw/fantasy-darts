@@ -2,7 +2,7 @@
 {% from "_macros.html" import cavatar %}
 {% block title %}{{ g.team_name(1) }} vs {{ g.team_name(2) }}{% endblock %}
 {% block content %}
-{% if tinfo %}<p class="dg-tour"><a href="/beerpong/tournaments/{{ tinfo.t.id }}">🏆 {{ tinfo.t.name }}</a> · {{ tinfo.title }}</p>{% endif %}
+{% if tinfo %}<p class="dg-tour"><a href="/beerpong/tournaments/{{ tinfo.t.id }}">🏆 {{ tinfo.t.name }}</a> · {{ tinfo.title }}{% if tinfo.tm.board %} · <strong>Table {{ tinfo.tm.board }}</strong>{% endif %}</p>{% endif %}
 <div class="dg-head">
   <span>{{ g.cups }} cups · first to hit them all</span>
   {% if g.status == "live" %}<mark class="live-badge">LIVE</mark>{% elif g.status == "abandoned" %}<mark class="role ch">abandoned</mark>{% endif %}

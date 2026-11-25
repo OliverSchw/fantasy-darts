@@ -3,6 +3,8 @@
 {% block title %}{{ title }} · {{ t.name }}{% endblock %}
 {% block content %}
 <p class="muted"><a href="{{ sp.base }}/tournaments/{{ t.id }}">← {{ t.name }}</a> · {{ title }} · {{ sp.summary(t) }}</p>
+{% if tm.board and not tm.is_played %}<p class="t-onboard">🎯 Play on <strong>{{ sp.board_label }} {{ tm.board }}</strong></p>
+{% elif not tm.is_played and tm.entry1 and tm.entry2 and t.settings.get("boards") %}<p class="muted center">Waiting for a free {{ sp.board_label | lower }} – this match is in the queue.</p>{% endif %}
 <div class="tm-vs">
   {% for e, sc in ((tm.entry1, tm.score1), (tm.entry2, tm.score2)) %}
     <div class="tm-side {% if tm.winner_id and e and tm.winner_id == e.id %}win{% endif %}">

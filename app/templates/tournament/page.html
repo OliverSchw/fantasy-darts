@@ -14,6 +14,28 @@
   <article class="dg-winner"><p>🏆 Champion: <strong>{{ winner.display_name }}</strong></p></article>
 {% endif %}
 
+{% if bv.n and not winner %}
+  <h2 class="t-stage">🎯 {{ sp.board_label }}s</h2>
+  <div class="t-boards">
+    {% for b, m in bv.boards %}
+      {% if m %}
+        <a href="{{ sp.base }}/tournaments/{{ t.id }}/matches/{{ m.id }}" class="t-board {% if m.id in live %}is-live{% endif %}">
+          <span class="t-bno">{{ sp.board_label }} {{ b }}</span>
+          <span class="t-bm"><strong>{{ m.entry1.display_name }}</strong> <small>vs</small> <strong>{{ m.entry2.display_name }}</strong></span>
+          <span class="t-bst">{% if m.id in live %}<mark class="live-badge">LIVE</mark>{% else %}{{ match_title(t, m) }} · ready to start{% endif %}</span>
+        </a>
+      {% else %}
+        <div class="t-board free"><span class="t-bno">{{ sp.board_label }} {{ b }}</span><span class="t-bst">free – waiting for players</span></div>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% if bv.queue %}
+    <p class="t-next"><strong>Up next:</strong>
+      {% for m in bv.queue %}<a href="{{ sp.base }}/tournaments/{{ t.id }}/matches/{{ m.id }}">{{ m.entry1.display_name }} – {{ m.entry2.display_name }}</a>{{ " · " if not loop.last }}{% endfor %}
+      {% if bv.waiting > bv.queue | length %} <span class="muted">+{{ bv.waiting - bv.queue | length }} more</span>{% endif %}</p>
+  {% endif %}
+{% endif %}
+
 {% if groups %}
   <h2 class="t-stage">Group stage</h2>
   {% if not ko_started %}<p class="muted legend">Tap a match to play it or enter the result. When all group matches are done, the knockout bracket is drawn automatically.</p>{% endif %}
@@ -39,7 +61,7 @@
           {% for m in g.matches %}
             <li><a href="{{ sp.base }}/tournaments/{{ t.id }}/matches/{{ m.id }}" class="{% if m.is_played %}played{% endif %} {% if m.id in live %}is-live{% endif %}">
               <span class="{% if m.winner_id == m.entry1_id %}w{% endif %}">{{ m.entry1.display_name }}</span>
-              <span class="t-res">{% if m.is_played %}{{ m.score1 }}:{{ m.score2 }}{% elif m.id in live %}<mark class="live-badge">LIVE</mark>{% else %}vs{% endif %}</span>
+              <span class="t-res">{% if m.is_played %}{{ m.score1 }}:{{ m.score2 }}{% elif m.id in live %}<mark class="live-badge">LIVE</mark>{% elif m.board %}<mark class="t-btag">{{ sp.board_label[0] }}{{ m.board }}</mark>{% else %}vs{% endif %}</span>
               <span class="{% if m.winner_id == m.entry2_id %}w{% endif %}">{{ m.entry2.display_name }}</span>
             </a></li>
           {% endfor %}
@@ -91,6 +113,12 @@
 {% if organizer %}
   <details class="dg-more">
     <summary class="small-link">Organizer options…</summary>
+    {% if t.status == "running" %}
+      <form method="post" action="{{ sp.base }}/tournaments/{{ t.id }}/boards" class="t-boardform">
+        <label>{{ sp.board_label }}s <input type="number" name="boards" min="0" max="32" value="{{ bv.n }}" inputmode="numeric"></label>
+        <button class="outline small">Save</button>
+      </form>
+    {% endif %}
     {% if groups and ko_started %}
       <form method="post" action="{{ sp.base }}/tournaments/{{ t.id }}/knockout/reset" onsubmit="return confirm('Remove the knockout bracket so group results can be changed?')">
         <button class="outline secondary small">Reset knockout stage</button>
