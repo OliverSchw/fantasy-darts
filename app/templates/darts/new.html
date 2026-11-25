@@ -74,6 +74,9 @@
               {% for c in competitors if c.is_guest %}<option value="{{ c.id }}">{{ c.display_name }}</option>{% endfor %}
             </optgroup>
           {% endif %}
+          <optgroup label="🤖 Bots (X01 training)">
+            {% for key, b in bots.items() %}<option value="bot:{{ key }}">🤖 {{ b.name }} · avg ~{{ b.average }}</option>{% endfor %}
+          </optgroup>
           <option value="guest">＋ New guest…</option>
         </select>
         <input name="g{{ i }}" placeholder="Guest name" maxlength="40" x-show="sel[{{ i }}] === 'guest'" x-cloak
@@ -86,6 +89,8 @@
     </div>
     <small class="muted" x-show="!doubles || mode !== 'x01'">1 player = practice (X01, Around the Clock, Shanghai, training).</small>
     <small class="muted">Guests don't need an account – an admin can link them to one later.</small>
+    <small class="muted" x-show="sel.some(v => v.startsWith('bot:'))" x-cloak>🤖 The bot throws by itself right after
+      your visit. Games against bots are training – they don't count for Elo or wins.</small>
   </fieldset>
 
   <button type="submit">🎯 Game on!</button>

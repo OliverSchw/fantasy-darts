@@ -190,6 +190,7 @@ class Competitor(Base):
     name: Mapped[str] = mapped_column(String(40))  # Gastname; bei Konten der Username beim Anlegen
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), unique=True, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    bot_level: Mapped[str | None] = mapped_column(String(10), nullable=True)  # gesetzt = Darts-Bot (easy ... pro)
 
     user: Mapped[User | None] = relationship(lazy="joined")
 
@@ -199,7 +200,11 @@ class Competitor(Base):
 
     @property
     def is_guest(self) -> bool:
-        return self.user_id is None
+        return self.user_id is None and not self.bot_level
+
+    @property
+    def is_bot(self) -> bool:
+        return bool(self.bot_level)
 
 
 # ---------------------------------------------------------------- Darts (X01)
@@ -249,6 +254,11 @@ class DartsGame(Base):
             return self.winner_side
         p = next((p for p in self.players if p.competitor_id == self.winner_id), None)
         return self.side_of(p.position) if p else None
+
+    @property
+    def has_bot(self) -> bool:
+        """Spiel gegen einen Bot = Training: zählt nicht für Elo, Siege und Neuigkeiten."""
+        return any(p.competitor.is_bot for p in self.players)
 
     def won_by(self, competitor_id: int) -> bool:
         side = self.winning_side

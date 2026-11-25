@@ -108,6 +108,8 @@ def compute_stats(db: Session, competitor_ids: list[int] | None = None,
     if game_ids is not None:
         gq = gq.where(models.DartsGame.id.in_(game_ids))
     for g in db.scalars(gq):
+        if g.has_bot:
+            continue  # gegen Bots: Würfe zählen, Siege nicht (Training)
         for p in g.players:
             if competitor_ids is not None and p.competitor_id not in competitor_ids:
                 continue
@@ -240,3 +242,19 @@ def training_records(db: Session, competitor_id: int) -> dict[str, dict]:
             r["attempts"] = r.get("attempts", 0) + s.attempts[pos]
             r["highest"] = max(r.get("highest", 0), s.best[pos])
     return out
+
+
+def bot_records(db: Session, competitor_id: int) -> dict[str, tuple[int, int]]:
+    """Bilanz gegen die Bots: {"easy": (Siege, Spiele), ...} aus beendeten Spielen."""
+    out: dict[str, list[int]] = {}
+    game_ids = select(models.DartsGamePlayer.game_id).where(models.DartsGamePlayer.competitor_id == competitor_id)
+    for g in db.scalars(select(models.DartsGame).where(models.DartsGame.id.in_(game_ids),
+                                                       models.DartsGame.status == "finished")):
+        me = next(p for p in g.players if p.competitor_id == competitor_id)
+        bots = {p.competitor.bot_level for p in g.players
+                if p.competitor.is_bot and g.side_of(p.position) != g.side_of(me.position)}
+        for level in bots:
+            rec = out.setdefault(level, [0, 0])
+            rec[1] += 1
+            rec[0] += g.won_by(competitor_id)
+    return {k: (w, n) for k, (w, n) in out.items()}

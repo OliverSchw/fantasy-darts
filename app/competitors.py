@@ -32,17 +32,38 @@ def competitor_for_user(db: Session, user: models.User) -> models.Competitor:
 
 
 def all_competitors(db: Session) -> list[models.Competitor]:
+    """Mitglieder und Gäste (ohne Bots - die stehen in keiner Auswahl- oder Rangliste)."""
     ensure_user_competitors(db)
-    rows = db.scalars(select(models.Competitor)).unique().all()
+    rows = db.scalars(select(models.Competitor).where(models.Competitor.bot_level.is_(None))).unique().all()
     return sorted(rows, key=lambda c: (c.is_guest, c.display_name.lower()))
+
+
+def bot(db: Session, level: str) -> models.Competitor:
+    """Den Bot dieser Stärke holen (wird beim ersten Mal angelegt)."""
+    from .darts.bot import LEVELS
+    if level not in LEVELS:
+        raise CompetitorError("Unknown bot level.")
+    c = db.scalar(select(models.Competitor).where(models.Competitor.bot_level == level))
+    if c is None:
+        c = models.Competitor(name=LEVELS[level].name, bot_level=level)
+        db.add(c)
+        db.flush()
+    return c
 
 
 def name_taken(db: Session, name: str) -> bool:
     low = name.strip().lower()
     if db.scalar(select(models.User.id).where(func.lower(models.User.username) == low)):
         return True
+    if low in {lv.name.lower() for lv in _bot_levels().values()}:
+        return True  # "Pro Bot" & Co. sind reserviert
     return db.scalar(select(models.Competitor.id).where(
         models.Competitor.user_id.is_(None), func.lower(models.Competitor.name) == low)) is not None
+
+
+def _bot_levels():
+    from .darts.bot import LEVELS
+    return LEVELS
 
 
 def create_guest(db: Session, name: str) -> models.Competitor:
