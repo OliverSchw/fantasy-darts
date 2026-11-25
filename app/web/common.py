@@ -17,6 +17,7 @@ from ..auth import optional_user
 from ..bracket_view import Bracket, PlayerStatus
 from ..db import get_db
 from ..flags import flag_code
+from ..darts.modes import MODES
 from ..platform import HOME_TABS, PLATFORM_NAME, SECTIONS, section_for_path, tab_active
 from ..config_store import invite_code, season_rules
 from ..rules import Rules, current_rules
@@ -44,6 +45,7 @@ templates.env.globals["sections"] = SECTIONS
 templates.env.globals["home_tabs"] = HOME_TABS
 templates.env.globals["section_for_path"] = section_for_path
 templates.env.globals["tab_active"] = tab_active
+templates.env.globals["darts_modes"] = MODES
 
 
 def local_dt(dt: datetime | None) -> datetime | None:

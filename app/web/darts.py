@@ -13,7 +13,8 @@ from ..competitors import CompetitorError
 from ..darts import service
 from ..darts.checkouts import checkout_route, is_finishable, min_darts
 from ..darts.engine import START_SCORES, DartsError
-from ..darts.stats import compare_rows, compute_stats, head_to_head, leg_average
+from ..darts.modes import MODES, dart_label
+from ..darts.stats import compare_rows, compute_stats, head_to_head, mode_records
 from ..db import get_db
 from .common import flash, redirect, render
 from .tournament_pages import Sport, add_tournament_routes, read_boards, read_format
@@ -76,7 +77,8 @@ def darts_games(request: Request, db: Session = Depends(get_db), user: models.Us
 def new_game_form(request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_user)):
     me = competitors.competitor_for_user(db, user)
     return render(request, "darts/new.html", user=user, competitors=competitors.all_competitors(db),
-                  starts=START_SCORES, form={"start": 501, "legs": 3, "players": [me.id], "team_size": 1})
+                  starts=START_SCORES, modes=MODES,
+                  form={"start": 501, "legs": 3, "players": [me.id], "team_size": 1, "mode": "x01", "lives": 3, "rounds": 7})
 
 
 @router.post("/new")
@@ -86,8 +88,11 @@ async def new_game(request: Request, db: Session = Depends(get_db), user: models
         start = int(form.get("start", 501))
         legs = int(form.get("legs", 1))
         team_size = 2 if str(form.get("team_size", "1")) == "2" else 1
+        lives, rounds = int(form.get("lives", 3) or 3), int(form.get("rounds", 7) or 7)
     except ValueError:
-        start, legs, team_size = 0, 0, 1
+        start, legs, team_size, lives, rounds = 0, 0, 1, 3, 7
+    mode = str(form.get("mode", "x01"))
+    mode = mode if mode in MODES else "x01"
     ids, errors = [], []
     for i in range(4):
         raw = str(form.get(f"p{i}", "")).strip()
@@ -102,12 +107,17 @@ async def new_game(request: Request, db: Session = Depends(get_db), user: models
     try:
         if errors:
             raise DartsError(errors[0])
-        game = service.create_game(db, start, legs, ids, user, team_size=team_size)
+        if mode == "x01":
+            game = service.create_game(db, start, legs, ids, user, team_size=team_size)
+        else:
+            opts = {"lives": lives} if mode == "killer" else ({"rounds": rounds} if mode == "shanghai" else {})
+            game = service.create_mode_game(db, mode, ids, user, opts)
     except DartsError as e:
         db.rollback()
         return render(request, "darts/new.html", status_code=400, user=user, error=str(e),
-                      competitors=competitors.all_competitors(db), starts=START_SCORES,
-                      form={"start": start or 501, "legs": legs or 1, "players": ids, "team_size": team_size})
+                      competitors=competitors.all_competitors(db), starts=START_SCORES, modes=MODES,
+                      form={"start": start or 501, "legs": legs or 1, "players": ids, "team_size": team_size,
+                            "mode": mode, "lives": lives, "rounds": rounds})
     return redirect(f"/darts/games/{game.id}")
 
 
@@ -117,6 +127,8 @@ async def new_game(request: Request, db: Session = Depends(get_db), user: models
 @router.get("/games/{game_id}")
 def game_page(game_id: int, request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_user)):
     game = _game(db, game_id)
+    if game.mode != "x01":
+        return _mode_page(request, db, user, game)
     state = service.game_state(game)
     # Eine Karte pro Seite (Einzel: pro Spieler, Doppel: pro Team)
     cards = []
@@ -156,6 +168,50 @@ def game_page(game_id: int, request: Request, db: Session = Depends(get_db), use
     )
 
 
+def _mode_page(request: Request, db: Session, user: models.User, game: models.DartsGame):
+    s = service.mode_state(game)
+    rows = []
+    for p in game.players:
+        i = p.position
+        rows.append({
+            "p": p, "c": p.competitor, "turn": not s.finished and s.turn == i, "won": s.winner == i,
+            "points": s.points[i] if s.points else 0,
+            "marks": s.marks[i] if s.marks else None,
+            "target": s.target[i] if s.target else None,
+            "lives": s.lives[i] if s.lives else None, "killer": s.killer[i] if s.killer else None,
+            "number": s.numbers[i] if s.numbers else None, "alive": s.alive(i),
+            "last": next((v for v in reversed(game.visits) if v.position == i), None),
+        })
+    return render(request, "darts/game_mode.html", user=user, game=game, s=s, rows=rows, info=MODES[game.mode],
+                  can_score=service.can_score(user, game), can_manage=service.can_manage(user, game),
+                  n_visits=len(game.visits), dart_label=dart_label,
+                  history=list(reversed(game.visits[-12:])))
+
+
+@router.post("/games/{game_id}/throws")
+async def post_throws(game_id: int, request: Request, db: Session = Depends(get_db),
+                      user: models.User = Depends(require_user)):
+    game = _game(db, game_id)
+    if game.mode == "x01":
+        raise HTTPException(400, "X01 games are scored per visit.")
+    if not service.can_score(user, game):
+        raise HTTPException(403, "Only the players and whoever started the game can score.")
+    form = await request.form()
+    throws = [t for t in str(form.get("throws", "")).split(",") if t.strip()]
+    try:
+        seq = int(str(form.get("seq", "-1")))
+        result = service.add_mode_visit(db, game, throws, seq)
+        for msg in result["log"]:
+            if msg in ("Shanghai!", "Killer!"):
+                flash(request, f"🎯 {msg}")
+        if game.status == "finished":
+            flash(request, f"🏆 {game.side_name(game.winning_side)} wins {MODES[game.mode]['name']}!")
+    except (DartsError, ValueError) as e:
+        db.rollback()
+        flash(request, str(e) if isinstance(e, DartsError) else "Invalid input.", "error")
+    return redirect(f"/darts/games/{game.id}")
+
+
 @router.get("/games/{game_id}/version")
 def game_version(game_id: int, db: Session = Depends(get_db), user: models.User = Depends(require_user)):
     """Für die Live-Ansicht: ändert sich, sobald jemand eine Aufnahme einträgt."""
@@ -167,6 +223,8 @@ def game_version(game_id: int, db: Session = Depends(get_db), user: models.User 
 async def post_visit(game_id: int, request: Request, db: Session = Depends(get_db),
                      user: models.User = Depends(require_user)):
     game = _game(db, game_id)
+    if game.mode != "x01":
+        raise HTTPException(400, "This game is scored dart by dart.")
     if not service.can_score(user, game):
         raise HTTPException(403, "Only the players and whoever started the game can score.")
     form = await request.form()
@@ -259,6 +317,7 @@ def player_page(competitor_id: int, request: Request, db: Session = Depends(get_
     users = (db.scalars(select(models.User).order_by(func.lower(models.User.username))).all()
              if user.is_admin and c.is_guest else [])
     return render(request, "darts/player.html", user=user, c=c, stats=stats, link_users=users,
+                  records=mode_records(db, [c.id]).get(c.id, {}),
                   games=_game_summaries(_recent_games(db, 15, competitor_id=c.id)))
 
 

@@ -1,5 +1,7 @@
 """Darts-Statistik pro Teilnehmer - immer frisch aus den Aufnahmen berechnet (nichts gespeichert).
 
+Average, Checkout & Co. kommen nur aus X01-Spielen; die Partyspiele haben eigene Bilanzen (mode_records).
+
 Abgebrochene Spiele zählen nicht. Laufende Spiele zählen bei Würfen mit, aber nicht bei Siegen.
 """
 
@@ -54,7 +56,7 @@ def compute_stats(db: Session, competitor_ids: list[int] | None = None,
     """Stats für alle (oder die angegebenen) Teilnehmer, optional nur aus bestimmten Spielen."""
     q = (select(models.DartsVisit)
          .join(models.DartsGame, models.DartsGame.id == models.DartsVisit.game_id)
-         .where(models.DartsGame.status != "abandoned")
+         .where(models.DartsGame.status != "abandoned", models.DartsGame.mode == "x01")
          .order_by(models.DartsVisit.game_id, models.DartsVisit.seq))
     if competitor_ids is not None:
         q = q.where(models.DartsVisit.competitor_id.in_(competitor_ids))
@@ -90,7 +92,7 @@ def compute_stats(db: Session, competitor_ids: list[int] | None = None,
             s.high_finish = max(s.high_finish, v.score)
             s.best_leg = leg_darts[key] if s.best_leg is None else min(s.best_leg, leg_darts[key])
 
-    gq = select(models.DartsGame).where(models.DartsGame.status == "finished")
+    gq = select(models.DartsGame).where(models.DartsGame.status == "finished", models.DartsGame.mode == "x01")
     if game_ids is not None:
         gq = gq.where(models.DartsGame.id.in_(game_ids))
     for g in db.scalars(gq):
@@ -162,7 +164,8 @@ def head_to_head(db: Session, a: int, b: int) -> HeadToHead:
     pa = select(models.DartsGamePlayer.game_id).where(models.DartsGamePlayer.competitor_id == a)
     pb = select(models.DartsGamePlayer.game_id).where(models.DartsGamePlayer.competitor_id == b)
     games = db.scalars(select(models.DartsGame).where(
-        models.DartsGame.id.in_(pa), models.DartsGame.id.in_(pb), models.DartsGame.status != "abandoned")
+        models.DartsGame.id.in_(pa), models.DartsGame.id.in_(pb), models.DartsGame.status != "abandoned",
+        models.DartsGame.mode == "x01")
         .order_by(models.DartsGame.created_at.desc(), models.DartsGame.id.desc())).all()
     # nur Spiele, in denen a und b auf verschiedenen Seiten standen (im Doppel nicht als Partner)
     def side(g, cid):
@@ -181,3 +184,18 @@ def head_to_head(db: Session, a: int, b: int) -> HeadToHead:
         s = compute_stats(db, [a, b], game_ids=h.game_ids)
         h.stats_a, h.stats_b = s.get(a), s.get(b)
     return h
+
+
+def mode_records(db: Session, competitor_ids: list[int]) -> dict[int, dict[str, tuple[int, int]]]:
+    """Siege/Spiele pro Partyspiel-Modus: {competitor_id: {"cricket": (wins, games), ...}} (nur beendete Spiele)."""
+    out: dict[int, dict[str, list[int]]] = {}
+    games = db.scalars(select(models.DartsGame).where(models.DartsGame.status == "finished",
+                                                      models.DartsGame.mode != "x01"))
+    for g in games:
+        for p in g.players:
+            if p.competitor_id not in competitor_ids:
+                continue
+            rec = out.setdefault(p.competitor_id, {}).setdefault(g.mode, [0, 0])
+            rec[1] += 1
+            rec[0] += g.won_by(p.competitor_id)
+    return {cid: {m: (w, n) for m, (w, n) in recs.items()} for cid, recs in out.items()}

@@ -23,6 +23,29 @@ document.addEventListener("alpine:init", function () {
       typing() { return this.entry !== "" || this.needDarts; },
     };
   });
+
+  // Partyspiele: Darts einzeln eingeben (Faktor + Zahl), max. 3, dann abschicken
+  Alpine.data("dartPad", function () {
+    return {
+      darts: [], mult: "S", busy: false,
+      push(code) { if (this.darts.length < 3) this.darts.push(code); this.mult = "S"; },
+      add(n) { this.push(this.mult + n); },
+      addBull(inner) { this.push(inner ? "DB" : "SB"); },
+      label(code) {
+        if (code === "M") return "Miss";
+        if (code === "SB") return "25";
+        if (code === "DB") return "Bull";
+        return (code[0] === "S" ? "" : code[0]) + code.slice(1);
+      },
+      send() {
+        if (!this.darts.length || this.busy) return;
+        this.busy = true;
+        this.$refs.throws.value = this.darts.join(",");
+        this.$refs.form.submit();
+      },
+      typing() { return this.darts.length > 0; },
+    };
+  });
 });
 
 // Live: alle 3 Sekunden fragen, ob es eine neue Aufnahme gibt - dann neu laden (nicht während man tippt).
@@ -30,7 +53,7 @@ document.addEventListener("alpine:init", function () {
   var cfg = window.DARTS_LIVE;
   if (!cfg || !cfg.live) return;
   function busyTyping() {
-    var el = document.querySelector("[x-data^='scorer']");
+    var el = document.querySelector("[x-data^='scorer'], [x-data^='dartPad']");
     return el && el._x_dataStack && el._x_dataStack[0].typing();
   }
   setInterval(function () {

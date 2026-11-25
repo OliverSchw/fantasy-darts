@@ -785,3 +785,33 @@ a.t-board:hover { border-color: var(--pico-primary); }
 .dg-thrower { text-align: center; font-size: 0.75rem; font-weight: 700; color: var(--pico-primary); margin-bottom: 0.15rem; }
 .dg-members { font-size: 0.78rem; font-weight: 600; text-align: center; margin-top: 0.2rem; overflow-wrap: anywhere; }
 .dg-members a { color: inherit; text-decoration: none; }
+
+/* Partyspiele */
+.dm-help { margin-bottom: 0.6rem; }
+.dm-help p { font-size: 0.85rem; margin: 0.3rem 0 0; }
+.dm-cricket { width: 100%; margin-bottom: 0.8rem; text-align: center; border-collapse: collapse; }
+.dm-cricket th, .dm-cricket td { padding: 0.3rem 0.2rem; border-bottom: 1px solid var(--pico-muted-border-color); font-size: 0.9rem; }
+.dm-cricket thead th { font-size: 0.78rem; font-weight: 600; }
+.dm-cricket thead th.turn { color: var(--pico-primary); box-shadow: inset 0 -3px 0 var(--pico-primary); }
+.dm-cricket thead th.won { color: var(--fd-gold); }
+.dm-cricket tbody th { font-weight: 800; width: 3.2rem; }
+.dm-cricket td.mk { font-size: 1.3rem; font-weight: 800; color: var(--pico-primary); }
+.dm-cricket td.m3 { color: #198754; }
+.dm-cricket tr.dead th, .dm-cricket tr.dead td { opacity: 0.35; }
+.dm-cricket tr.dm-pts td { font-size: 1.2rem; font-weight: 800; }
+.dm-out { opacity: 0.5; }
+.dm-chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.35rem; margin-bottom: 0.5rem; }
+.dm-chip { text-align: center; padding: 0.5rem 0; border: 1px dashed var(--pico-muted-border-color); border-radius: var(--pico-border-radius);
+  color: var(--pico-muted-color); font-weight: 700; }
+.dm-chip.on { border-style: solid; border-color: var(--pico-primary); color: var(--pico-primary); background: rgba(28, 100, 200, 0.08); font-size: 1.15rem; }
+.dm-mult { margin-bottom: 0.45rem; }
+.dm-nums { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.3rem; }
+.dm-nums button { margin: 0; padding: 0.6rem 0; font-size: 1rem; font-weight: 700; }
+.dm-nums .dm-miss { color: #dc3545; }
+.dm-send { width: 100%; margin-top: 0.5rem; font-weight: 700; }
+.dm-history { list-style: none; padding: 0; margin: 0; }
+.dm-history li { list-style: none; display: flex; gap: 0.5rem; align-items: center; padding: 0.3rem 0; border-bottom: 1px solid var(--pico-muted-border-color); font-size: 0.88rem; }
+.dm-history li > span:first-of-type { display: flex; gap: 0.25rem; flex: 1; }
+.dm-history code { font-size: 0.78rem; padding: 0.05rem 0.35rem; }
+.dm-modehelp { display: block; margin: -0.4rem 0 0.7rem; }
+.dm-lives { font-size: 1.35rem; letter-spacing: -0.1em; white-space: nowrap; }

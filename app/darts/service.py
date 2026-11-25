@@ -1,5 +1,6 @@
 """Darts: Datenbank-Operationen rund um Teilnehmer, Spiele und Aufnahmen."""
 
+import random
 from datetime import datetime, timezone
 
 from sqlalchemy import select
@@ -9,6 +10,7 @@ from sqlalchemy.orm import Session, object_session
 from .. import models
 from .. import tournaments as tour
 from .engine import DartsError, GameState, Visit, advance, make_visit, new_state, replay
+from .modes import apply_visit, new_mode_state, replay_mode
 
 
 # ---------------------------------------------------------------- Spiele
@@ -166,3 +168,55 @@ def _report_to_tournament(db: Session, game: models.DartsGame, state: GameState)
     first = game.players[0].competitor_id == tm.entry1.members[0].competitor_id
     l1, l2 = (state.legs_won[0], state.legs_won[1]) if first else (state.legs_won[1], state.legs_won[0])
     tour.advance_winner(t, tm, tm.entry1_id if l1 > l2 else tm.entry2_id, l1, l2)
+
+
+# ---------------------------------------------------------------- Partyspiele (Cricket, Around the Clock, ...)
+
+
+def create_mode_game(db: Session, mode: str, competitor_ids: list[int], created_by: models.User | None,
+                     options: dict | None = None) -> models.DartsGame:
+    if len(set(competitor_ids)) != len(competitor_ids):
+        raise DartsError("Each player can only take part once.")
+    options = dict(options or {})
+    if mode == "killer":
+        options["numbers"] = random.sample(range(1, 21), len(competitor_ids))
+        options.setdefault("lives", 3)
+    new_mode_state(mode, len(competitor_ids), options)  # prüft Spielerzahl und Optionen
+    found = {c.id for c in db.scalars(select(models.Competitor).where(models.Competitor.id.in_(competitor_ids)))}
+    if found != set(competitor_ids):
+        raise DartsError("Unknown player.")
+    game = models.DartsGame(mode=mode, options=options, start_score=0, legs_to_win=1,
+                            created_by_id=created_by.id if created_by else None)
+    game.players = [models.DartsGamePlayer(position=i, competitor_id=cid) for i, cid in enumerate(competitor_ids)]
+    db.add(game)
+    db.commit()
+    return game
+
+
+def mode_state(game: models.DartsGame):
+    return replay_mode(game.mode, len(game.players), game.options or {}, [v.throws or [] for v in game.visits])
+
+
+def add_mode_visit(db: Session, game: models.DartsGame, throws: list[str], seq: int) -> dict:
+    if game.status != "live":
+        raise DartsError("This game is not running any more.")
+    if seq != len(game.visits):
+        raise StaleGame("The game was updated in the meantime – here is the latest score.")
+    state = mode_state(game)
+    player = state.turn
+    result = apply_visit(state, throws)
+    db.add(models.DartsVisit(
+        game_id=game.id, seq=seq, leg_no=1, position=player, competitor_id=game.players[player].competitor_id,
+        score=result["points"], darts=len(throws), checkout=result["won"], remaining_before=0, throws=throws,
+    ))
+    if state.finished:
+        game.status, game.winner_side = "finished", state.winner
+        game.winner_id = game.players[state.winner].competitor_id
+        game.finished_at = datetime.now(timezone.utc)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise StaleGame("The game was updated in the meantime – here is the latest score.") from None
+    db.refresh(game)
+    return {**result, "log": state.log}

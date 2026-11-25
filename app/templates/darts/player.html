@@ -11,10 +11,18 @@
   {% if not (c.user and c.user.id == user.id) %}<a href="/darts/compare?b={{ c.id }}" role="button" class="outline small">⚖️ Compare with me</a>{% endif %}
 </div>
 
+<h3>X01 <small class="muted">(301 / 501 / 701)</small></h3>
 {% if stats %}
   {{ stats_grid(stats) }}
 {% else %}
-  <p class="muted center">No darts thrown yet.</p>
+  <p class="muted center">No X01 games yet.</p>
+{% endif %}
+
+{% if records %}
+  <h3>Party games</h3>
+  <div class="stat-grid">
+    {% for key, (w, n) in records.items() %}<div><span>{{ w }}/{{ n }}</span><small>{{ darts_modes[key].name }} won</small></div>{% endfor %}
+  </div>
 {% endif %}
 
 {% if games %}
