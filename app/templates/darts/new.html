@@ -5,7 +5,10 @@
 {% if error %}<p class="flash error">{{ error }}</p>{% endif %}
 {% set chosen = form.players %}
 <form method="post" action="/darts/new" class="dnew"
-      x-data='{ "n": {{ [chosen|length, 2]|max }}, "legs": {{ form.legs }}, "sel": {{ (chosen + ["", "", "", ""])[:4] | map("string") | list | tojson }} }'>
+      x-data='{ "n": {{ [chosen|length, 2]|max if form.team_size == 1 else 4 }}, "legs": {{ form.legs }}, "doubles": {{ "true" if form.team_size == 2 else "false" }},
+                "sel": {{ (chosen + ["", "", "", ""])[:4] | map("string") | list | tojson }},
+                "labels": ["Team 1 · Player 1", "Team 2 · Player 1", "Team 1 · Player 2", "Team 2 · Player 2"] }'
+      x-effect="if (doubles) n = 4">
   <fieldset>
     <legend>Game</legend>
     <div class="seg" role="radiogroup" aria-label="Start score">
@@ -21,15 +24,20 @@
       <span x-text="legs == 1 ? 'leg' : 'legs'">legs</span>
       <input type="hidden" name="legs" :value="legs" value="{{ form.legs }}">
     </div>
-    <small class="muted">Double out. The throw alternates every leg.</small>
+    <div class="seg" role="radiogroup" aria-label="Singles or doubles">
+      <label><input type="radio" name="team_size" value="1" {% if form.team_size == 1 %}checked{% endif %} @change="doubles = false"><span>Singles</span></label>
+      <label><input type="radio" name="team_size" value="2" {% if form.team_size == 2 %}checked{% endif %} @change="doubles = true"><span>Doubles 2 v 2</span></label>
+    </div>
+    <small class="muted">Double out. The throw alternates every leg.
+      <span x-show="doubles" x-cloak>Doubles: the teams take turns (T1 · P1, T2 · P1, T1 · P2, T2 · P2) and share one score.</span></small>
   </fieldset>
 
   <fieldset>
     <legend>Players <small class="muted">(in throwing order)</small></legend>
     {% for i in range(4) %}
       <div class="prow" x-show="n > {{ i }}" {% if i >= [chosen|length, 2]|max %}x-cloak{% endif %}>
-        <span class="pnum">{{ i + 1 }}</span>
-        <select name="p{{ i }}" x-model="sel[{{ i }}]" aria-label="Player {{ i + 1 }}" :disabled="n <= {{ i }}">
+        <span class="pnum" x-text="doubles ? 'T' + ({{ i }} % 2 + 1) : '{{ i + 1 }}'">{{ i + 1 }}</span>
+        <select name="p{{ i }}" x-model="sel[{{ i }}]" :aria-label="doubles ? labels[{{ i }}] : 'Player {{ i + 1 }}'" aria-label="Player {{ i + 1 }}" :disabled="n <= {{ i }}">
           <option value="">– choose –</option>
           <optgroup label="Members">
             {% for c in competitors if not c.is_guest %}<option value="{{ c.id }}">{{ c.display_name }}</option>{% endfor %}
@@ -46,10 +54,11 @@
       </div>
     {% endfor %}
     <div class="btn-row left">
-      <button type="button" class="outline small" x-show="n < 4" @click="n++">＋ Player</button>
-      <button type="button" class="outline secondary small" x-show="n > 1" @click="n--; sel[n] = ''">− Player</button>
+      <button type="button" class="outline small" x-show="n < 4 && !doubles" @click="n++">＋ Player</button>
+      <button type="button" class="outline secondary small" x-show="n > 1 && !doubles" @click="n--; sel[n] = ''">− Player</button>
     </div>
-    <small class="muted">1 player = practice. Guests don't need an account – an admin can link them to one later.</small>
+    <small class="muted" x-show="!doubles">1 player = practice.</small>
+    <small class="muted">Guests don't need an account – an admin can link them to one later.</small>
   </fieldset>
 
   <button type="submit">🎯 Game on!</button>

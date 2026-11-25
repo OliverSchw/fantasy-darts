@@ -99,7 +99,7 @@ def compute_stats(db: Session, competitor_ids: list[int] | None = None,
                 continue
             s = stats.setdefault(p.competitor_id, PlayerStats(p.competitor_id))
             s.games += 1
-            if g.winner_id == p.competitor_id:
+            if g.won_by(p.competitor_id):
                 s.wins += 1
     return stats
 
@@ -164,11 +164,15 @@ def head_to_head(db: Session, a: int, b: int) -> HeadToHead:
     games = db.scalars(select(models.DartsGame).where(
         models.DartsGame.id.in_(pa), models.DartsGame.id.in_(pb), models.DartsGame.status != "abandoned")
         .order_by(models.DartsGame.created_at.desc(), models.DartsGame.id.desc())).all()
+    # nur Spiele, in denen a und b auf verschiedenen Seiten standen (im Doppel nicht als Partner)
+    def side(g, cid):
+        return next(g.side_of(p.position) for p in g.players if p.competitor_id == cid)
+    games = [g for g in games if side(g, a) != side(g, b)]
     h = HeadToHead(game_ids=[g.id for g in games])
     for g in games:
         if g.status == "finished":
-            h.wins_a += g.winner_id == a
-            h.wins_b += g.winner_id == b
+            h.wins_a += g.won_by(a)
+            h.wins_b += g.won_by(b)
         for v in g.visits:
             if v.checkout:
                 h.legs_a += v.competitor_id == a

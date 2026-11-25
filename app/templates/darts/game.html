@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros.html" import cavatar, avg %}
-{% block title %}{{ game.start_score }} · {{ players | map(attribute="c.display_name") | join(" vs ") }}{% endblock %}
+{% block title %}{{ game.start_score }} · {{ cards | map(attribute="name") | join(" vs ") }}{% endblock %}
 {% block content %}
 {% if tinfo %}<p class="dg-tour"><a href="/darts/tournaments/{{ tinfo.t.id }}">🏆 {{ tinfo.t.name }}</a> · {{ tinfo.title }}{% if tinfo.tm.board %} · <strong>Board {{ tinfo.tm.board }}</strong>{% endif %}</p>{% endif %}
 <div class="dg-head">
@@ -10,15 +10,17 @@
   {% elif game.status == "abandoned" %}<mark class="role ch">abandoned</mark>{% endif %}
 </div>
 
-<div class="dg-board n{{ players | length }}">
-  {% for pl in players %}
-    <div class="dg-player {% if pl.turn %}turn{% endif %} {% if gs.winner == pl.p.position %}won{% endif %}">
+<div class="dg-board n{{ cards | length }}">
+  {% for pl in cards %}
+    <div class="dg-player {% if pl.turn %}turn{% endif %} {% if gs.winner == pl.side %}won{% endif %}">
       <div class="dg-name">
-        {{ cavatar(pl.c, user, "xs") }}
-        <a href="/darts/players/{{ pl.c.id }}">{{ pl.c.display_name }}</a>
-        {% if game.legs_to_win > 1 or players|length > 1 %}<span class="dg-legs" title="legs won">{{ pl.legs }}</span>{% endif %}
+        {% for c in pl.comps %}{{ cavatar(c, user, "xs") }}{% endfor %}
+        {% if pl.comps | length == 1 %}<a href="/darts/players/{{ pl.c.id }}">{{ pl.name }}</a>{% else %}<span class="dg-team">Team {{ pl.side + 1 }}</span>{% endif %}
+        {% if game.legs_to_win > 1 or cards|length > 1 %}<span class="dg-legs" title="legs won">{{ pl.legs }}</span>{% endif %}
       </div>
-      <div class="dg-rest">{% if gs.winner == pl.p.position %}🏆{% else %}{{ pl.remaining }}{% endif %}</div>
+      {% if pl.comps | length > 1 %}<div class="dg-members">{% for c in pl.comps %}<a href="/darts/players/{{ c.id }}">{{ c.display_name }}</a>{{ " & " if not loop.last }}{% endfor %}</div>{% endif %}
+      <div class="dg-rest">{% if gs.winner == pl.side %}🏆{% else %}{{ pl.remaining }}{% endif %}</div>
+      {% if pl.thrower %}<div class="dg-thrower">🎯 {{ pl.thrower }} throws</div>{% endif %}
       <div class="dg-sub">
         <span title="3-dart average this leg">⌀ {{ avg(pl.leg_avg) }}</span>
         <span title="darts this leg">🎯 {{ pl.darts }}</span>
@@ -29,18 +31,18 @@
 </div>
 
 {% if gs.finished %}
-  {% set w = players[gs.winner] %}
+  {% set w = cards[gs.winner] %}
   <article class="dg-winner">
-    <p>🎯 <strong>{{ w.c.display_name }}</strong> wins {{ players | map(attribute="legs") | join(" : ") }}</p>
-    <p class="muted">Game average: {% for pl in players %}{{ pl.c.display_name }} {{ avg(pl.game_avg) }}{{ " · " if not loop.last }}{% endfor %}</p>
+    <p>🎯 <strong>{{ w.name }}</strong> {{ "win" if w.comps | length > 1 else "wins" }} {{ cards | map(attribute="legs") | join(" : ") }}</p>
+    <p class="muted">Game average: {% for pl in cards %}{{ pl.name }} {{ avg(pl.game_avg) }}{{ " · " if not loop.last }}{% endfor %}</p>
     {% if tinfo %}<a href="/darts/tournaments/{{ tinfo.t.id }}" role="button" class="small">Back to the bracket</a>
     {% else %}<a href="/darts/new" role="button" class="small">New game</a>{% endif %}
   </article>
 {% endif %}
 
 {% if can_score %}
-  {% set cur = players[gs.turn] %}
-  <p class="dg-hint"><strong>{{ cur.c.display_name }}</strong> to throw – {{ rest }} left
+  {% set cur = throwers[gs.turn] %}
+  <p class="dg-hint"><strong>{{ cur.competitor.display_name }}</strong> to throw – {{ rest }} left
     {% if route %}· <span class="dg-route">{{ route | join(" · ") }}</span>{% endif %}</p>
   <form method="post" action="/darts/games/{{ game.id }}/visit" class="dg-pad" x-ref="form"
         x-data="scorer({{ rest }}, {{ 'true' if finishable else 'false' }}, {{ min_darts or 0 }})" @submit.prevent="ok()">
@@ -85,13 +87,13 @@
   <h3 class="dg-legtitle">Leg {{ shown_leg }}</h3>
   <div class="table-wrap">
     <table class="striped compact dg-rounds">
-      <thead><tr><th class="num">#</th>{% for pl in players %}<th class="num">{{ pl.c.display_name }}</th>{% endfor %}</tr></thead>
+      <thead><tr><th class="num">#</th>{% for p in throwers %}<th class="num">{{ p.competitor.display_name }}</th>{% endfor %}</tr></thead>
       <tbody>
         {% for r in rounds %}
           <tr>
             <td class="num muted">{{ loop.index * 3 }}</td>
-            {% for pl in players %}
-              {% set e = r.get(pl.p.position) %}
+            {% for p in throwers %}
+              {% set e = r.get(p.position) %}
               <td class="num">
                 {% if e %}
                   <span class="{% if e.v.bust %}bust{% elif e.v.checkout %}co{% elif e.v.score >= 100 %}ton{% endif %}">{{ "bust" if e.v.bust else e.v.score }}</span>

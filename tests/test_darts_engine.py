@@ -3,7 +3,7 @@
 import pytest
 
 from app.darts.checkouts import checkout_route, is_finishable, min_darts
-from app.darts.engine import DartsError, Visit, make_visit, new_state, play, replay
+from app.darts.engine import DartsError, Visit, advance, make_visit, new_state, play, replay
 
 
 def test_checkout_routes():
@@ -99,3 +99,65 @@ def test_solo_practice():
     play(s, 180); play(s, 81)
     v = play(s, 40, darts=1)
     assert v.checkout and s.finished and s.winner == 0
+
+
+# ---------------------------------------------------------------- Doppel
+
+
+def test_doubles_order_and_team_score():
+    s = new_state(301, 2, 4, team_size=2)  # Positionen: 0=T1P1, 1=T2P1, 2=T1P2, 3=T2P2
+    assert s.n_sides == 2 and [s.side(p) for p in range(4)] == [0, 1, 0, 1]
+    play(s, 100); play(s, 60); play(s, 100)  # Team 1: 101 Rest, Team 2: 241
+    assert s.remaining == [101, 241] and s.turn == 3
+    play(s, 140)  # Team 2: 101
+    v = play(s, 101, darts=3)  # Position 0 (Team 1) checkt
+    assert v.checkout and s.legs_won == [1, 0] and s.leg_no == 2
+    assert s.turn == 1  # Leg 2: Anwurf wandert eine Position weiter (Team 2, Spieler 1)
+    with pytest.raises(DartsError):
+        new_state(501, 1, 3, team_size=2)
+
+
+def test_doubles_bust_uses_team_rest():
+    s = new_state(301, 1, 4, team_size=2)
+    s.remaining = [40, 301]
+    v = play(s, 60)  # Team 1 hat nur noch 40
+    assert v.bust and s.remaining == [40, 301]
+
+
+def _random_score(rng, rest):
+    if rng.random() < 0.15 and rest <= 170:
+        return rest  # Checkout-Versuch
+    return rng.choice([0, 26, 41, 45, 60, 81, 85, 100, 121, 140, 180, rng.randint(0, 60)])
+
+
+@pytest.mark.parametrize("seed", range(40))
+def test_random_games_invariants(seed):
+    import random
+    rng = random.Random(seed)
+    team_size = 2 if seed % 3 == 0 else 1
+    n = 4 if team_size == 2 else rng.randint(1, 4)
+    start, legs = rng.choice([301, 501]), rng.randint(1, 3)
+    s = new_state(start, legs, n, team_size)
+    visits, leg_points = [], {}
+    for _ in range(3000):
+        if s.finished:
+            break
+        side, rest = s.side(s.turn), s.remaining[s.side(s.turn)]
+        score = _random_score(rng, rest)
+        darts = 3 if score == rest else None
+        try:
+            v = make_visit(s, score, darts)
+        except DartsError:
+            continue  # z. B. unmöglicher Checkout - wie eine abgelehnte Eingabe
+        key = (s.leg_no, side)
+        advance(s, v)
+        visits.append(v)
+        leg_points[key] = leg_points.get(key, 0) + v.score
+        if v.checkout:
+            assert leg_points[key] == start  # ein gewonnenes Leg ergibt genau den Startwert
+        else:
+            assert all(r >= 2 or r == start for r in s.remaining) and all(r >= 0 for r in s.remaining)
+    assert s.finished, "game did not finish"
+    again = replay(start, legs, n, visits, team_size)
+    assert (again.winner, again.legs_won, again.leg_no) == (s.winner, s.legs_won, s.leg_no)
+    assert max(s.legs_won) == legs

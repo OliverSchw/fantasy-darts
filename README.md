@@ -32,6 +32,9 @@ Unter *Darts → New game* Startwert (301/501/701), „First to X Legs“ und 1�
 (1 Spieler = Training). Spieler sind Mitglieder **oder Gäste ohne Konto** – ein Admin kann einen Gast
 später einem Konto zuordnen (*Stats → Spieler → Link guest to an account*), die Stats wandern mit.
 
+- **Doppel (2 gegen 2):** unter *New game* „Doubles 2 v 2“ wählen und 4 Spieler in Wurfreihenfolge eintragen
+  (Team 1 · Spieler 1, Team 2 · Spieler 1, Team 1 · Spieler 2, Team 2 · Spieler 2). Der Rest zählt pro Team,
+  der Anwurf wandert jedes Leg eine Position weiter. Average, 180er usw. zählen pro Spieler, ein Sieg für beide.
 - **Zählen am Handy:** Punkte der Aufnahme eintippen oder Schnelltaste (26, 41, 45, 60, 81, 85, 100, 140, 180).
   Bust wird automatisch erkannt, beim Checkout fragt die App nach der Anzahl Darts, darüber steht
   ein Checkout-Vorschlag (z. B. 121 → T20 · T15 · D8). *Undo* nimmt die letzte Aufnahme zurück.
