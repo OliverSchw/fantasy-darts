@@ -20,7 +20,7 @@ from ..darts.rating import START, compute_elo, form_curve
 from ..darts.stats import compare_rows, compute_stats, head_to_head, mode_records
 from ..db import get_db
 from .common import flash, local_dt, redirect, render
-from .tournament_pages import Sport, add_tournament_routes, read_boards, read_format
+from .tournament_pages import Sport, add_tournament_routes, read_boards, read_format, read_league
 
 router = APIRouter(prefix="/darts")
 
@@ -385,7 +385,7 @@ def new_tournament_form(request: Request, db: Session = Depends(get_db), user: m
     return render(request, "darts/tournament_new.html", user=user, competitors=competitors.all_competitors(db),
                   starts=START_SCORES, modes=MODES,
                   form={"start": 501, "legs": 2, "final_legs": 3, "players": [], "shuffle": True,
-                        "name": "", "guests": "", "format": "knockout", "groups": "", "advance": "2",
+                        "name": "", "guests": "", "format": "knockout", "groups": "", "advance": "2", "league_rounds": "1",
                         "boards": 0, "mode": "x01", "teams": "singles", "team_text": "", "lives": 3, "rounds": 7})
 
 
@@ -401,6 +401,7 @@ async def new_tournament(request: Request, db: Session = Depends(get_db), user: 
     keep = {"start": start or 501, "legs": legs or 2, "final_legs": final_legs or 3, "players": players,
             "shuffle": bool(form.get("shuffle")), "name": str(form.get("name", "")), "guests": guests_raw,
             "format": form.get("format") or "knockout", "groups": str(form.get("groups", "")), "advance": str(form.get("advance", "2")),
+            "league_rounds": str(form.get("league_rounds", "1")),
             "boards": str(form.get("boards", "0")),
             "mode": form.get("mode") if form.get("mode") in MODES else "x01",
             "teams": form.get("teams") if form.get("teams") in ("random", "fixed") else "singles",
@@ -435,7 +436,7 @@ async def new_tournament(request: Request, db: Session = Depends(get_db), user: 
             new_mode_state(  # Optionen gleich prüfen (Leben, Runden)
                 mode, 2, {"lives": keep["lives"], "rounds": keep["rounds"], "numbers": [1, 2]})
         t = tour.create_tournament(db, "darts", keep["name"], entries, settings, user,
-                                   shuffle=keep["shuffle"], groups=groups, advance=advance, entry_names=names)
+                                   shuffle=keep["shuffle"], groups=groups, advance=advance, league_rounds=read_league(form), entry_names=names)
     except (DartsError, CompetitorError, tour.TournamentError) as e:
         db.rollback()
         return render(request, "darts/tournament_new.html", status_code=400, user=user, error=str(e),
@@ -470,7 +471,8 @@ def _darts_settings(t: models.Tournament) -> str:
     if s["mode"] != "x01":
         return MODES[s["mode"]]["name"]
     doubles = " · doubles" if s.get("team_size") == 2 else ""
-    return f"{s['start']}{doubles} · first to {s['legs']}, final first to {s['final_legs']}"
+    final = "" if t.is_league else f", final first to {s['final_legs']}"  # eine Liga hat kein Finale
+    return f"{s['start']}{doubles} · first to {s['legs']}{final}"
 
 
 def _darts_live_status(db: Session, tm: models.TournamentMatch) -> dict | None:

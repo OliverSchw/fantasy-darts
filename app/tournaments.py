@@ -47,6 +47,8 @@ def round_title(round_no: int, num_rounds: int) -> str:
 
 
 def match_title(t: models.Tournament, m: models.TournamentMatch) -> str:
+    if t.is_league:
+        return f"Matchday {m.matchday}" if m.matchday else "League"
     return group_label(m.group_no) if m.group_no is not None else round_title(m.round, t.num_rounds)
 
 
@@ -65,9 +67,11 @@ def suggested_groups(n: int) -> int:
 def create_tournament(db: Session, sport: str, name: str, entries: list[list[int]], settings: dict,
                       created_by: models.User | None, shuffle: bool = False,
                       entry_names: list[str | None] | None = None,
-                      groups: int | None = None, advance: int = 2) -> models.Tournament:
+                      groups: int | None = None, advance: int = 2,
+                      league_rounds: int | None = None) -> models.Tournament:
     """entries = Teilnehmer-ID-Listen (1 pro Eintrag bei Darts, mehrere bei Bierpong-Teams), in Setz-Reihenfolge.
-    groups = Anzahl Gruppen (None = reines K.-o.), advance = Qualifikanten pro Gruppe."""
+    groups = Anzahl Gruppen (None = reines K.-o.), advance = Qualifikanten pro Gruppe.
+    league_rounds = 1 (Hinrunde) oder 2 (Hin- und Rückrunde): Liga statt K.-o. / Gruppen."""
     name = " ".join(name.split())
     if not 1 <= len(name) <= 80:
         raise TournamentError("The tournament needs a name (max. 80 characters).")
@@ -77,7 +81,13 @@ def create_tournament(db: Session, sport: str, name: str, entries: list[list[int
     flat = [cid for e in entries for cid in e]
     if len(flat) != len(set(flat)):
         raise TournamentError("Each player can only be entered once.")
-    if groups is not None:
+    if league_rounds is not None:
+        if league_rounds not in (1, 2):
+            raise TournamentError("A league has one round or a home and away round.")
+        if n > MAX_LEAGUE:
+            raise TournamentError(f"A league can have at most {MAX_LEAGUE} entries.")
+        groups = None
+    elif groups is not None:
         if not 1 <= groups <= len(GROUP_LETTERS):
             raise TournamentError(f"Choose 1 to {len(GROUP_LETTERS)} groups.")
         if n < 2 * groups:
@@ -93,7 +103,9 @@ def create_tournament(db: Session, sport: str, name: str, entries: list[list[int
     if shuffle:
         random.shuffle(order)
     settings = dict(settings)
-    if groups is not None:
+    if league_rounds is not None:
+        settings.update(format="league", groups=1, rounds=league_rounds)
+    elif groups is not None:
         settings.update(format="groups", groups=groups, advance=advance)
 
     t = models.Tournament(sport=sport, name=name, settings=settings,
@@ -104,7 +116,9 @@ def create_tournament(db: Session, sport: str, name: str, entries: list[list[int
     db.add(t)
     db.flush()
 
-    if groups is None:
+    if league_rounds is not None:
+        _build_groups(t, 1, league_rounds)
+    elif groups is None:
         _build_bracket(t, _seeded_slots(t.entries))
     else:
         _build_groups(t, groups)
@@ -142,20 +156,26 @@ def _build_bracket(t: models.Tournament, slots: list[models.TournamentEntry | No
 
 
 def _round_robin(items: list) -> list[tuple]:
-    """Jeder gegen jeden, nach Spieltagen geordnet (Kreis-Methode)."""
+    """Jeder gegen jeden, nach Spieltagen geordnet (Kreis-Methode): [(Spieltag, a, b), ...].
+    Der erste Eintrag wechselt Heim/Auswärts, damit niemand immer zuerst wirft."""
     xs = list(items) + ([None] if len(items) % 2 else [])
     n = len(xs)
     pairs = []
-    for _ in range(n - 1):
+    for day in range(1, n):
         for i in range(n // 2):
             a, b = xs[i], xs[n - 1 - i]
+            if i == 0 and day % 2 == 0:
+                a, b = b, a
             if a is not None and b is not None:
-                pairs.append((a, b))
+                pairs.append((day, a, b))
         xs = [xs[0], xs[-1], *xs[1:-1]]
     return pairs
 
 
-def _build_groups(t: models.Tournament, groups: int) -> None:
+MAX_LEAGUE = 24
+
+
+def _build_groups(t: models.Tournament, groups: int, rounds: int = 1) -> None:
     by_group: dict[int, list[models.TournamentEntry]] = {g: [] for g in range(groups)}
     for i, e in enumerate(t.entries):  # Schlangenlinie: A B C C B A A B C ...
         lap, pos = divmod(i, groups)
@@ -163,8 +183,12 @@ def _build_groups(t: models.Tournament, groups: int) -> None:
         by_group[e.group_no].append(e)
     slot = 0
     for g, members in by_group.items():
-        for a, b in _round_robin(members):
-            t.matches.append(models.TournamentMatch(round=0, slot=slot, group_no=g, entry1_id=a.id, entry2_id=b.id))
+        first = _round_robin(members)
+        days = max((d for d, _, _ in first), default=0)
+        legs = first + [(d + days, b, a) for d, a, b in first] if rounds == 2 else first  # Rückrunde getauscht
+        for day, a, b in legs:
+            t.matches.append(models.TournamentMatch(round=0, slot=slot, group_no=g, matchday=day,
+                                                    entry1_id=a.id, entry2_id=b.id))
             slot += 1
 
 
@@ -190,7 +214,9 @@ def advance_winner(t: models.Tournament, m: models.TournamentMatch, winner_id: i
     m.winner_id, m.score1, m.score2 = winner_id, s1, s2
     m.updated_at = datetime.now(timezone.utc)
     if m.group_no is not None:
-        if not knockout_started(t) and all(x.is_played for x in t.group_matches):
+        if t.is_league:
+            _settle_league(t)
+        elif not knockout_started(t) and all(x.is_played for x in t.group_matches):
             _build_bracket(t, _knockout_slots(t))
     else:
         nxt = next_match(t, m)
@@ -201,6 +227,16 @@ def advance_winner(t: models.Tournament, m: models.TournamentMatch, winner_id: i
         else:
             nxt.entry2_id = winner_id
     assign_boards(t)
+
+
+def _settle_league(t: models.Tournament) -> None:
+    """Liga: sind alle Spiele gespielt, ist der Tabellenerste Meister (nach Änderungen neu bestimmt)."""
+    if all(x.is_played for x in t.group_matches):
+        leader = standings(t)[0][0].entry.id
+        if t.winner_entry_id != leader:
+            t.status, t.winner_entry_id, t.finished_at = "finished", leader, datetime.now(timezone.utc)
+    elif t.status == "finished":
+        t.status, t.winner_entry_id, t.finished_at = "running", None, None
 
 
 def can_change(t: models.Tournament, m: models.TournamentMatch) -> bool:
@@ -246,6 +282,8 @@ def clear_result(db: Session, t: models.Tournament, m: models.TournamentMatch, c
             nxt.entry2_id = None
     m.winner_id, m.score1, m.score2, m.updated_at = None, 0, 0, datetime.now(timezone.utc)
     m.board = None  # Match muss neu gespielt werden -> kommt wieder in die Warteschlange
+    if t.is_league:
+        _settle_league(t)
     assign_boards(t)
     if commit:
         db.commit()
@@ -359,9 +397,27 @@ def group_view(t: models.Tournament) -> list[dict]:
     """Für die Anzeige: pro Gruppe Tabelle (mit Markierung der Qualifikanten) und Spiele."""
     advance = int((t.settings or {}).get("advance", 2))
     table = standings(t)
-    return [{"no": g, "label": group_label(g), "rows": rows, "advance": advance,
+    return [{"no": g, "label": "Table" if t.is_league else group_label(g), "rows": rows,
+             "advance": 1 if t.is_league else advance,
              "matches": [m for m in t.group_matches if m.group_no == g]}
             for g, rows in table.items()]
+
+
+def league_view(t: models.Tournament) -> dict:
+    """Liga: Tabelle und Spieltage (der erste mit offenen Spielen ist der aktuelle)."""
+    days: dict[int, list[models.TournamentMatch]] = {}
+    for m in sorted(t.group_matches, key=lambda m: (m.matchday or 0, m.slot)):
+        days.setdefault(m.matchday or 0, []).append(m)
+    current = next((d for d, ms in days.items() if not all(m.is_played for m in ms)), None)
+    return {"rows": standings(t).get(0, []), "current": current, "rounds": int(t.settings.get("rounds", 1)),
+            "days": [{"no": d, "matches": ms, "done": all(m.is_played for m in ms), "current": d == current}
+                     for d, ms in days.items()]}
+
+
+def format_label(t: models.Tournament) -> str:
+    if t.is_league:
+        return "league" + (" · home & away" if int(t.settings.get("rounds", 1)) == 2 else "")
+    return "groups + knockout" if t.has_groups else "knockout"
 
 
 def running(db: Session, sport: str, limit: int = 3) -> list[models.Tournament]:
@@ -408,6 +464,13 @@ def entry_results(t: models.Tournament) -> list[EntryResult]:
                 r.lost += 1
                 if m.group_no is None:
                     r.out_round = m.round
+    if t.is_league:
+        done = all(m.is_played for m in t.group_matches)
+        for pos, st in enumerate(standings(t).get(0, []), start=1):
+            r = res[st.entry.id]
+            r.rank = pos - 1
+            r.place = "Champion" if done and pos == 1 else f"{pos}{_ordinal(pos)}"
+        return sorted(res.values(), key=lambda r: r.rank)
     n = t.num_rounds
     in_ko = {eid for m in t.ko_matches for eid in (m.entry1_id, m.entry2_id) if eid}
     for r in res.values():
@@ -422,6 +485,10 @@ def entry_results(t: models.Tournament) -> list[EntryResult]:
         else:
             r.place, r.rank = "Still in", 50
     return sorted(res.values(), key=lambda r: (r.rank, -r.won, -r.diff, -r.score_for, r.entry.seed))
+
+
+def _ordinal(n: int) -> str:
+    return "th" if 10 <= n % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
 
 
 def organizes_match(db: Session, match_id: int | None, user: models.User | None) -> bool:
@@ -472,7 +539,8 @@ def _queue_key(t: models.Tournament):
         if m.group_no is not None:
             k = index.get(m.id or id(m), 0)
             per = per_round.get(m.group_no, 1)
-            return (0, k // per, k % per, m.group_no)  # Spieltag, dann Gruppen abwechselnd (A, B, A, B ...)
+            day = m.matchday if m.matchday is not None else k // per
+            return (0, day, k % per, m.group_no)  # Spieltag, dann Gruppen abwechselnd (A, B, A, B ...)
         return (1, m.round, m.slot, 0)
     return key
 

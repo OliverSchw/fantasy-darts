@@ -1,10 +1,20 @@
-{# Turnierformat: K.-o. oder Gruppenphase + K.-o. (gemeinsam für alle Sportarten) #}
+{# Turnierformat: K.-o., Gruppenphase + K.-o. oder Liga (gemeinsam für alle Sportarten) #}
 {% macro format_fields(form, unit, board_label="Board") -%}
-<fieldset x-data='{ "fmt": {{ form.format | tojson }}, "groups": {{ (form.groups or 2) | int }}, "adv": {{ (form.advance or 2) | int }} }'>
+<fieldset x-data='{ "fmt": {{ form.format | tojson }}, "groups": {{ (form.groups or 2) | int }}, "adv": {{ (form.advance or 2) | int }}, "lr": {{ (form.league_rounds or "1") | tojson }} }'>
   <legend>Format</legend>
   <div class="seg" role="radiogroup" aria-label="Format">
     <label><input type="radio" name="format" value="knockout" x-model="fmt"><span>Knockout</span></label>
     <label><input type="radio" name="format" value="groups" x-model="fmt"><span>Groups + KO</span></label>
+    <label><input type="radio" name="format" value="league" x-model="fmt"><span>League</span></label>
+  </div>
+  <div x-show="fmt === 'league'" x-cloak>
+    <div class="seg" role="radiogroup" aria-label="League rounds">
+      <label><input type="radio" name="league_rounds" value="1" x-model="lr"><span>Single round</span></label>
+      <label><input type="radio" name="league_rounds" value="2" x-model="lr"><span>Home &amp; away</span></label>
+    </div>
+    <small class="muted">Everyone plays everyone{{ "" }}<span x-show="lr === '2'"> twice (second half with sides swapped)</span>,
+      sorted into matchdays. A win is worth 2 points – whoever tops the table when all matches are played is champion.
+      Matches can be played over days or weeks.</small>
   </div>
   <div x-show="fmt === 'groups'" x-cloak>
     <div class="stepper">
