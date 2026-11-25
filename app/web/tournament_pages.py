@@ -82,7 +82,8 @@ def add_tournament_routes(router: APIRouter, sp: Sport) -> None:
                       winner=tour.entry_by_id(t, t.winner_entry_id), organizer=tour.can_organize(user, t),
                       ko_started=tour.knockout_started(t), match_title=tour.match_title,
                       results=tour.entry_results(t), extra=sp.extra_stats(db, t) if sp.extra_stats else {},
-                      bv=tour.board_view(t))
+                      bv=tour.board_view(t),
+                      plays=any(c.user_id == user.id for e in t.entries for c in e.competitors))
 
     @router.get("/tournaments/{tid:int}/matches/{mid:int}", name=f"{sp.key}_tournament_match")
     def match_page(tid: int, mid: int, request: Request, db: Session = Depends(get_db),

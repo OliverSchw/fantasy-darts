@@ -816,3 +816,12 @@ a.t-board:hover { border-color: var(--pico-primary); }
 .dm-modehelp { display: block; margin: -0.4rem 0 0.7rem; }
 .dm-lives { font-size: 1.35rem; letter-spacing: -0.1em; white-space: nowrap; }
 .dg-caller { float: right; margin: -0.2rem 0 0 0.5rem; padding: 0.2rem 0.6rem; width: auto; font-size: 0.78rem; }
+
+/* Push-Benachrichtigungen */
+.push-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; padding: 0.6rem 0.8rem;
+  margin: 0 0 1rem; border-radius: 0.6rem; background: var(--pico-card-background-color);
+  border: 1px solid var(--pico-primary); }
+.push-banner > span { flex: 1 1 12rem; font-size: 0.9rem; }
+.push-banner button { margin: 0; width: auto; }
+.push-banner .small-note { flex-basis: 100%; margin: 0; }
+.push-box .btn-row button { width: auto; }

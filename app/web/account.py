@@ -7,7 +7,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from .. import auth, models
+from .. import auth, models, push
 from ..avatars import MAX_UPLOAD, AvatarError, delete_avatar, save_avatar
 from ..db import get_db
 from ..config_store import invite_code
@@ -211,3 +211,41 @@ def register(
     auth.login(request, user)
     flash(request, f"Welcome, {username}! Pick a game to get started.")
     return redirect("/")
+
+
+# ---------------------------------------------------------------- Push-Benachrichtigungen ("Du bist dran")
+
+
+@router.get("/push/key")
+def push_key(db: Session = Depends(get_db), user: models.User = Depends(auth.require_user)):
+    """Öffentlicher VAPID-Schlüssel + ob dieses Konto schon Geräte angemeldet hat."""
+    _, public = push.vapid_keys(db)
+    return {"key": public, "devices": len(user.push_subscriptions)}
+
+
+@router.post("/push/subscribe")
+async def push_subscribe(request: Request, db: Session = Depends(get_db),
+                         user: models.User = Depends(auth.require_user)):
+    try:
+        push.save_subscription(db, user, await request.json())
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from None
+    return {"ok": True}
+
+
+@router.post("/push/unsubscribe")
+async def push_unsubscribe(request: Request, db: Session = Depends(get_db),
+                           user: models.User = Depends(auth.require_user)):
+    try:
+        endpoint = str((await request.json())["endpoint"])
+    except (ValueError, KeyError, TypeError):
+        raise HTTPException(400, "Invalid request.") from None
+    push.delete_subscription(db, user, endpoint)
+    return {"ok": True}
+
+
+@router.post("/push/test")
+def push_test(db: Session = Depends(get_db), user: models.User = Depends(auth.require_user)):
+    sent = push.send_to_users(db, [user.id], "🎯 Notifications are on",
+                              "You'll get a message here when your tournament match is called to a board.", "/")
+    return {"sent": sent}

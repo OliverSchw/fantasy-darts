@@ -84,6 +84,14 @@ auslosen (*🎲 Doubles*) oder feste Teams eintippen (*✍️ Teams*, eine Zeile
 **📺 TV-Ansicht** (Link oben im Turnier): Vollbild für Fernseher/Beamer mit allen Scheiben und Live-Ständen,
 Warteschlange, letzten Ergebnissen und Gruppen/Baum. Aktualisiert sich alle 5 Sekunden selbst.
 
+**🔔 Push-Benachrichtigung „Du bist dran“:** Unter *Account → Notifications* (oder über den Hinweis im
+Turnier, wenn man mitspielt) einschalten. Sobald ein eigenes Match eine Scheibe/einen Tisch bekommt, kommt
+eine Nachricht aufs Handy („🎯 You're up – Board 2“); antippen öffnet das Match. Klappt auf Android/Desktop
+im Browser, auf dem iPhone ab iOS 16.4, wenn die App zum Home-Bildschirm hinzugefügt ist. Technik: Web Push
+mit VAPID, selbst umgesetzt in `app/push.py` (nur `cryptography`). Die Schlüssel erzeugt die App beim ersten
+Gebrauch selbst und speichert sie in der Datenbank, es muss nichts eingerichtet werden. Abgelaufene Geräte
+werden automatisch entfernt.
+
 **🔊 Ansager** (Knopf im Darts-Spiel): sagt jede Aufnahme an („One hundred and eighty!“, „Game shot!“) –
 über die Sprachausgabe des Handys, an/aus wird pro Gerät gemerkt.
 
