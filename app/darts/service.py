@@ -11,6 +11,7 @@ from .. import models
 from .. import tournaments as tour
 from .engine import DartsError, GameState, Visit, advance, make_visit, new_state, replay
 from .modes import apply_visit, new_mode_state, replay_mode
+from .bot import LEVELS, bot_visit
 from .throws import x01_visit
 
 
@@ -19,18 +20,22 @@ from .throws import x01_visit
 
 def create_game(db: Session, start: int, legs_to_win: int, competitor_ids: list[int],
                 created_by: models.User | None, team_size: int = 1) -> models.DartsGame:
-    """competitor_ids in Wurfreihenfolge; Doppel (team_size 2): Team 1 = Positionen 0 und 2, Team 2 = 1 und 3."""
+    """competitor_ids in Wurfreihenfolge; Doppel (team_size 2): Team 1 = Positionen 0 und 2, Team 2 = 1 und 3.
+    Bots dürfen mitspielen (mindestens ein Mensch) - sie werfen automatisch, sobald sie dran sind."""
     if len(set(competitor_ids)) != len(competitor_ids):
         raise DartsError("Each player can only take part once.")
     new_state(start, legs_to_win, len(competitor_ids), team_size)  # prüft Start, Legs, Spielerzahl, Teams
-    found = {c.id for c in db.scalars(select(models.Competitor).where(models.Competitor.id.in_(competitor_ids)))}
-    if found != set(competitor_ids):
+    found = {c.id: c for c in db.scalars(select(models.Competitor).where(models.Competitor.id.in_(competitor_ids)))}
+    if set(found) != set(competitor_ids):
         raise DartsError("Unknown player.")
+    if all(c.is_bot for c in found.values()):
+        raise DartsError("Add at least one human player – bots only play against people.")
     game = models.DartsGame(start_score=start, legs_to_win=legs_to_win, team_size=team_size,
                             created_by_id=created_by.id if created_by else None)
     game.players = [models.DartsGamePlayer(position=i, competitor_id=cid) for i, cid in enumerate(competitor_ids)]
     db.add(game)
     db.commit()
+    play_bots(db, game)  # wirft ein Bot zuerst?
     return game
 
 
@@ -61,6 +66,30 @@ class StaleGame(DartsError):
     """Jemand anderes hat in der Zwischenzeit gezählt (oder doppelt abgeschickt)."""
 
 
+bot_rng = random.Random()  # Tests setzen hier einen festen Startwert
+
+
+def _bot_to_throw(game: models.DartsGame, state: GameState):
+    """Der Bot, der gerade dran ist (sonst None)."""
+    if game.status != "live" or state.finished:
+        return None
+    c = game.players[state.turn].competitor
+    return LEVELS.get(c.bot_level) if c.bot_level else None
+
+
+def play_bots(db: Session, game: models.DartsGame) -> list[models.DartsVisit]:
+    """Alle Bots werfen lassen, bis wieder ein Mensch dran ist (oder das Spiel vorbei ist)."""
+    thrown = []
+    for _ in range(200):  # Sicherheitsgrenze
+        state = game_state(game)
+        level = _bot_to_throw(game, state)
+        if level is None:
+            break
+        _store_visit(db, game, state, None, None, len(game.visits), bot_visit(state, level, bot_rng))
+        thrown.append(game.visits[-1])
+    return thrown
+
+
 def add_visit(db: Session, game: models.DartsGame, score: int | None, darts: int | None, seq: int,
               throws: list[str] | None = None) -> Visit:
     """Speichert die nächste Aufnahme. seq = Anzahl Aufnahmen, die die Seite kannte (gegen Doppel-Tipps).
@@ -70,6 +99,15 @@ def add_visit(db: Session, game: models.DartsGame, score: int | None, darts: int
     if seq != len(game.visits):
         raise StaleGame("The game was updated in the meantime – here is the latest score.")
     state = game_state(game)
+    if _bot_to_throw(game, state):
+        raise DartsError("It's the bot's turn.")
+    visit = _store_visit(db, game, state, score, darts, seq, throws)
+    play_bots(db, game)
+    return visit
+
+
+def _store_visit(db: Session, game: models.DartsGame, state: GameState, score: int | None, darts: int | None,
+                 seq: int, throws: list[str] | None) -> Visit:
     if throws:
         throws = [t.strip().upper() for t in throws]
         visit = x01_visit(state, throws)
@@ -99,9 +137,21 @@ def add_visit(db: Session, game: models.DartsGame, score: int | None, darts: int
 
 
 def undo_last(db: Session, game: models.DartsGame) -> bool:
-    """Letzte Aufnahme löschen. Ein beendetes Spiel läuft danach wieder."""
+    """Letzte Aufnahme löschen. Ein beendetes Spiel läuft danach wieder.
+    Gegen Bots: deren Aufnahmen danach und die letzte eigene Aufnahme werden zurückgenommen."""
     if game.status == "abandoned" or not game.visits:
         return False
+    if game.has_bot:
+        bots = {p.position for p in game.players if p.competitor.is_bot}
+        human = [i for i, v in enumerate(game.visits) if v.position not in bots]
+        if not human:
+            return False
+        for v in game.visits[human[-1]:]:
+            db.delete(v)
+        game.status, game.winner_id, game.winner_side, game.finished_at = "live", None, None, None
+        db.commit()
+        db.refresh(game)
+        return True
     if game.status == "finished" and game.tournament_match_id:
         tm = db.get(models.TournamentMatch, game.tournament_match_id)
         t = db.get(models.Tournament, tm.tournament_id)

@@ -114,7 +114,7 @@ def _compute(db: Session) -> dict[int, list[Earned]]:
         if g.status != "finished":
             continue
         winners = ({p.competitor_id for p in g.players if g.won_by(p.competitor_id)}
-                   if g.n_sides > 1 and g.mode not in TRAINING else set())
+                   if g.n_sides > 1 and g.mode not in TRAINING and not g.has_bot else set())
         for p in g.players:
             cid = p.competitor_id
             played[cid] = played.get(cid, 0) + 1
@@ -147,4 +147,5 @@ def _compute(db: Session) -> dict[int, list[Earned]]:
         for c in entry.competitors if entry else []:
             earn(c.id, "champion", at, tournament_id=t.id)
 
-    return {cid: sorted(got.values(), key=lambda e: e.at) for cid, got in out.items()}
+    bots = set(db.scalars(select(models.Competitor.id).where(models.Competitor.bot_level.is_not(None))))
+    return {cid: sorted(got.values(), key=lambda e: e.at) for cid, got in out.items() if cid not in bots}

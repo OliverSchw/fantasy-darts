@@ -44,7 +44,7 @@ def darts_items(db: Session, since: datetime) -> list[Item]:
                                                       models.DartsGame.finished_at >= since)).all()
     for g in games:
         at = aware(g.finished_at or g.created_at)
-        if at < since or g.n_sides < 2 or g.winning_side is None or g.mode in TRAINING:
+        if at < since or g.n_sides < 2 or g.winning_side is None or g.mode in TRAINING or g.has_bot:
             continue
         win = g.winning_side
         losers = [g.side_name(s) for s in range(g.n_sides) if s != win]
@@ -66,8 +66,10 @@ def darts_items(db: Session, since: datetime) -> list[Item]:
         at = aware(v.created_at)
         if at < since:
             continue
-        name = names.get(v.competitor_id) or next(p.competitor.display_name for p in g.players
-                                                  if p.competitor_id == v.competitor_id)
+        who = next(p.competitor for p in g.players if p.competitor_id == v.competitor_id)
+        if who.is_bot:
+            continue  # die Würfe der Bots sind keine Neuigkeit
+        name = names.get(v.competitor_id) or who.display_name
         names[v.competitor_id] = name
         if v.checkout:
             items.append(Item(at, "🧨", f"{name} checked out {v.score}", f"/darts/games/{g.id}"))

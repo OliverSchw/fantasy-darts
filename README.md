@@ -63,6 +63,14 @@ später einem Konto zuordnen (*Stats → Spieler → Link guest to an account*),
 Training zählt nicht für Elo und Siege; auf der Spielerseite stehen die Bestwerte (bester Bob's-27-Score,
 Checkouts/Versuche und höchstes geschafftes Ziel).
 
+**🤖 Gegen Bots spielen** (*Darts → 🤖 vs Bot* oder im X01-Formular als Spieler wählen): vier Stärken –
+Easy (~35 Average), Medium (~55), Hard (~75), Pro (~95). Der Bot wirft nach deiner Aufnahme sofort selbst,
+Dart für Dart wie ein Mensch: Er zielt auf T20, wirft den Checkout-Weg oder legt sich ein gutes Doppel vor
+und trifft oder streut je nach Stärke (`app/darts/bot.py`). Was er geworfen hat, steht oben im Spiel. *Undo*
+nimmt deine letzte Aufnahme samt der Antwort des Bots zurück. Bot-Spiele sind Training: Deine Würfe zählen in
+Average & Co., Siege und Elo nicht. Auf der Spielerseite steht die Bilanz gegen jeden Bot. Auch Doppel mit
+Bots gehen (z. B. du + Easy Bot gegen zwei andere).
+
 **X01 Dart für Dart:** Im Spiel zwischen *Visit total* (Punktzahl eintippen) und *Dart by dart* (S/D/T + Zahl)
 wählen; die Wahl merkt sich das Handy. Dart für Dart rechnet die App Rest, Bust und Checkout selbst (Checkout nur
 mit einem Doppel) und zählt die **Doppelquote**: jeder Dart auf einen Rest, der mit einem Doppel ausgeht

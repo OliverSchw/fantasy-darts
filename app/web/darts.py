@@ -14,10 +14,11 @@ from ..competitors import CompetitorError
 from ..darts import service
 from ..darts.checkouts import checkout_route, is_finishable, min_darts
 from ..darts.engine import START_SCORES, DartsError
+from ..darts.bot import LEVELS as BOT_LEVELS
 from ..darts.modes import MODES, TRAINING, dart_label, new_mode_state
 from ..darts.achievements import ACHIEVEMENTS, compute_achievements
 from ..darts.rating import START, compute_elo, form_curve
-from ..darts.stats import compare_rows, compute_stats, head_to_head, mode_records, training_records
+from ..darts.stats import compare_rows, compute_stats, head_to_head, mode_records, training_records, bot_records
 from ..db import get_db
 from .common import flash, local_dt, redirect, render
 from .tournament_pages import Sport, add_tournament_routes, read_boards, read_format, read_league
@@ -81,12 +82,13 @@ PARTY_MODES = {k: m for k, m in MODES.items() if k not in TRAINING}  # Training 
 
 
 @router.get("/new")
-def new_game_form(request: Request, mode: str = "x01", db: Session = Depends(get_db),
+def new_game_form(request: Request, mode: str = "x01", bot: str = "", db: Session = Depends(get_db),
                   user: models.User = Depends(require_user)):
     me = competitors.competitor_for_user(db, user)
+    players = [me.id] + ([f"bot:{bot}"] if bot in BOT_LEVELS else [])
     return render(request, "darts/new.html", user=user, competitors=competitors.all_competitors(db),
-                  starts=START_SCORES, modes=MODES,
-                  form={"start": 501, "legs": 3, "players": [me.id], "team_size": 1,
+                  starts=START_SCORES, modes=MODES, bots=BOT_LEVELS,
+                  form={"start": 501, "legs": 3 if not players[1:] else 1, "players": players, "team_size": 1,
                         "mode": mode if mode in MODES else "x01", "lives": 3, "rounds": 7, "attempts": 10})
 
 
@@ -110,6 +112,8 @@ async def new_game(request: Request, db: Session = Depends(get_db), user: models
         try:
             if raw == "guest" and guest:
                 ids.append(competitors.create_guest(db, guest).id)
+            elif raw.startswith("bot:"):
+                ids.append(competitors.bot(db, raw[4:]).id)
             elif raw.isdigit():
                 ids.append(int(raw))
         except (DartsError, CompetitorError) as e:
@@ -117,6 +121,9 @@ async def new_game(request: Request, db: Session = Depends(get_db), user: models
     try:
         if errors:
             raise DartsError(errors[0])
+        if mode != "x01" and any(c.is_bot for c in db.scalars(select(models.Competitor)
+                                                              .where(models.Competitor.id.in_(ids)))):
+            raise DartsError("Bots only play X01 for now.")
         if mode == "x01":
             game = service.create_game(db, start, legs, ids, user, team_size=team_size)
         else:
@@ -126,7 +133,7 @@ async def new_game(request: Request, db: Session = Depends(get_db), user: models
     except DartsError as e:
         db.rollback()
         return render(request, "darts/new.html", status_code=400, user=user, error=str(e),
-                      competitors=competitors.all_competitors(db), starts=START_SCORES, modes=MODES,
+                      competitors=competitors.all_competitors(db), starts=START_SCORES, modes=MODES, bots=BOT_LEVELS,
                       form={"start": start or 501, "legs": legs or 1, "players": ids, "team_size": team_size,
                             "mode": mode, "lives": lives, "rounds": rounds, "attempts": attempts})
     return redirect(f"/darts/games/{game.id}")
@@ -261,7 +268,13 @@ async def post_visit(game_id: int, request: Request, db: Session = Depends(get_d
         flash(request, "Please enter a number.", "error")
         return redirect(f"/darts/games/{game.id}")
     try:
+        n_before = seq + 1
         visit = service.add_visit(db, game, score, darts, seq, throws=throws or None)
+        for bv in game.visits[n_before:]:
+            c = game.players[bv.position].competitor
+            darts_txt = " · ".join(dart_label(t) for t in bv.throws or [])
+            flash(request, f"🤖 {c.display_name}: " + ("bust" if bv.bust else "game shot! 🎯" if bv.checkout
+                                                    else str(bv.score)) + f" ({darts_txt})")
         if visit.bust:
             flash(request, "Bust! No score." if throws else f"Bust! {score} was too much – no score.", "error")
         elif game.status == "finished":
@@ -353,7 +366,8 @@ def player_page(competitor_id: int, request: Request, db: Session = Depends(get_
                   elo_chart=line_chart(
                       [(p.rating, f"{local_dt(p.at):%d.%m.} · {p.rating:.0f} ({p.delta:+.0f})", p.delta < 0)
                        for p in hist], baseline=START),
-                  achievements=ACHIEVEMENTS, earned=earned, training=training_records(db, c.id))
+                  achievements=ACHIEVEMENTS, earned=earned, training=training_records(db, c.id),
+                  vs_bots=bot_records(db, c.id), bot_levels=BOT_LEVELS)
 
 
 @router.post("/players/{competitor_id}/link")

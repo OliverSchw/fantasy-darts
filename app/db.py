@@ -42,6 +42,7 @@ ADDED_COLUMNS = [
     ("tournament_entries", "group_no", {"sqlite": "INTEGER", "postgresql": "INTEGER"}),
     ("tournament_matches", "group_no", {"sqlite": "INTEGER", "postgresql": "INTEGER"}),
     ("tournament_matches", "matchday", {"sqlite": "INTEGER", "postgresql": "INTEGER"}),
+    ("competitors", "bot_level", {"sqlite": "VARCHAR(10)", "postgresql": "VARCHAR(10)"}),
     ("tournament_matches", "board", {"sqlite": "INTEGER", "postgresql": "INTEGER"}),
     ("darts_games", "team_size", {"sqlite": "INTEGER DEFAULT 1", "postgresql": "INTEGER DEFAULT 1"}),
     ("darts_games", "winner_side", {"sqlite": "INTEGER", "postgresql": "INTEGER"}),
