@@ -77,6 +77,16 @@ Scheibe – niemand muss auf zwei Scheiben gleichzeitig spielen. Reihenfolge: Gr
 was als Nächstes kommt; im Spiel steht die Scheibe oben. Der Organisator kann die Anzahl jederzeit ändern
 (*Organizer options*), z. B. wenn eine Scheibe dazukommt. 0 = keine Zuordnung.
 
+**Turnier-Spielarten:** Statt X01 auch Cricket, Around the Clock, Shanghai (7/10/20 Runden) oder Killer
+(1–9 Leben) – ein Spiel entscheidet das Match. X01-Turniere gehen auch als **Doppel**: Paare zufällig
+auslosen (*🎲 Doubles*) oder feste Teams eintippen (*✍️ Teams*, eine Zeile pro Team: „Chris & Dana“).
+
+**📺 TV-Ansicht** (Link oben im Turnier): Vollbild für Fernseher/Beamer mit allen Scheiben und Live-Ständen,
+Warteschlange, letzten Ergebnissen und Gruppen/Baum. Aktualisiert sich alle 5 Sekunden selbst.
+
+**🔊 Ansager** (Knopf im Darts-Spiel): sagt jede Aufnahme an („One hundred and eighty!“, „Game shot!“) –
+über die Sprachausgabe des Handys, an/aus wird pro Gerät gemerkt.
+
 **Turnier-Historie & Stats:** Die Turnierliste zeigt alle (auch beendeten) Turniere mit Champion und oben
 eine **Hall of Fame** (Turniersiege pro Spieler). Auf jeder Turnierseite steht unten **„Standings & stats“**:
 Platzierung (Champion, Runner-up, Halbfinale …, in der Gruppe ausgeschieden), Siege–Niederlagen, Differenz,

@@ -5,10 +5,22 @@
 {% block content %}
 <h1>New tournament</h1>
 {% if error %}<p class="flash error">{{ error }}</p>{% endif %}
-<form method="post" action="/darts/tournaments/new" class="dnew" x-data='{ "legs": {{ form.legs }}, "final": {{ form.final_legs }} }'>
+<form method="post" action="/darts/tournaments/new" class="dnew"
+      x-data='{ "legs": {{ form.legs }}, "final": {{ form.final_legs }}, "mode": {{ form.mode | tojson }}, "teams": {{ form.teams | tojson }} }'
+      x-effect="if (mode !== 'x01') teams = 'singles'">
   <fieldset>
     <legend>Tournament</legend>
     <input name="name" value="{{ form.name }}" placeholder="Name, e.g. Christmas Cup 2026" maxlength="80" required aria-label="Name">
+    <select name="mode" x-model="mode" aria-label="Game">
+      <option value="x01">X01 – 301 / 501 / 701</option>
+      {% for key, m in modes.items() %}<option value="{{ key }}">{{ m.name }}</option>{% endfor %}
+    </select>
+    {% for key, m in modes.items() %}<small class="muted dm-modehelp" x-show="mode === '{{ key }}'" x-cloak>{{ m.help }} One game per match.</small>{% endfor %}
+    <div x-show="mode === 'killer'" x-cloak class="stepper"><span>Lives</span>
+      <select name="lives" aria-label="Lives">{% for l in (1, 2, 3, 4, 5) %}<option value="{{ l }}" {% if l == form.lives %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+    <div x-show="mode === 'shanghai'" x-cloak class="stepper"><span>Rounds</span>
+      <select name="rounds" aria-label="Rounds">{% for r in (7, 10, 20) %}<option value="{{ r }}" {% if r == form.rounds %}selected{% endif %}>{{ r }}</option>{% endfor %}</select></div>
+    <div x-show="mode === 'x01'">
     <div class="seg" role="radiogroup" aria-label="Start score">
       {% for s in starts %}
         <label><input type="radio" name="start" value="{{ s }}" {% if s == form.start %}checked{% endif %}><span>{{ s }}</span></label>
@@ -29,12 +41,25 @@
       <input type="hidden" name="final_legs" :value="final" value="{{ form.final_legs }}">
     </div>
     <small class="muted">Double out. The final setting applies to the knockout final only.</small>
+    </div>
   </fieldset>
 
   {{ format_fields(form, "players", "Board") }}
 
   <fieldset>
     <legend>Players</legend>
+    <div class="seg" role="radiogroup" aria-label="Singles or doubles" x-show="mode === 'x01'">
+      <label><input type="radio" name="teams" value="singles" x-model="teams"><span>Singles</span></label>
+      <label><input type="radio" name="teams" value="random" x-model="teams"><span>🎲 Doubles</span></label>
+      <label><input type="radio" name="teams" value="fixed" x-model="teams"><span>✍️ Teams</span></label>
+    </div>
+    <small class="muted" x-show="teams === 'random'" x-cloak>Pick an even number of players – the app shuffles them into teams of two.</small>
+    <div x-show="teams === 'fixed'" x-cloak>
+      <label>One team per line
+        <textarea name="team_text" rows="4" placeholder="Arrows United: Olli, Kevin&#10;Anna, Tim">{{ form.team_text }}</textarea></label>
+      <small class="muted">“Name: player, player” – name optional. Members and guests are recognised by name, new names become guests.</small>
+    </div>
+    <div x-show="teams !== 'fixed'">
     <div class="pick-grid">
       {% for c in competitors %}
         <label class="pick-chip">
@@ -46,6 +71,7 @@
     <label>New guests <small class="muted">(one per line or separated by commas)</small>
       <textarea name="guests" rows="2" placeholder="Kevin, Marco">{{ form.guests }}</textarea>
     </label>
+    </div>
     <label><input type="checkbox" name="shuffle" value="1" {% if form.shuffle %}checked{% endif %}> Random draw
       <small class="muted">– otherwise the list order is the seeding</small></label>
   </fieldset>

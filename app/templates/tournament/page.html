@@ -7,8 +7,9 @@
 <div class="title-row">
   <hgroup>
     <h1>🏆 {{ t.name }}</h1>
-    <p>{{ t.entries | length }} {{ sp.entries_label }} · {{ sp.summary(t) }}{% if t.has_groups %} · {{ groups | length }} groups, top {{ t.settings.advance }} go through{% endif %}</p>
+    <p>{{ t.entries | length }} {{ sp.label(t) }} · {{ sp.summary(t) }}{% if t.has_groups %} · {{ groups | length }} groups, top {{ t.settings.advance }} go through{% endif %}</p>
   </hgroup>
+  <a href="{{ sp.base }}/tournaments/{{ t.id }}/tv" role="button" class="outline small" target="_blank" title="Full screen for a TV or projector">📺 TV view</a>
 </div>
 {% if winner %}
   <article class="dg-winner"><p>🏆 Champion: <strong>{{ winner.display_name }}</strong></p></article>
@@ -44,7 +45,7 @@
       <article class="t-group">
         <h3>{{ g.label }}</h3>
         <table class="compact t-table">
-          <thead><tr><th>#</th><th>{{ "Team" if sp.entries_label == "teams" else "Player" }}</th><th class="num" title="played">P</th><th class="num" title="won">W</th><th class="num" title="{{ sp.score_label }} difference">+/−</th></tr></thead>
+          <thead><tr><th>#</th><th>{{ "Team" if sp.label(t) == "teams" else "Player" }}</th><th class="num" title="played">P</th><th class="num" title="won">W</th><th class="num" title="{{ sp.score_label }} difference">+/−</th></tr></thead>
           <tbody>
             {% for s in g.rows %}
               <tr class="{% if loop.index <= g.advance %}q{% endif %}">
@@ -86,7 +87,7 @@
     <table class="striped compact sortable dstats t-stats" data-sort-key="tournament-{{ sp.key }}">
       <thead><tr>
         <th class="num" data-sort="num" data-first="asc" data-default="asc">#</th>
-        <th data-sort="text">{{ "Team" if sp.entries_label == "teams" else "Player" }}</th>
+        <th data-sort="text">{{ "Team" if sp.label(t) == "teams" else "Player" }}</th>
         <th class="num" data-sort="num" title="won – lost">W–L</th>
         <th class="num" data-sort="num" title="{{ sp.score_label }} difference">+/−</th>
         {% for key, label, f in sp.extra_columns %}<th class="num" data-sort="num">{{ label }}</th>{% endfor %}

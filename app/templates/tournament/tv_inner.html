@@ -1,0 +1,74 @@
+<header class="tv-head">
+  <h1>🏆 {{ t.name }}</h1>
+  <span class="tv-sub">{{ sp.summary(t) }} · {{ t.entries | length }} {{ sp.label(t) }}</span>
+  <span class="tv-clock">{{ now_hm() }}</span>
+</header>
+
+{% if winner %}
+  <section class="tv-champion">🏆 Champion: <strong>{{ winner.display_name }}</strong></section>
+{% endif %}
+
+<main class="tv-grid">
+  <section class="tv-boards">
+    {% if bv.n %}
+      {% for b, m in bv.boards %}
+        <div class="tv-board {% if m and m.id in live %}live{% elif not m %}free{% endif %}">
+          <div class="tv-bno">{{ sp.board_label }} {{ b }}</div>
+          {% if m %}
+            {% set st = status.get(m.id) %}
+            <div class="tv-players"><span>{{ m.entry1.display_name }}</span><em>vs</em><span>{{ m.entry2.display_name }}</span></div>
+            {% if st %}
+              <div class="tv-score">{{ st.score }}</div>
+              <div class="tv-detail"><span class="tv-live">LIVE</span> {{ st.detail }}</div>
+            {% else %}
+              <div class="tv-detail">{{ match_title(t, m) }} · please come to the {{ sp.board_label | lower }}</div>
+            {% endif %}
+          {% else %}
+            <div class="tv-detail">free</div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    {% elif not winner %}
+      <div class="tv-board free"><div class="tv-detail">No {{ sp.board_label | lower }}s set – the organizer can add them under Organizer options.</div></div>
+    {% endif %}
+  </section>
+
+  <aside class="tv-side">
+    {% if bv.queue %}
+      <h2>Up next</h2>
+      <ol class="tv-list">{% for m in bv.queue %}<li>{{ m.entry1.display_name }} <em>vs</em> {{ m.entry2.display_name }} <small>{{ match_title(t, m) }}</small></li>{% endfor %}</ol>
+    {% endif %}
+    {% if recent %}
+      <h2>Results</h2>
+      <ul class="tv-list">{% for m in recent %}
+        <li><span class="{% if m.winner_id == m.entry1_id %}w{% endif %}">{{ m.entry1.display_name }}</span>
+          <b>{{ m.score1 }}:{{ m.score2 }}</b>
+          <span class="{% if m.winner_id == m.entry2_id %}w{% endif %}">{{ m.entry2.display_name }}</span></li>
+      {% endfor %}</ul>
+    {% endif %}
+  </aside>
+</main>
+
+{% if groups and not cols %}
+  <section class="tv-groups">
+    {% for g in groups %}
+      <div class="tv-group"><h3>{{ g.label }}</h3>
+        <table>{% for s in g.rows %}<tr class="{% if loop.index <= g.advance %}q{% endif %}"><td>{{ loop.index }}</td><td>{{ s.entry.display_name }}</td><td>{{ s.won }}–{{ s.lost }}</td><td>{{ "%+d" | format(s.diff) }}</td></tr>{% endfor %}</table>
+      </div>
+    {% endfor %}
+  </section>
+{% elif cols %}
+  <section class="tv-bracket">
+    {% for col in cols %}
+      <div class="tv-col"><h3>{{ col.title }}</h3>
+        {% for group in col.groups %}{% for m in group %}
+          <div class="tv-m {% if m.is_played %}done{% endif %} {% if m.id in live %}live{% endif %}">
+            <span class="{% if m.winner_id and m.winner_id == m.entry1_id %}w{% endif %}">{{ m.entry1.display_name if m.entry1 else ("bye" if m.bye else "TBD") }}</span>
+            <span class="{% if m.winner_id and m.winner_id == m.entry2_id %}w{% endif %}">{{ m.entry2.display_name if m.entry2 else ("bye" if m.bye else "TBD") }}</span>
+            {% if m.is_played and not m.bye %}<b>{{ m.score1 }}:{{ m.score2 }}</b>{% endif %}
+          </div>
+        {% endfor %}{% endfor %}
+      </div>
+    {% endfor %}
+  </section>
+{% endif %}

@@ -46,6 +46,7 @@ templates.env.globals["home_tabs"] = HOME_TABS
 templates.env.globals["section_for_path"] = section_for_path
 templates.env.globals["tab_active"] = tab_active
 templates.env.globals["darts_modes"] = MODES
+templates.env.globals["now_hm"] = lambda: f"{local_dt(datetime.now(timezone.utc)):%H:%M}"
 
 
 def local_dt(dt: datetime | None) -> datetime | None:

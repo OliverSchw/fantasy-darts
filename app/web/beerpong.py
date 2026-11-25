@@ -169,12 +169,12 @@ async def bp_tournament_new(request: Request, db: Session = Depends(get_db), use
             raise bp.BeerpongError("Play with 6 or 10 cups.")
         groups, advance = read_format(form)
         if keep["mode"] == "fixed":
-            teams, names = bp.parse_teams(db, keep["teams"])
+            teams, names = competitors.parse_teams(db, keep["teams"])
         else:
             ids = list(keep["players"])
             for name in [g.strip() for g in keep["guests"].replace(",", "\n").splitlines() if g.strip()]:
                 ids.append(competitors.create_guest(db, name).id)
-            teams, names = bp.random_pairs(ids), None
+            teams, names = competitors.random_pairs(ids), None
         t = tour.create_tournament(db, "beerpong", keep["name"], teams, {"cups": keep["cups"], "boards": read_boards(form)}, user,
                                    shuffle=keep["shuffle"], entry_names=names, groups=groups, advance=advance)
     except ERRORS as e:
@@ -190,6 +190,13 @@ def _bp_live_ids(db: Session, match_ids: list[int]) -> set[int]:
         models.BeerpongGame.tournament_match_id.in_(match_ids), models.BeerpongGame.status == "live")))
 
 
+def _bp_live_status(db: Session, tm: models.TournamentMatch) -> dict | None:
+    g = bp.tournament_game(db, tm)
+    if g is None or g.status != "live":
+        return None
+    return {"score": f"{g.hits1} : {g.hits2}", "detail": f"cups hit (of {g.cups})"}
+
+
 add_tournament_routes(router, Sport(
     key="beerpong", base="/beerpong", icon="🍺", entries_label="teams", score_label="cups",
     find_game=bp.tournament_game, game_url=lambda g: f"/beerpong/games/{g.id}",
@@ -197,6 +204,7 @@ add_tournament_routes(router, Sport(
     live_match_ids=_bp_live_ids, summary=lambda t: f"{t.settings.get('cups', 10)} cups",
     max_score=lambda t, tm: int(t.settings.get("cups", 10)),
     manual_hint="Cups hit by each team – the winner hits all of them.", board_label="Table",
+    live_status=_bp_live_status,
     extra_columns=(("cups_per_game", "Cups/game", "dec"),),
     extra_stats=lambda db, t: {r.entry.id: {"cups_per_game": r.score_for / r.played if r.played else None}
                                for r in tour.entry_results(t)},

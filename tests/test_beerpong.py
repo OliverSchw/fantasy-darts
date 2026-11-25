@@ -6,6 +6,7 @@ from sqlalchemy import select
 
 from app import beerpong as bp
 from app import competitors, models
+from app import competitors as comp
 from app import tournaments as tour
 from app.main import app
 
@@ -98,14 +99,14 @@ def test_abandon_and_validation(olli, db):
 
 def test_parse_teams_and_random_pairs(db, make_user):
     make_user("anna")
-    teams, names = bp.parse_teams(db, "Cup Kings: Anna, Kevin\nMarco & Tim\n\n Zoe + kevin ")
+    teams, names = comp.parse_teams(db, "Cup Kings: Anna, Kevin\nMarco & Tim\n\n Zoe + kevin ")
     assert names == ["Cup Kings", None, None]
     anna = _me(db, "anna")
     assert teams[0][0] == anna and teams[2][1] == teams[0][1]  # "kevin" = derselbe Gast
     assert len({cid for t in teams for cid in t}) == 5
-    with pytest.raises(bp.BeerpongError):
-        bp.random_pairs([1, 2, 3])
-    pairs = bp.random_pairs([1, 2, 3, 4, 5, 6])
+    with pytest.raises(comp.CompetitorError):
+        comp.random_pairs([1, 2, 3])
+    pairs = comp.random_pairs([1, 2, 3, 4, 5, 6])
     assert len(pairs) == 3 and sorted(x for p in pairs for x in p) == [1, 2, 3, 4, 5, 6]
 
 
