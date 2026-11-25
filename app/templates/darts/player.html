@@ -8,8 +8,8 @@
 <div class="profile-head">
   {{ cavatar(c, user, "xl") }}
   <h1>{{ c.display_name }}</h1>
-  {% if c.user %}<a href="/users/{{ c.user.id }}" class="small-link">Profile →</a>{% elif c.is_bot %}<small class="muted">🤖 Bot · throws an average of about {{ bot_levels[c.bot_level].average }}</small>{% else %}<small class="muted">Guest</small>{% endif %}
-  {% if c.is_bot %}<a href="/darts/new?bot={{ c.bot_level }}" role="button" class="outline small">🤖 Play this bot</a>
+  {% if c.user %}<a href="/users/{{ c.user.id }}" class="small-link">Profile →</a>{% elif c.is_bot %}<small class="muted">🤖 Bot · {% if c.bot_level in bot_levels %}throws an average of about {{ bot_levels[c.bot_level].average }}{% else %}{% set cfg = c.bot_config or {} %}set to {{ cfg.average }} average and {{ cfg.double }} % doubles{% if cfg.like %} – copied from {{ "the last 10 games" if cfg.basis == "last10" else "all games" }}{% endif %}{% endif %}</small>{% else %}<small class="muted">Guest</small>{% endif %}
+  {% if c.is_bot %}<a href="/darts/new?bot_id={{ c.id }}" role="button" class="outline small">🤖 Play this bot</a>
   {% elif not (c.user and c.user.id == user.id) %}<a href="/darts/compare?b={{ c.id }}" role="button" class="outline small">⚖️ Compare with me</a>{% endif %}
 </div>
 
@@ -49,8 +49,8 @@
 {% if training or vs_bots %}
   <h3>Training</h3>
   <div class="stat-grid">
-    {% for key, b in bot_levels.items() if key in vs_bots %}{% set w, n = vs_bots[key] %}
-      <div><span>{{ w }}/{{ n }}</span><small>🤖 won vs {{ b.name }}</small></div>{% endfor %}
+    {% for b, w, n in vs_bots %}
+      <a href="/darts/new?bot_id={{ b.id }}"><span>{{ w }}/{{ n }}</span><small>🤖 won vs {{ b.name }}</small></a>{% endfor %}
     {% if training.bobs27 %}{% set b = training.bobs27 %}
       <div><span>{{ b.best }}</span><small>Bob's 27 best · ⌀ {{ "%.0f" | format(b.avg) }} in {{ b.games }}</small></div>{% endif %}
     {% if training.checkout121 %}{% set k = training.checkout121 %}

@@ -70,6 +70,14 @@ und trifft oder streut je nach Stärke (`app/darts/bot.py`). Was er geworfen hat
 nimmt deine letzte Aufnahme samt der Antwort des Bots zurück. Bot-Spiele sind Training: Deine Würfe zählen in
 Average & Co., Siege und Elo nicht. Auf der Spielerseite steht die Bilanz gegen jeden Bot. Auch Doppel mit
 Bots gehen (z. B. du + Easy Bot gegen zwei andere).
+- **🛠️ Eigener Bot:** Average (20–110) und Doppelquote (3–65 %) per Schieberegler festlegen. Die App sucht per
+  Simulation die passende Wurfstärke. Gleiche Einstellung = gleicher Bot, die Bilanz gegen ihn läuft weiter.
+- **👤 Bot wie ein Spieler:** übernimmt Average und Doppelquote eines Spielers (alle oder die letzten 10 Spiele;
+  die Doppelquote aus Dart-für-Dart-Spielen, sonst aus dem Average geschätzt). Auch mit sich selbst:
+  *🪞 vs my form* auf der Darts-Startseite spielt gegen deine Form der letzten 10 Spiele.
+- **Tagesform:** Jeder Dart ist zufällig, dazu ist der Bot in jedem Spiel etwas besser oder schlechter drauf.
+  So kommen typische Aufnahmen (26, 41, 45, 60, 81, 100, 140 …) und Busts heraus, und erst auf lange Sicht
+  passt der Average.
 
 **X01 Dart für Dart:** Im Spiel zwischen *Visit total* (Punktzahl eintippen) und *Dart by dart* (S/D/T + Zahl)
 wählen; die Wahl merkt sich das Handy. Dart für Dart rechnet die App Rest, Bust und Checkout selbst (Checkout nur

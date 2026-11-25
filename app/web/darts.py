@@ -18,7 +18,7 @@ from ..darts.bot import LEVELS as BOT_LEVELS
 from ..darts.modes import MODES, TRAINING, dart_label, new_mode_state
 from ..darts.achievements import ACHIEVEMENTS, compute_achievements
 from ..darts.rating import START, compute_elo, form_curve
-from ..darts.stats import compare_rows, compute_stats, head_to_head, mode_records, training_records, bot_records
+from ..darts.stats import compare_rows, compute_stats, head_to_head, mode_records, player_profile, training_records, bot_records
 from ..db import get_db
 from .common import flash, local_dt, redirect, render
 from .tournament_pages import Sport, add_tournament_routes, read_boards, read_format, read_league
@@ -81,15 +81,44 @@ def darts_games(request: Request, db: Session = Depends(get_db), user: models.Us
 PARTY_MODES = {k: m for k, m in MODES.items() if k not in TRAINING}  # Training gibt es nicht als Turnier
 
 
+def _bot_ctx(db: Session) -> dict:
+    """Für das Formular: feste Bots, gespeicherte eigene Bots und Spieler mit X01-Stats (als Vorlage)."""
+    people = competitors.all_competitors(db)
+    stats = compute_stats(db, [c.id for c in people])
+    return {"bots": BOT_LEVELS, "saved_bots": competitors.saved_bots(db),
+            "bot_people": [(c, stats[c.id]) for c in people if c.id in stats and stats[c.id].average]}
+
+
+BOT_FORM = {"bot_avg": 60, "bot_dbl": 25, "bot_like": "", "bot_basis": "all"}
+
+
 @router.get("/new")
-def new_game_form(request: Request, mode: str = "x01", bot: str = "", db: Session = Depends(get_db),
-                  user: models.User = Depends(require_user)):
+def new_game_form(request: Request, mode: str = "x01", bot: str = "", bot_id: int = 0, like: int = 0,
+                  basis: str = "all", db: Session = Depends(get_db), user: models.User = Depends(require_user)):
     me = competitors.competitor_for_user(db, user)
-    players = [me.id] + ([f"bot:{bot}"] if bot in BOT_LEVELS else [])
+    pick = (f"bot:{bot}" if bot in (*BOT_LEVELS, "custom", "player") else
+            str(bot_id) if bot_id and (b := db.get(models.Competitor, bot_id)) is not None and b.is_bot else None)
+    players = [me.id] + ([pick] if pick else [])
     return render(request, "darts/new.html", user=user, competitors=competitors.all_competitors(db),
-                  starts=START_SCORES, modes=MODES, bots=BOT_LEVELS,
+                  starts=START_SCORES, modes=MODES, **_bot_ctx(db),
                   form={"start": 501, "legs": 3 if not players[1:] else 1, "players": players, "team_size": 1,
-                        "mode": mode if mode in MODES else "x01", "lives": 3, "rounds": 7, "attempts": 10})
+                        "mode": mode if mode in MODES else "x01", "lives": 3, "rounds": 7, "attempts": 10,
+                        **BOT_FORM, "bot_like": str(like or me.id), "bot_basis": "last10" if basis == "last10" else "all"})
+
+
+def _make_bot(db: Session, kind: str, form) -> models.Competitor:
+    """bot:custom (Average/Doppelquote) oder bot:player (wie ein Spieler, alle / letzte 10 Spiele)."""
+    if kind == "custom":
+        return competitors.custom_bot(db, form.get("bot_avg"), form.get("bot_dbl"))
+    raw = str(form.get("bot_like", ""))
+    like = db.get(models.Competitor, int(raw)) if raw.isdigit() else None
+    if like is None or like.is_bot:
+        raise DartsError("Choose the player the bot should play like.")
+    basis = "last10" if form.get("bot_basis") == "last10" else "all"
+    prof = player_profile(db, like.id, last=10 if basis == "last10" else None)
+    if prof is None:
+        raise DartsError(f"{like.display_name} has no finished X01 games yet – the bot needs some stats to copy.")
+    return competitors.custom_bot(db, prof["average"], max(3, min(65, prof["double"])), like=like, basis=basis)
 
 
 @router.post("/new")
@@ -105,13 +134,17 @@ async def new_game(request: Request, db: Session = Depends(get_db), user: models
         start, legs, team_size, lives, rounds, attempts = 0, 0, 1, 3, 7, 10
     mode = str(form.get("mode", "x01"))
     mode = mode if mode in MODES else "x01"
-    ids, errors = [], []
+    ids, errors, picked = [], [], []
     for i in range(4):
         raw = str(form.get(f"p{i}", "")).strip()
+        if raw:
+            picked.append(raw)
         guest = str(form.get(f"g{i}", "")).strip()
         try:
             if raw == "guest" and guest:
                 ids.append(competitors.create_guest(db, guest).id)
+            elif raw in ("bot:custom", "bot:player"):
+                ids.append(_make_bot(db, raw[4:], form).id)
             elif raw.startswith("bot:"):
                 ids.append(competitors.bot(db, raw[4:]).id)
             elif raw.isdigit():
@@ -133,9 +166,10 @@ async def new_game(request: Request, db: Session = Depends(get_db), user: models
     except DartsError as e:
         db.rollback()
         return render(request, "darts/new.html", status_code=400, user=user, error=str(e),
-                      competitors=competitors.all_competitors(db), starts=START_SCORES, modes=MODES, bots=BOT_LEVELS,
-                      form={"start": start or 501, "legs": legs or 1, "players": ids, "team_size": team_size,
-                            "mode": mode, "lives": lives, "rounds": rounds, "attempts": attempts})
+                      competitors=competitors.all_competitors(db), starts=START_SCORES, modes=MODES, **_bot_ctx(db),
+                      form={"start": start or 501, "legs": legs or 1, "players": picked, "team_size": team_size,
+                            "mode": mode, "lives": lives, "rounds": rounds, "attempts": attempts,
+                            **{k: str(form.get(k, v)) for k, v in BOT_FORM.items()}})
     return redirect(f"/darts/games/{game.id}")
 
 

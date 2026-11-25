@@ -9,6 +9,7 @@ im Single derselben Zahl (Triple/Doppel verfehlt) oder in einem Nachbarfeld auf 
 
 import random
 from dataclasses import dataclass
+from functools import lru_cache
 
 from .checkouts import checkout_route, min_darts
 from .engine import GameState
@@ -130,3 +131,99 @@ def bot_visit(state: GameState, level: Level, rng: random.Random) -> list[str]:
         if left < 2:
             break  # Bust
     return throws
+
+
+# ---------------------------------------------------------------- Eigene Bots (Average + Doppelquote frei wählbar)
+#
+# Ein eigener Bot hat eine Wurfstärke x (0 = Anfänger, 1 = Pro, 1.25 = Weltklasse) für Triple/Single/Bull
+# und eine eigene Doppel-Trefferquote. x wird per Simulation so gesucht, dass der gewünschte Average
+# herauskommt (die Doppelquote fließt mit ein, weil Fehlwürfe aufs Doppel Darts kosten).
+
+# (x, Triple, Single, Bull) - die Stufen oben liegen bei x = 0.25 / 0.5 / 0.75 / 1.0
+_KNOTS = ((0.0, 0.02, 0.40, 0.02), (0.25, 0.07, 0.60, 0.05), (0.5, 0.17, 0.72, 0.10),
+          (0.75, 0.29, 0.82, 0.18), (1.0, 0.43, 0.90, 0.28), (1.25, 0.58, 0.95, 0.38))
+AVG_RANGE = (20, 110)
+DOUBLE_RANGE = (3, 65)
+
+
+def skill_level(x: float, double_pct: float, name: str = "Custom Bot", average: int = 0) -> Level:
+    x = max(_KNOTS[0][0], min(_KNOTS[-1][0], x))
+    for (x0, *a), (x1, *b) in zip(_KNOTS, _KNOTS[1:]):
+        if x <= x1:
+            f = (x - x0) / (x1 - x0)
+            t, s, bull = (u + f * (v - u) for u, v in zip(a, b))
+            break
+    return Level("custom", name, t, double_pct / 100, s, bull, average)
+
+
+def simulate_average(level: Level, legs: int = 150, seed: int = 7) -> float:
+    rng = random.Random(seed)
+    from .engine import advance, new_state
+    from .throws import x01_visit
+    darts = points = 0
+    for _ in range(legs):
+        st = new_state(501, 1, 1)
+        while not st.finished:
+            v = x01_visit(st, bot_visit(st, level, rng))
+            darts += v.darts
+            points += v.score
+            advance(st, v)
+    return 3 * points / darts
+
+
+@lru_cache(maxsize=256)
+def calibrate(average: int, double_pct: int) -> float:
+    """Wurfstärke x, mit der ein Bot mit dieser Doppelquote ungefähr diesen Average wirft."""
+    lo, hi = _KNOTS[0][0], _KNOTS[-1][0]
+    for _ in range(11):
+        mid = (lo + hi) / 2
+        if simulate_average(skill_level(mid, double_pct), legs=250) < average:
+            lo = mid
+        else:
+            hi = mid
+    return round((lo + hi) / 2, 4)
+
+
+def check_custom(average, double_pct) -> tuple[int, int]:
+    """Eingaben prüfen und runden (Average 20-110, Doppelquote 3-65 %)."""
+    try:
+        a, d = round(float(average)), round(float(double_pct))
+    except (TypeError, ValueError):
+        raise ValueError("Enter an average and a double rate for the bot.") from None
+    if not AVG_RANGE[0] <= a <= AVG_RANGE[1]:
+        raise ValueError(f"The bot's average must be between {AVG_RANGE[0]} and {AVG_RANGE[1]}.")
+    if not DOUBLE_RANGE[0] <= d <= DOUBLE_RANGE[1]:
+        raise ValueError(f"The bot's double rate must be between {DOUBLE_RANGE[0]} and {DOUBLE_RANGE[1]} %.")
+    return a, d
+
+
+def estimated_double_pct(average: float) -> int:
+    """Doppelquote passend zu einem Average (wenn jemand nie Dart für Dart eingegeben hat)."""
+    pts = ((20, 6), (37, 11), (57, 23), (76, 32), (95, 47), (110, 55))
+    for (a0, d0), (a1, d1) in zip(pts, pts[1:]):
+        if average <= a1:
+            return round(d0 + max(0, average - a0) / (a1 - a0) * (d1 - d0))
+    return pts[-1][1]
+
+
+PRESET_X = {"easy": 0.25, "medium": 0.5, "hard": 0.75, "pro": 1.0}  # Lage der festen Stufen auf der Skala
+FORM_SPREAD = 0.07  # Tagesform: so stark schwankt die Wurfstärke von Spiel zu Spiel (etwa ±5 Average)
+
+
+def level_for(competitor, game_id: int | None = None) -> Level | None:
+    """Wurf-Stärke eines Bot-Teilnehmers (feste Stufe oder eigener Bot mit gespeicherter Einstellung).
+    Mit game_id hat der Bot eine Tagesform: in jedem Spiel etwas besser oder schlechter (fest pro Spiel)."""
+    key = competitor.bot_level
+    if not key:
+        return None
+    if key in LEVELS:
+        base = LEVELS[key]
+        x, dbl, avg = PRESET_X[key], 100 * base.double, base.average
+    else:
+        cfg = competitor.bot_config or {}
+        x, dbl, avg = float(cfg.get("x", 0.5)), float(cfg.get("double", 20)), int(cfg.get("average", 0))
+    if game_id is not None:
+        rng = random.Random(f"{game_id}-{competitor.id}")
+        x += rng.gauss(0, FORM_SPREAD)
+        dbl = min(70.0, max(2.0, dbl * rng.gauss(1, 0.15)))
+    return skill_level(x, dbl, competitor.name, avg)
