@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% from "_macros.html" import cavatar, avg %}
 {% from "darts/_game_list.html" import game_list %}
+{% from "_news.html" import news_list %}
 {% block title %}Play{% endblock %}
 {% block content %}
 <div class="title-row">
@@ -17,8 +18,8 @@
   <a class="stat-grid darts-me" href="/darts/players/{{ me.id }}">
     <div><span>{{ avg(my_stats.average) }}</span><small>Your average</small></div>
     <div><span>{{ my_stats.wins }}/{{ my_stats.games }}</span><small>Games won</small></div>
+    <div><span>{{ my_elo | round | int if my_elo is not none else "–" }}</span><small>Elo rating</small></div>
     <div><span>{{ my_stats.max180 }}</span><small>180s</small></div>
-    <div><span>{{ my_stats.high_finish or "–" }}</span><small>High finish</small></div>
   </a>
 {% else %}
   <article class="cta"><p>Play your first game – your stats will show up here.</p>
@@ -30,6 +31,11 @@
   {{ game_list(live, user) }}
 {% else %}
   <p class="muted">No game running right now.</p>
+{% endif %}
+
+{% if news %}
+  <h3>📰 News</h3>
+  {{ news_list(news) }}
 {% endif %}
 
 {% if recent %}

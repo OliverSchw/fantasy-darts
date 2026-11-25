@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros.html" import avatar %}
+{% from "_news.html" import news_list %}
 {% block title %}{% endblock %}
 {% block content %}
 <div class="hub-hello">
@@ -51,4 +52,9 @@
     {% endif %}
   {% endfor %}
 </div>
+
+{% if news %}
+  <h3 class="hub-news-title">📰 News</h3>
+  {{ news_list(news) }}
+{% endif %}
 {% endblock %}

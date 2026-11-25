@@ -27,6 +27,8 @@ def rules():
 
 @pytest.fixture
 def db():
+    from app.darts import rating
+    rating._cache.clear()  # Zwischenspeicher für Elo/Erfolge gehört zur alten Test-Datenbank
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
     with SessionLocal() as session:

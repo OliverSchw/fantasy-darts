@@ -825,3 +825,42 @@ a.t-board:hover { border-color: var(--pico-primary); }
 .push-banner button { margin: 0; width: auto; }
 .push-banner .small-note { flex-basis: 100%; margin: 0; }
 .push-box .btn-row button { width: auto; }
+
+/* Diagramme (Formkurve, Elo) */
+.chart { margin: 0 0 0.4rem; }
+.chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.ch-grid { stroke: var(--pico-muted-border-color); stroke-width: 1; }
+.ch-base { stroke: var(--pico-muted-color); stroke-width: 1; stroke-dasharray: 3 3; opacity: 0.7; }
+.ch-tick { font-size: 9px; fill: var(--pico-muted-color); font-variant-numeric: tabular-nums; }
+.ch-line { fill: none; stroke: var(--pico-primary); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.ch-hit { fill: transparent; cursor: pointer; }
+.ch-dot { fill: var(--pico-primary); stroke: var(--pico-background-color); stroke-width: 1; }
+.ch-pt.hollow .ch-dot { fill: var(--pico-background-color); stroke: var(--pico-primary); stroke-width: 1.6; }
+.ch-pt.on .ch-dot { r: 5.5; }
+.ch-pt:focus { outline: none; }
+.ch-tip { font-size: 0.8rem; min-height: 1.2em; color: var(--pico-muted-color); text-align: center; }
+
+/* Erfolge */
+.badges { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: 0.4rem; margin-bottom: 1.2rem; }
+.badges li { display: flex; gap: 0.5rem; align-items: center; padding: 0.45rem 0.6rem; margin: 0;
+  border: 1px solid var(--pico-muted-border-color); border-radius: var(--pico-border-radius);
+  background: var(--pico-card-background-color); }
+.badges .b-ico { font-size: 1.4rem; line-height: 1; }
+.badges .b-txt { display: flex; flex-direction: column; min-width: 0; }
+.badges strong { font-size: 0.82rem; }
+.badges small { font-size: 0.7rem; color: var(--pico-muted-color); line-height: 1.2; }
+.badges li.got { border-color: var(--pico-primary); }
+.badges li.locked .b-ico { filter: grayscale(1); opacity: 0.35; }
+.badges li.locked strong { color: var(--pico-muted-color); }
+
+/* Neuigkeiten */
+.news { list-style: none; padding: 0; margin-bottom: 1.2rem; }
+.news li { display: flex; gap: 0.5rem; align-items: baseline; padding: 0.35rem 0; margin: 0;
+  border-bottom: 1px solid var(--pico-muted-border-color); font-size: 0.9rem; }
+.news li:last-child { border-bottom: 0; }
+.news li > a, .news li > span:not(.news-ico) { flex: 1; min-width: 0; }
+.news small { white-space: nowrap; font-size: 0.72rem; }
+.hub-news-title { margin-top: 1.5rem; }
+.news a { text-decoration: none; color: inherit; }
+.news a:hover { color: var(--pico-primary); }
