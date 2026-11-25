@@ -1,5 +1,5 @@
 {# Turnierformat: K.-o. oder Gruppenphase + K.-o. (gemeinsam für alle Sportarten) #}
-{% macro format_fields(form, unit) -%}
+{% macro format_fields(form, unit, board_label="Board") -%}
 <fieldset x-data='{ "fmt": {{ form.format | tojson }}, "groups": {{ (form.groups or 2) | int }}, "adv": {{ (form.advance or 2) | int }} }'>
   <legend>Format</legend>
   <div class="seg" role="radiogroup" aria-label="Format">
@@ -26,5 +26,18 @@
       the knockout bracket is drawn automatically afterwards (winner of A plays the runner-up of B).</small>
   </div>
   <small class="muted" x-show="fmt === 'knockout'">Straight knockout – with an odd number the top seeds get a bye.</small>
+</fieldset>
+
+<fieldset x-data='{ "boards": {{ (form.boards or 0) | int }} }'>
+  <legend>{{ board_label }}s</legend>
+  <div class="stepper">
+    <button type="button" class="outline small" @click="boards = Math.max(0, boards - 1)" aria-label="Fewer {{ board_label | lower }}s">−</button>
+    <strong x-text="boards">{{ (form.boards or 0) | int }}</strong>
+    <button type="button" class="outline small" @click="boards = Math.min(32, boards + 1)" aria-label="More {{ board_label | lower }}s">＋</button>
+    <span x-text="boards == 0 ? 'off' : (boards == 1 ? '{{ board_label | lower }}' : '{{ board_label | lower }}s')">off</span>
+    <input type="hidden" name="boards" :value="boards" value="{{ (form.boards or 0) | int }}">
+  </div>
+  <small class="muted">How many {{ board_label | lower }}s you have. They are numbered 1, 2, 3 … and the app automatically
+    puts the next match on every free {{ board_label | lower }} – nobody has to play on two at once. 0 = no assignment.</small>
 </fieldset>
 {%- endmacro %}

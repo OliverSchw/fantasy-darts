@@ -2,7 +2,7 @@
 {% from "_macros.html" import cavatar, avg %}
 {% block title %}{{ game.start_score }} · {{ players | map(attribute="c.display_name") | join(" vs ") }}{% endblock %}
 {% block content %}
-{% if tinfo %}<p class="dg-tour"><a href="/darts/tournaments/{{ tinfo.t.id }}">🏆 {{ tinfo.t.name }}</a> · {{ tinfo.title }}</p>{% endif %}
+{% if tinfo %}<p class="dg-tour"><a href="/darts/tournaments/{{ tinfo.t.id }}">🏆 {{ tinfo.t.name }}</a> · {{ tinfo.title }}{% if tinfo.tm.board %} · <strong>Board {{ tinfo.tm.board }}</strong>{% endif %}</p>{% endif %}
 <div class="dg-head">
   <span>{{ game.start_score }} · first to {{ game.legs_to_win }} leg{{ "s" if game.legs_to_win != 1 }}
     {% if not gs.finished %}· <strong>Leg {{ gs.leg_no }}</strong>{% endif %}</span>

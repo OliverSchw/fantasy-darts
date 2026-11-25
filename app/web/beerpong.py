@@ -13,7 +13,7 @@ from ..auth import require_user
 from ..competitors import CompetitorError
 from ..db import get_db
 from .common import flash, redirect, render
-from .tournament_pages import Sport, add_tournament_routes, read_format
+from .tournament_pages import Sport, add_tournament_routes, read_boards, read_format
 
 router = APIRouter(prefix="/beerpong")
 ERRORS = (bp.BeerpongError, CompetitorError, tour.TournamentError)
@@ -83,7 +83,7 @@ def bp_game(game_id: int, request: Request, db: Session = Depends(get_db), user:
     g = _game(db, game_id)
     t, tm = bp._tournament_of(db, g)
     return render(request, "beerpong/game.html", user=user, g=g, can_manage=bp.can_manage(user, g),
-                  tinfo={"t": t, "title": tour.match_title(t, tm)} if t else None)
+                  tinfo={"t": t, "tm": tm, "title": tour.match_title(t, tm)} if t else None)
 
 
 @router.get("/games/{game_id}/version")
@@ -152,7 +152,7 @@ def bp_tournament_form(request: Request, db: Session = Depends(get_db), user: mo
     return render(request, "beerpong/tournament_new.html", user=user, competitors=competitors.all_competitors(db),
                   cup_options=bp.CUP_OPTIONS,
                   form={"name": "", "cups": 10, "mode": "random", "players": [], "guests": "", "teams": "", "shuffle": True,
-                        "format": "knockout", "groups": "", "advance": "2"})
+                        "format": "knockout", "groups": "", "advance": "2", "boards": 0})
 
 
 @router.post("/tournaments/new")
@@ -162,7 +162,8 @@ async def bp_tournament_new(request: Request, db: Session = Depends(get_db), use
             "mode": "fixed" if form.get("mode") == "fixed" else "random",
             "players": [int(x) for x in form.getlist("players") if str(x).isdigit()],
             "guests": str(form.get("guests", "")), "teams": str(form.get("teams", "")), "shuffle": bool(form.get("shuffle")),
-            "format": form.get("format") or "knockout", "groups": str(form.get("groups", "")), "advance": str(form.get("advance", "2")),}
+            "format": form.get("format") or "knockout", "groups": str(form.get("groups", "")), "advance": str(form.get("advance", "2")),
+            "boards": str(form.get("boards", "0"))}
     try:
         if keep["cups"] not in bp.CUP_OPTIONS:
             raise bp.BeerpongError("Play with 6 or 10 cups.")
@@ -174,7 +175,7 @@ async def bp_tournament_new(request: Request, db: Session = Depends(get_db), use
             for name in [g.strip() for g in keep["guests"].replace(",", "\n").splitlines() if g.strip()]:
                 ids.append(competitors.create_guest(db, name).id)
             teams, names = bp.random_pairs(ids), None
-        t = tour.create_tournament(db, "beerpong", keep["name"], teams, {"cups": keep["cups"]}, user,
+        t = tour.create_tournament(db, "beerpong", keep["name"], teams, {"cups": keep["cups"], "boards": read_boards(form)}, user,
                                    shuffle=keep["shuffle"], entry_names=names, groups=groups, advance=advance)
     except ERRORS as e:
         db.rollback()
@@ -195,7 +196,7 @@ add_tournament_routes(router, Sport(
     start_game=bp.start_tournament_game, record=bp.record_tournament_result, reset=bp.reset_tournament_match,
     live_match_ids=_bp_live_ids, summary=lambda t: f"{t.settings.get('cups', 10)} cups",
     max_score=lambda t, tm: int(t.settings.get("cups", 10)),
-    manual_hint="Cups hit by each team – the winner hits all of them.",
+    manual_hint="Cups hit by each team – the winner hits all of them.", board_label="Table",
     extra_columns=(("cups_per_game", "Cups/game", "dec"),),
     extra_stats=lambda db, t: {r.entry.id: {"cups_per_game": r.score_for / r.played if r.played else None}
                                for r in tour.entry_results(t)},

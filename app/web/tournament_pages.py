@@ -38,6 +38,7 @@ class Sport:
     # extra_stats(db, t) -> {entry_id: {Schlüssel: Wert}}
     extra_columns: tuple = ()
     extra_stats: Callable | None = None
+    board_label: str = "Board"  # "Board" (Darts) / "Table" (Beer Pong)
 
 
 def add_tournament_routes(router: APIRouter, sp: Sport) -> None:
@@ -75,7 +76,8 @@ def add_tournament_routes(router: APIRouter, sp: Sport) -> None:
                       live=sp.live_match_ids(db, [m.id for m in t.matches]),
                       winner=tour.entry_by_id(t, t.winner_entry_id), organizer=tour.can_organize(user, t),
                       ko_started=tour.knockout_started(t), match_title=tour.match_title,
-                      results=tour.entry_results(t), extra=sp.extra_stats(db, t) if sp.extra_stats else {})
+                      results=tour.entry_results(t), extra=sp.extra_stats(db, t) if sp.extra_stats else {},
+                      bv=tour.board_view(t))
 
     @router.get("/tournaments/{tid:int}/matches/{mid:int}", name=f"{sp.key}_tournament_match")
     def match_page(tid: int, mid: int, request: Request, db: Session = Depends(get_db),
@@ -140,6 +142,22 @@ def add_tournament_routes(router: APIRouter, sp: Sport) -> None:
             flash(request, str(e), "error")
         return redirect(f"{sp.base}/tournaments/{t.id}/matches/{tm.id}")
 
+    @router.post("/tournaments/{tid:int}/boards")
+    async def boards_update(tid: int, request: Request, db: Session = Depends(get_db),
+                            user: models.User = Depends(require_user)):
+        t = _tournament(db, tid)
+        _organizer_only(user, t)
+        form = await request.form()
+        try:
+            tour.set_boards(db, t, read_boards(form))
+            n = tour.board_count(t)
+            flash(request, f"{n} {sp.board_label.lower()}{'s' if n != 1 else ''} – matches are assigned automatically."
+                  if n else f"{sp.board_label}s turned off.")
+        except ValueError as e:
+            db.rollback()
+            flash(request, str(e), "error")
+        return redirect(f"{sp.base}/tournaments/{t.id}")
+
     @router.post("/tournaments/{tid:int}/knockout/reset")
     def knockout_reset(tid: int, request: Request, db: Session = Depends(get_db),
                        user: models.User = Depends(require_user)):
@@ -173,3 +191,11 @@ def read_format(form) -> tuple[int | None, int]:
         return int(form.get("groups", 2)), int(form.get("advance", 2))
     except ValueError:
         raise tour.TournamentError("Choose the number of groups and how many go through.") from None
+
+
+def read_boards(form) -> int:
+    """Anzahl Scheiben/Tische aus dem Formular (0 = keine automatische Zuordnung)."""
+    raw = str(form.get("boards", "0") or "0").strip()
+    if not raw.isdigit():
+        raise tour.TournamentError("The number of boards must be a whole number.")
+    return int(raw)

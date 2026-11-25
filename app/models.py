@@ -333,6 +333,7 @@ class TournamentMatch(Base):
     score2: Mapped[int] = mapped_column(Integer, default=0)
     bye: Mapped[bool] = mapped_column(Boolean, default=False)  # Freilos: Gegner fehlt, Sieger steht fest
     group_no: Mapped[int | None] = mapped_column(Integer, nullable=True)  # gesetzt = Gruppenspiel
+    board: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Scheibe/Tisch (1, 2 ...), automatisch zugeteilt
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     entry1: Mapped[TournamentEntry | None] = relationship(foreign_keys=[entry1_id], lazy="joined")

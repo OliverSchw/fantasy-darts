@@ -11,7 +11,6 @@ from ..db import get_db
 from ..platform import SECTIONS
 from ..season import SeasonNotImported, get_season
 from .common import State, render
-from .members import _invite_lists
 
 router = APIRouter()
 

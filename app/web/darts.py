@@ -16,7 +16,7 @@ from ..darts.engine import START_SCORES, DartsError
 from ..darts.stats import compare_rows, compute_stats, head_to_head, leg_average
 from ..db import get_db
 from .common import flash, redirect, render
-from .tournament_pages import Sport, add_tournament_routes, read_format
+from .tournament_pages import Sport, add_tournament_routes, read_boards, read_format
 
 router = APIRouter(prefix="/darts")
 
@@ -298,7 +298,8 @@ def _tournament_info(db: Session, game: models.DartsGame) -> dict | None:
 def new_tournament_form(request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_user)):
     return render(request, "darts/tournament_new.html", user=user, competitors=competitors.all_competitors(db),
                   starts=START_SCORES, form={"start": 501, "legs": 2, "final_legs": 3, "players": [], "shuffle": True,
-                                             "name": "", "guests": "", "format": "knockout", "groups": "", "advance": "2"})
+                                             "name": "", "guests": "", "format": "knockout", "groups": "", "advance": "2",
+                                             "boards": 0})
 
 
 @router.post("/tournaments/new")
@@ -312,7 +313,8 @@ async def new_tournament(request: Request, db: Session = Depends(get_db), user: 
     guests_raw = str(form.get("guests", ""))
     keep = {"start": start or 501, "legs": legs or 2, "final_legs": final_legs or 3, "players": players,
             "shuffle": bool(form.get("shuffle")), "name": str(form.get("name", "")), "guests": guests_raw,
-            "format": form.get("format") or "knockout", "groups": str(form.get("groups", "")), "advance": str(form.get("advance", "2")),}
+            "format": form.get("format") or "knockout", "groups": str(form.get("groups", "")), "advance": str(form.get("advance", "2")),
+            "boards": str(form.get("boards", "0"))}
     try:
         if start not in START_SCORES or not 1 <= legs <= 11 or not 1 <= final_legs <= 11:
             raise DartsError("Pick a start score and 1-11 legs.")
@@ -321,7 +323,7 @@ async def new_tournament(request: Request, db: Session = Depends(get_db), user: 
         for name in [g.strip() for g in guests_raw.replace(",", "\n").splitlines() if g.strip()]:
             ids.append(competitors.create_guest(db, name).id)
         t = tour.create_tournament(db, "darts", keep["name"], [[i] for i in ids],
-                                   {"start": start, "legs": legs, "final_legs": final_legs}, user,
+                                   {"start": start, "legs": legs, "final_legs": final_legs, "boards": read_boards(form)}, user,
                                    shuffle=keep["shuffle"], groups=groups, advance=advance)
     except (DartsError, CompetitorError, tour.TournamentError) as e:
         db.rollback()

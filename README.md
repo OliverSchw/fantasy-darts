@@ -57,6 +57,13 @@ Vergleich. Sind alle Gruppenspiele gespielt, entsteht der K.-o.-Baum automatisch
 pro Gruppe über Kreuz (A1–B2, B1–A2), sonst nach Bilanz gesetzt. Danach sind Gruppenergebnisse gesperrt;
 der Organisator kann den K.-o. zurücksetzen, solange dort noch nichts gespielt ist.
 
+**Scheiben / Tische:** Beim Anlegen festlegen, wie viele Scheiben (Darts) bzw. Tische (Beer Pong) es gibt.
+Sie werden durchnummeriert, und die App setzt automatisch das nächste spielbare Match auf jede freie
+Scheibe – niemand muss auf zwei Scheiben gleichzeitig spielen. Reihenfolge: Gruppenspiele nach Spieltag
+(Gruppen abwechselnd), dann K.-o. Runde für Runde. Oben im Turnier steht, was auf welcher Scheibe läuft und
+was als Nächstes kommt; im Spiel steht die Scheibe oben. Der Organisator kann die Anzahl jederzeit ändern
+(*Organizer options*), z. B. wenn eine Scheibe dazukommt. 0 = keine Zuordnung.
+
 **Turnier-Historie & Stats:** Die Turnierliste zeigt alle (auch beendeten) Turniere mit Champion und oben
 eine **Hall of Fame** (Turniersiege pro Spieler). Auf jeder Turnierseite steht unten **„Standings & stats“**:
 Platzierung (Champion, Runner-up, Halbfinale …, in der Gruppe ausgeschieden), Siege–Niederlagen, Differenz,
