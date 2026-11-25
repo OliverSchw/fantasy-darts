@@ -39,6 +39,11 @@ class Sport:
     extra_columns: tuple = ()
     extra_stats: Callable | None = None
     board_label: str = "Board"  # "Board" (Darts) / "Table" (Beer Pong)
+    live_status: Callable | None = None  # (db, tm) -> {"score": "121 : 241", "detail": "Leg 2 · 1:0"} für die TV-Ansicht
+
+    def label(self, t: models.Tournament) -> str:
+        """"players" / "teams" für dieses Turnier (ein Darts-Doppelturnier hat Teams)."""
+        return "teams" if any(len(e.members) > 1 for e in t.entries) else self.entries_label
 
 
 def add_tournament_routes(router: APIRouter, sp: Sport) -> None:
@@ -141,6 +146,21 @@ def add_tournament_routes(router: APIRouter, sp: Sport) -> None:
             db.rollback()
             flash(request, str(e), "error")
         return redirect(f"{sp.base}/tournaments/{t.id}/matches/{tm.id}")
+
+    @router.get("/tournaments/{tid:int}/tv", name=f"{sp.key}_tournament_tv")
+    def tv_page(tid: int, request: Request, partial: int = 0, db: Session = Depends(get_db),
+                user: models.User = Depends(require_user)):
+        """Vollbild für Fernseher/Beamer: Scheiben mit Live-Ständen, Warteschlange, Ergebnisse, Gruppen/Baum."""
+        t = _tournament(db, tid)
+        bv = tour.board_view(t, limit=8)
+        live = sp.live_match_ids(db, [m.id for m in t.matches])
+        status = {m.id: sp.live_status(db, m) for _, m in bv["boards"] if m and m.id in live} if sp.live_status else {}
+        recent = sorted((m for m in t.matches if m.is_played and not m.bye and m.updated_at),
+                        key=lambda m: m.updated_at, reverse=True)[:6]
+        return render(request, "tournament/tv_inner.html" if partial else "tournament/tv.html", user=user, sp=sp, t=t,
+                      bv=bv, live=live, status=status, recent=recent, cols=tour.columns(t),
+                      groups=tour.group_view(t) if t.has_groups else [], match_title=tour.match_title,
+                      winner=tour.entry_by_id(t, t.winner_entry_id))
 
     @router.post("/tournaments/{tid:int}/boards")
     async def boards_update(tid: int, request: Request, db: Session = Depends(get_db),

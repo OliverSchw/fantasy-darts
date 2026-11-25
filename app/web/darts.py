@@ -13,7 +13,7 @@ from ..competitors import CompetitorError
 from ..darts import service
 from ..darts.checkouts import checkout_route, is_finishable, min_darts
 from ..darts.engine import START_SCORES, DartsError
-from ..darts.modes import MODES, dart_label
+from ..darts.modes import MODES, dart_label, new_mode_state
 from ..darts.stats import compare_rows, compute_stats, head_to_head, mode_records
 from ..db import get_db
 from .common import flash, redirect, render
@@ -367,9 +367,10 @@ def _tournament_info(db: Session, game: models.DartsGame) -> dict | None:
 @router.get("/tournaments/new")
 def new_tournament_form(request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_user)):
     return render(request, "darts/tournament_new.html", user=user, competitors=competitors.all_competitors(db),
-                  starts=START_SCORES, form={"start": 501, "legs": 2, "final_legs": 3, "players": [], "shuffle": True,
-                                             "name": "", "guests": "", "format": "knockout", "groups": "", "advance": "2",
-                                             "boards": 0})
+                  starts=START_SCORES, modes=MODES,
+                  form={"start": 501, "legs": 2, "final_legs": 3, "players": [], "shuffle": True,
+                        "name": "", "guests": "", "format": "knockout", "groups": "", "advance": "2",
+                        "boards": 0, "mode": "x01", "teams": "singles", "team_text": "", "lives": 3, "rounds": 7})
 
 
 @router.post("/tournaments/new")
@@ -384,22 +385,46 @@ async def new_tournament(request: Request, db: Session = Depends(get_db), user: 
     keep = {"start": start or 501, "legs": legs or 2, "final_legs": final_legs or 3, "players": players,
             "shuffle": bool(form.get("shuffle")), "name": str(form.get("name", "")), "guests": guests_raw,
             "format": form.get("format") or "knockout", "groups": str(form.get("groups", "")), "advance": str(form.get("advance", "2")),
-            "boards": str(form.get("boards", "0"))}
+            "boards": str(form.get("boards", "0")),
+            "mode": form.get("mode") if form.get("mode") in MODES else "x01",
+            "teams": form.get("teams") if form.get("teams") in ("random", "fixed") else "singles",
+            "team_text": str(form.get("team_text", "")),
+            "lives": int(form.get("lives") or 3) if str(form.get("lives", "3")).isdigit() else 3,
+            "rounds": int(form.get("rounds") or 7) if str(form.get("rounds", "7")).isdigit() else 7}
     try:
-        if start not in START_SCORES or not 1 <= legs <= 11 or not 1 <= final_legs <= 11:
+        mode, teams = keep["mode"], keep["teams"]
+        if mode == "x01" and (start not in START_SCORES or not 1 <= legs <= 11 or not 1 <= final_legs <= 11):
             raise DartsError("Pick a start score and 1-11 legs.")
+        if mode != "x01" and teams != "singles":
+            raise DartsError("Doubles tournaments are played in X01.")
         groups, advance = read_format(form)
-        ids = list(players)
-        for name in [g.strip() for g in guests_raw.replace(",", "\n").splitlines() if g.strip()]:
-            ids.append(competitors.create_guest(db, name).id)
-        t = tour.create_tournament(db, "darts", keep["name"], [[i] for i in ids],
-                                   {"start": start, "legs": legs, "final_legs": final_legs, "boards": read_boards(form)}, user,
-                                   shuffle=keep["shuffle"], groups=groups, advance=advance)
+        names = None
+        if teams == "fixed":
+            entries, names = competitors.parse_teams(db, keep["team_text"])
+            if any(len(e) != 2 for e in entries):
+                raise DartsError("Doubles teams need exactly 2 players each.")
+        else:
+            ids = list(players)
+            for name in [g.strip() for g in guests_raw.replace(",", "\n").splitlines() if g.strip()]:
+                ids.append(competitors.create_guest(db, name).id)
+            entries = competitors.random_pairs(ids) if teams == "random" else [[i] for i in ids]
+        settings = {"start": start, "legs": legs, "final_legs": final_legs, "boards": read_boards(form),
+                    "mode": mode, "team_size": 1 if teams == "singles" else 2}
+        if mode == "killer":
+            settings["lives"] = keep["lives"]
+        if mode == "shanghai":
+            settings["rounds"] = keep["rounds"]
+        if mode != "x01":  # Partyspiele: ein Spiel pro Match
+            settings.update(legs=1, final_legs=1)
+            new_mode_state(  # Optionen gleich prüfen (Leben, Runden)
+                mode, 2, {"lives": keep["lives"], "rounds": keep["rounds"], "numbers": [1, 2]})
+        t = tour.create_tournament(db, "darts", keep["name"], entries, settings, user,
+                                   shuffle=keep["shuffle"], groups=groups, advance=advance, entry_names=names)
     except (DartsError, CompetitorError, tour.TournamentError) as e:
         db.rollback()
         return render(request, "darts/tournament_new.html", status_code=400, user=user, error=str(e),
-                      competitors=competitors.all_competitors(db), starts=START_SCORES, form=keep)
-    flash(request, f"Tournament “{t.name}” is on – {len(t.entries)} players.")
+                      competitors=competitors.all_competitors(db), starts=START_SCORES, modes=MODES, form=keep)
+    flash(request, f"Tournament “{t.name}” is on – {len(t.entries)} {'teams' if keep['teams'] != 'singles' else 'players'}.")
     return redirect(f"/darts/tournaments/{t.id}")
 
 
@@ -425,8 +450,32 @@ def _darts_tournament_stats(db: Session, t: models.Tournament) -> dict[int, dict
 
 
 def _darts_settings(t: models.Tournament) -> str:
-    s = {**service.TOURNAMENT_DEFAULTS, **(t.settings or {})}
-    return f"{s['start']} · first to {s['legs']}, final first to {s['final_legs']}"
+    s = service.tournament_settings(t)
+    if s["mode"] != "x01":
+        return MODES[s["mode"]]["name"]
+    doubles = " · doubles" if s.get("team_size") == 2 else ""
+    return f"{s['start']}{doubles} · first to {s['legs']}, final first to {s['final_legs']}"
+
+
+def _darts_live_status(db: Session, tm: models.TournamentMatch) -> dict | None:
+    """Kurzer Live-Stand eines Turnier-Matches für die TV-Ansicht."""
+    g = service.tournament_game(db, tm)
+    if g is None or g.status != "live":
+        return None
+    if g.mode == "x01":
+        st = service.game_state(g)
+        return {"score": " : ".join(str(r) for r in st.remaining),
+                "detail": f"Leg {st.leg_no} · legs {' : '.join(str(x) for x in st.legs_won)}"
+                          + (f" · {g.players[st.turn].competitor.display_name} to throw" if not st.finished else "")}
+    s = service.mode_state(g)
+    if g.mode == "cricket":
+        closed = [sum(1 for v in m.values() if v >= 3) for m in s.marks]
+        return {"score": " : ".join(str(p) for p in s.points), "detail": f"closed {' : '.join(map(str, closed))} of 7"}
+    if g.mode == "atc":
+        return {"score": " : ".join("Bull" if x == 25 else str(x) for x in s.target), "detail": "targets"}
+    if g.mode == "shanghai":
+        return {"score": " : ".join(str(p) for p in s.points), "detail": f"round {s.shanghai_round} – target {s.shanghai_number()}"}
+    return {"score": " : ".join(str(x) for x in s.lives), "detail": "lives"}
 
 
 add_tournament_routes(router, Sport(
@@ -440,5 +489,5 @@ add_tournament_routes(router, Sport(
     manual_hint="For a match played without the app: legs won by each player.",
     extra_columns=(("average", "Avg", "avg"), ("max180", "180s", "int"), ("high_finish", "HF", "int"),
                    ("checkout_pct", "CO%", "pct")),
-    extra_stats=_darts_tournament_stats,
+    extra_stats=_darts_tournament_stats, live_status=_darts_live_status,
 ))

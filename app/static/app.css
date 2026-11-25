@@ -815,3 +815,4 @@ a.t-board:hover { border-color: var(--pico-primary); }
 .dm-history code { font-size: 0.78rem; padding: 0.05rem 0.35rem; }
 .dm-modehelp { display: block; margin: -0.4rem 0 0.7rem; }
 .dm-lives { font-size: 1.35rem; letter-spacing: -0.1em; white-space: nowrap; }
+.dg-caller { float: right; margin: -0.2rem 0 0 0.5rem; padding: 0.2rem 0.6rem; width: auto; font-size: 0.78rem; }

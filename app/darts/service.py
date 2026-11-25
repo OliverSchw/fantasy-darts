@@ -79,7 +79,7 @@ def add_visit(db: Session, game: models.DartsGame, score: int, darts: int | None
         game.winner_side = state.winner
         game.winner_id = game.side_players(state.winner)[0].competitor_id
         game.finished_at = datetime.now(timezone.utc)
-        _report_to_tournament(db, game, state)
+        _report_to_tournament(db, game, (state.legs_won[0], state.legs_won[1]) if state.n_sides > 1 else (1, 0))
     try:
         db.commit()
     except IntegrityError:  # gleichzeitig dieselbe Aufnahme von zwei Handys
@@ -115,11 +115,18 @@ def abandon(db: Session, game: models.DartsGame) -> None:
 # ---------------------------------------------------------------- Turniere
 
 
-TOURNAMENT_DEFAULTS = {"start": 501, "legs": 2, "final_legs": 3}
+TOURNAMENT_DEFAULTS = {"start": 501, "legs": 2, "final_legs": 3, "mode": "x01", "team_size": 1}
+
+
+def tournament_settings(t: models.Tournament) -> dict:
+    return {**TOURNAMENT_DEFAULTS, **(t.settings or {})}
 
 
 def legs_for(t: models.Tournament, tm: models.TournamentMatch) -> int:
-    s = {**TOURNAMENT_DEFAULTS, **(t.settings or {})}
+    """Wie viele Legs ein Match braucht (Partyspiele: ein Spiel = ein "Leg")."""
+    s = tournament_settings(t)
+    if s["mode"] != "x01":
+        return 1
     return s["final_legs"] if tour.is_final(t, tm) else s["legs"]
 
 
@@ -128,8 +135,10 @@ def record_tournament_result(db: Session, t: models.Tournament, tm: models.Tourn
     """Ergebnis von Hand: der Sieger muss genau die nötigen Legs haben, der Verlierer weniger."""
     need = legs_for(t, tm)
     if max(legs1, legs2) != need or min(legs1, legs2) >= need or min(legs1, legs2) < 0:
+        if need == 1 and tournament_settings(t)["mode"] != "x01":
+            raise DartsError("Enter 1 for the winner and 0 for the other side.")
         raise DartsError(f"This match is first to {need} leg{'s' if need != 1 else ''} – "
-                         f"the winner has {need}, the other player fewer.")
+                         f"the winner has {need}, the other side fewer.")
     tour.set_result(db, t, tm, legs1, legs2)
 
 
@@ -142,32 +151,43 @@ def tournament_game(db: Session, tm: models.TournamentMatch) -> models.DartsGame
 
 def start_tournament_game(db: Session, t: models.Tournament, tm: models.TournamentMatch,
                           user: models.User) -> models.DartsGame:
+    """Spiel zum Match anlegen. Eintrag 1 wirft immer zuerst (Position 0 = Seite 0)."""
     existing = tournament_game(db, tm)
     if existing is not None and existing.status == "live":
         return existing
     if tm.is_played:
         raise DartsError("This match already has a result.")
     if tm.entry1 is None or tm.entry2 is None:
-        raise DartsError("Both players of this match are not known yet.")
-    s = {**TOURNAMENT_DEFAULTS, **(t.settings or {})}
-    game = create_game(db, s["start"], legs_for(t, tm),
-                       [tm.entry1.members[0].competitor_id, tm.entry2.members[0].competitor_id], user)
+        raise DartsError("Both sides of this match are not known yet.")
+    s = tournament_settings(t)
+    a, b = [m.competitor_id for m in tm.entry1.members], [m.competitor_id for m in tm.entry2.members]
+    if s["mode"] != "x01":
+        opts = {"lives": s.get("lives", 3)} if s["mode"] == "killer" else (
+            {"rounds": s.get("rounds", 7)} if s["mode"] == "shanghai" else {})
+        game = create_mode_game(db, s["mode"], [a[0], b[0]], user, opts)
+    elif s["team_size"] == 2:
+        if len(a) != 2 or len(b) != 2:
+            raise DartsError("Doubles need two players per team.")
+        game = create_game(db, s["start"], legs_for(t, tm), [a[0], b[0], a[1], b[1]], user, team_size=2)
+    else:
+        game = create_game(db, s["start"], legs_for(t, tm), [a[0], b[0]], user)
     game.tournament_match_id = tm.id
     db.commit()
     return game
 
 
-def _report_to_tournament(db: Session, game: models.DartsGame, state: GameState) -> None:
-    """Spielende -> Ergebnis ins Turnier übernehmen (ohne eigenen Commit, passiert in add_visit)."""
+def _report_to_tournament(db: Session, game: models.DartsGame, side_scores: tuple[int, int]) -> None:
+    """Spielende -> Ergebnis ins Turnier übernehmen (ohne eigenen Commit). side_scores = (Seite 0, Seite 1)."""
     if not game.tournament_match_id:
         return
     tm = db.get(models.TournamentMatch, game.tournament_match_id)
-    t = db.get(models.Tournament, tm.tournament_id)
     if tm is None or tm.is_played or tm.entry1 is None or tm.entry2 is None:
-        return
-    first = game.players[0].competitor_id == tm.entry1.members[0].competitor_id
-    l1, l2 = (state.legs_won[0], state.legs_won[1]) if first else (state.legs_won[1], state.legs_won[0])
-    tour.advance_winner(t, tm, tm.entry1_id if l1 > l2 else tm.entry2_id, l1, l2)
+        return  # Turnier gelöscht oder Match schon entschieden
+    t = db.get(models.Tournament, tm.tournament_id)
+    entry1_ids = {m.competitor_id for m in tm.entry1.members}
+    first = game.players[0].competitor_id in entry1_ids  # Seite 0 = Eintrag 1 (Normalfall)
+    s1, s2 = side_scores if first else (side_scores[1], side_scores[0])
+    tour.advance_winner(t, tm, tm.entry1_id if s1 > s2 else tm.entry2_id, s1, s2)
 
 
 # ---------------------------------------------------------------- Partyspiele (Cricket, Around the Clock, ...)
@@ -213,6 +233,8 @@ def add_mode_visit(db: Session, game: models.DartsGame, throws: list[str], seq: 
         game.status, game.winner_side = "finished", state.winner
         game.winner_id = game.players[state.winner].competitor_id
         game.finished_at = datetime.now(timezone.utc)
+        if len(game.players) == 2:
+            _report_to_tournament(db, game, (1, 0) if state.winner == 0 else (0, 1))
     try:
         db.commit()
     except IntegrityError:

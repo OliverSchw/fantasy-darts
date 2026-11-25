@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ t.name }} · TV</title>
+  <link rel="icon" href="/static/icons/icon-192.png?v=4">
+  <link rel="stylesheet" href="/static/tv.css?v=1">
+</head>
+<body>
+  <div id="tv" data-url="{{ sp.base }}/tournaments/{{ t.id }}/tv?partial=1">{% include "tournament/tv_inner.html" %}</div>
+  <script>
+    // Alle 5 Sekunden nur den Inhalt austauschen (kein Flackern, kein Neuladen der Seite)
+    (function () {
+      var box = document.getElementById("tv");
+      setInterval(function () {
+        fetch(box.dataset.url, { cache: "no-store", credentials: "same-origin" })
+          .then(function (r) { return r.ok ? r.text() : null; })
+          .then(function (html) { if (html) box.innerHTML = html; })
+          .catch(function () {});
+      }, 5000);
+    })();
+  </script>
+</body>
+</html>

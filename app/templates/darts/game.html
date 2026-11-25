@@ -42,6 +42,8 @@
 
 {% if can_score %}
   {% set cur = throwers[gs.turn] %}
+  <button type="button" class="dg-caller outline secondary small" x-data="{ on: window.fdCaller ? window.fdCaller.on() : true }"
+          @click="on = window.fdCaller.toggle()" :aria-pressed="on" x-text="on ? '🔊 Caller' : '🔇 Caller'" title="Announce 180s, ton-plus scores, busts and game shots">🔊 Caller</button>
   <p class="dg-hint"><strong>{{ cur.competitor.display_name }}</strong> to throw – {{ rest }} left
     {% if route %}· <span class="dg-route">{{ route | join(" · ") }}</span>{% endif %}</p>
   <form method="post" action="/darts/games/{{ game.id }}/visit" class="dg-pad" x-ref="form"

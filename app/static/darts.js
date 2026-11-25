@@ -1,4 +1,36 @@
-// Darts: Zahlentastatur fürs Zählen + Live-Aktualisierung für Zuschauer.
+// Darts: Zahlentastatur fürs Zählen + Live-Aktualisierung für Zuschauer + Ansager.
+
+// Ansager per Sprachausgabe des Browsers. Muss direkt beim Antippen starten (sonst blocken Handys den Ton),
+// deshalb wird erst nach der Ansage abgeschickt (spätestens nach 2,5 s).
+window.fdCaller = {
+  on: function () { try { return localStorage.getItem("fd-caller") !== "0"; } catch (e) { return true; } },
+  toggle: function () {
+    var next = !this.on();
+    try { localStorage.setItem("fd-caller", next ? "1" : "0"); } catch (e) {}
+    return next;
+  },
+  phrase: function (score, rest, finishable) {
+    if (finishable && score === rest) return "Game shot!";
+    if (score > rest || rest - score === 1 || (score === rest && !finishable)) return "No score";
+    if (score === 180) return "One hundred and eighty!";
+    if (score >= 100) return String(score);
+    return null;
+  },
+  say: function (text, done) {
+    if (!text || !this.on() || !("speechSynthesis" in window)) { done(); return; }
+    var finished = false;
+    var finish = function () { if (!finished) { finished = true; done(); } };
+    try {
+      var u = new SpeechSynthesisUtterance(text);
+      u.lang = "en-GB"; u.rate = 0.95; u.pitch = 0.9;
+      u.onend = finish; u.onerror = finish;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+      setTimeout(finish, 2500);
+    } catch (e) { finish(); }
+  },
+};
+
 document.addEventListener("alpine:init", function () {
   Alpine.data("scorer", function (rest, finishable, minDarts) {
     var IMPOSSIBLE = [163, 166, 169, 172, 173, 175, 176, 178, 179];
@@ -18,7 +50,8 @@ document.addEventListener("alpine:init", function () {
         this.busy = true;
         this.$refs.score.value = score;
         this.$refs.darts.value = darts;
-        this.$refs.form.submit();
+        var form = this.$refs.form;
+        window.fdCaller.say(window.fdCaller.phrase(score, rest, finishable), function () { form.submit(); });
       },
       typing() { return this.entry !== "" || this.needDarts; },
     };
