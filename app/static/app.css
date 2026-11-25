@@ -888,3 +888,8 @@ a.t-board:hover { border-color: var(--pico-primary); }
 .bot-setup label { margin: 0; font-size: 0.9rem; }
 .bot-setup output { float: right; font-weight: 700; font-variant-numeric: tabular-nums; }
 .bot-setup input[type=range], .bot-setup select, .bot-setup .seg { margin: 0.2rem 0 0; }
+.dg-wait { text-align: center; padding: 0.9rem; margin: 0.6rem 0 1rem; border: 1px dashed var(--pico-primary);
+  border-radius: var(--pico-border-radius); background: var(--pico-card-background-color); }
+.scoring-pick { margin: 0.6rem 0; }
+.scoring-pick .seg { margin-bottom: 0.3rem; }
+.dg-more button, .dg-more form { margin-bottom: 0.4rem; }

@@ -229,6 +229,8 @@ class DartsGame(Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     tournament_match_id: Mapped[int | None] = mapped_column(
         ForeignKey("tournament_matches.id", ondelete="SET NULL"), nullable=True, index=True)
+    # Wer zählt: None/"shared" = ein Handy für alle, "own" = jeder trägt seine eigenen Würfe ein (auch aus der Ferne)
+    scoring: Mapped[str | None] = mapped_column(String(8), nullable=True)
 
     players: Mapped[list["DartsGamePlayer"]] = relationship(
         cascade="all, delete-orphan", order_by="DartsGamePlayer.position", lazy="selectin")
@@ -256,6 +258,10 @@ class DartsGame(Base):
             return self.winner_side
         p = next((p for p in self.players if p.competitor_id == self.winner_id), None)
         return self.side_of(p.position) if p else None
+
+    @property
+    def own_scoring(self) -> bool:
+        return self.scoring == "own"
 
     @property
     def has_bot(self) -> bool:

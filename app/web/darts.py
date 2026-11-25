@@ -104,6 +104,7 @@ def new_game_form(request: Request, mode: str = "x01", bot: str = "", bot_id: in
                   starts=START_SCORES, modes=MODES, **_bot_ctx(db),
                   form={"start": 501, "legs": 3 if not players[1:] else 1, "players": players, "team_size": 1,
                         "mode": mode if mode in MODES else "x01", "lives": 3, "rounds": 7, "attempts": 10,
+                        "scoring": "shared",
                         **BOT_FORM, "bot_like": str(like or me.id), "bot_basis": "last10" if basis == "last10" else "all"})
 
 
@@ -158,18 +159,20 @@ async def new_game(request: Request, db: Session = Depends(get_db), user: models
         if mode != "x01" and any(c.is_bot for c in db.scalars(select(models.Competitor)
                                                               .where(models.Competitor.id.in_(ids)))):
             raise DartsError("Bots only play X01 for now.")
+        scoring = "own" if form.get("scoring") == "own" else None
         if mode == "x01":
-            game = service.create_game(db, start, legs, ids, user, team_size=team_size)
+            game = service.create_game(db, start, legs, ids, user, team_size=team_size, scoring=scoring)
         else:
             opts = ({"lives": lives} if mode == "killer" else {"rounds": rounds} if mode == "shanghai"
                     else {"attempts": attempts} if mode == "checkout121" else {})
-            game = service.create_mode_game(db, mode, ids, user, opts)
+            game = service.create_mode_game(db, mode, ids, user, opts, scoring=scoring)
     except DartsError as e:
         db.rollback()
         return render(request, "darts/new.html", status_code=400, user=user, error=str(e),
                       competitors=competitors.all_competitors(db), starts=START_SCORES, modes=MODES, **_bot_ctx(db),
                       form={"start": start or 501, "legs": legs or 1, "players": picked, "team_size": team_size,
                             "mode": mode, "lives": lives, "rounds": rounds, "attempts": attempts,
+                            "scoring": str(form.get("scoring", "shared")),
                             **{k: str(form.get(k, v)) for k, v in BOT_FORM.items()}})
     return redirect(f"/darts/games/{game.id}")
 
@@ -215,11 +218,41 @@ def game_page(game_id: int, request: Request, db: Session = Depends(get_db), use
     return render(
         request, "darts/game.html", user=user, game=game, gs=state, cards=cards, throwers=game.players,
         can_score=service.can_score(user, game), can_manage=service.can_manage(user, game),
+        can_undo=service.can_undo(user, game), waiting_for=_waiting_for(game, user),
+        opponent_call=_opponent_call(game, user),
         rest=rest, route=checkout_route(rest) if rest else None,
         finishable=bool(rest and is_finishable(rest)), min_darts=min_darts(rest) if rest else None,
         max_dbl=max_double_darts(rest) if rest else 0,
         rounds=rounds, shown_leg=shown_leg, n_visits=len(game.visits), tinfo=_tournament_info(db, game),
     )
+
+
+def _opponent_call(game: models.DartsGame, user: models.User) -> str | None:
+    """Jeder zählt selbst: was der Ansager auf meinem Handy über die letzte Aufnahme eines anderen sagt."""
+    if not game.own_scoring or not game.visits:
+        return None
+    v = game.visits[-1]
+    c = game.players[v.position].competitor
+    if c.user_id == user.id:
+        return None
+    name = c.display_name
+    if game.mode != "x01":
+        return f"{name}, " + ("game shot!" if game.status == "finished" else f"{v.score} points" if v.score else "no score")
+    if v.checkout:
+        return f"{name}, game shot!"
+    if v.bust:
+        return f"{name}, no score"
+    return f"{name}, " + ("one hundred and eighty!" if v.score == 180 else str(v.score))
+
+
+def _waiting_for(game: models.DartsGame, user: models.User) -> str | None:
+    """Jeder zählt selbst, ich spiele mit, bin aber nicht dran: auf wen warten wir?"""
+    if not game.own_scoring or game.status != "live" or service.can_score(user, game):
+        return None
+    if not any(p.competitor.user_id == user.id for p in game.players):
+        return None
+    p = service.current_thrower(game)
+    return p.competitor.display_name if p else None
 
 
 def _mode_page(request: Request, db: Session, user: models.User, game: models.DartsGame):
@@ -244,6 +277,8 @@ def _mode_page(request: Request, db: Session, user: models.User, game: models.Da
                             hits=s.successes[i], done=s.attempts[i], highest=s.best[i])
     return render(request, "darts/game_mode.html", user=user, game=game, s=s, rows=rows, info=MODES[game.mode],
                   can_score=service.can_score(user, game), can_manage=service.can_manage(user, game),
+                  can_undo=service.can_undo(user, game), waiting_for=_waiting_for(game, user),
+                  opponent_call=_opponent_call(game, user),
                   n_visits=len(game.visits), dart_label=dart_label,
                   route=checkout_route(s.rest[s.turn]) if game.mode == "checkout121" and not s.finished else None,
                   history=list(reversed(game.visits[-12:])))
@@ -328,14 +363,28 @@ async def post_visit(game_id: int, request: Request, db: Session = Depends(get_d
 @router.post("/games/{game_id}/undo")
 def post_undo(game_id: int, request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_user)):
     game = _game(db, game_id)
-    if not service.can_manage(user, game):
-        raise HTTPException(403)
+    if not service.can_undo(user, game):
+        raise HTTPException(403, "You can only undo your own visit.")
     try:
         if service.undo_last(db, game):
             flash(request, "Last visit undone.")
     except DartsError as e:
         db.rollback()
         flash(request, str(e), "error")
+    return redirect(f"/darts/games/{game.id}")
+
+
+@router.post("/games/{game_id}/scoring")
+def post_scoring(game_id: int, request: Request, db: Session = Depends(get_db),
+                 user: models.User = Depends(require_user)):
+    """Zwischen "jeder zählt selbst" und "ein Handy zählt alles" umschalten (z. B. wenn ein Akku leer ist)."""
+    game = _game(db, game_id)
+    if not service.can_manage(user, game) or game.status != "live":
+        raise HTTPException(403)
+    game.scoring = None if game.own_scoring else "own"
+    db.commit()
+    flash(request, "Everyone now enters their own throws." if game.own_scoring
+          else "One phone scores for everyone now.")
     return redirect(f"/darts/games/{game.id}")
 
 

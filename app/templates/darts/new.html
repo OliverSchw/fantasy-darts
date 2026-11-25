@@ -95,6 +95,15 @@
       <button type="button" class="outline secondary small" x-show="n > 1 && !(doubles && mode === 'x01')" @click="n--; sel[n] = ''">− Player</button>
     </div>
     <small class="muted" x-show="!doubles || mode !== 'x01'">1 player = practice (X01, Around the Clock, Shanghai, training).</small>
+    <div x-show="n > 1" class="scoring-pick">
+      <div class="seg" role="radiogroup" aria-label="Who scores">
+        <label><input type="radio" name="scoring" value="shared" {% if form.scoring != "own" %}checked{% endif %}><span>📱 One phone</span></label>
+        <label><input type="radio" name="scoring" value="own" {% if form.scoring == "own" %}checked{% endif %}><span>🌍 Own phones</span></label>
+      </div>
+      <small class="muted"><strong>Own phones:</strong> everyone enters only their own throws on their own phone – perfect when
+        you play in different places (e.g. on a video call). The game updates live on every phone. Guests without an
+        account are scored by whoever starts the game.</small>
+    </div>
     <small class="muted">Guests don't need an account – an admin can link them to one later.</small>
     <div class="bot-setup" x-show="sel.includes('bot:custom')" x-cloak
          x-data='{ "avg": {{ form.bot_avg | int }}, "dbl": {{ form.bot_dbl | int }} }'>
