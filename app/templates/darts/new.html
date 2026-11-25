@@ -76,7 +76,14 @@
           {% endif %}
           <optgroup label="🤖 Bots (X01 training)">
             {% for key, b in bots.items() %}<option value="bot:{{ key }}">🤖 {{ b.name }} · avg ~{{ b.average }}</option>{% endfor %}
+            <option value="bot:custom">🛠️ Custom bot – set average &amp; doubles…</option>
+            <option value="bot:player">👤 Bot that plays like a player…</option>
           </optgroup>
+          {% if saved_bots %}
+            <optgroup label="🤖 Your bots">
+              {% for b in saved_bots %}<option value="{{ b.id }}">🤖 {{ b.name }}{% if b.bot_config and b.bot_config.like %} · avg {{ b.bot_config.average }}{% endif %}</option>{% endfor %}
+            </optgroup>
+          {% endif %}
           <option value="guest">＋ New guest…</option>
         </select>
         <input name="g{{ i }}" placeholder="Guest name" maxlength="40" x-show="sel[{{ i }}] === 'guest'" x-cloak
@@ -89,6 +96,31 @@
     </div>
     <small class="muted" x-show="!doubles || mode !== 'x01'">1 player = practice (X01, Around the Clock, Shanghai, training).</small>
     <small class="muted">Guests don't need an account – an admin can link them to one later.</small>
+    <div class="bot-setup" x-show="sel.includes('bot:custom')" x-cloak
+         x-data='{ "avg": {{ form.bot_avg | int }}, "dbl": {{ form.bot_dbl | int }} }'>
+      <strong>🛠️ Custom bot</strong>
+      <label>Average <output x-text="avg">{{ form.bot_avg }}</output>
+        <input type="range" name="bot_avg" min="20" max="110" step="1" x-model.number="avg" value="{{ form.bot_avg }}"></label>
+      <label>Doubles hit <output x-text="dbl + ' %'">{{ form.bot_dbl }} %</output>
+        <input type="range" name="bot_dbl" min="3" max="65" step="1" x-model.number="dbl" value="{{ form.bot_dbl }}"></label>
+      <small class="muted">For comparison: club players throw 40–60 with 15–30 % on the doubles, pros 95+ with about 40 %.</small>
+    </div>
+    <div class="bot-setup" x-show="sel.includes('bot:player')" x-cloak>
+      <strong>👤 Bot that plays like…</strong>
+      {% if bot_people %}
+        <select name="bot_like" aria-label="Player to copy">
+          {% for c, st in bot_people %}<option value="{{ c.id }}" {% if form.bot_like == c.id | string %}selected{% endif %}>{{ c.display_name }}{{ " (you)" if c.user_id == user.id }} · avg {{ "%.1f" | format(st.average) }}{% if st.double_pct is not none and st.double_darts >= 10 %} · doubles {{ "%.0f" | format(st.double_pct) }} %{% endif %}</option>{% endfor %}
+        </select>
+        <div class="seg" role="radiogroup" aria-label="Based on">
+          <label><input type="radio" name="bot_basis" value="all" {% if form.bot_basis != "last10" %}checked{% endif %}><span>All games</span></label>
+          <label><input type="radio" name="bot_basis" value="last10" {% if form.bot_basis == "last10" %}checked{% endif %}><span>Last 10 games</span></label>
+        </div>
+        <small class="muted">The bot copies the average and double rate (doubles only from games entered dart by dart,
+          otherwise estimated from the average). Pick yourself to play against your own form – beat “last 10” and you're getting better.</small>
+      {% else %}
+        <small class="muted">Nobody has finished an X01 game yet – play a few first, then the bot can copy you.</small>
+      {% endif %}
+    </div>
     <small class="muted" x-show="sel.some(v => v.startsWith('bot:'))" x-cloak>🤖 The bot throws by itself right after
       your visit. Games against bots are training – they don't count for Elo or wins.</small>
   </fieldset>

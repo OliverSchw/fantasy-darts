@@ -244,17 +244,36 @@ def training_records(db: Session, competitor_id: int) -> dict[str, dict]:
     return out
 
 
-def bot_records(db: Session, competitor_id: int) -> dict[str, tuple[int, int]]:
-    """Bilanz gegen die Bots: {"easy": (Siege, Spiele), ...} aus beendeten Spielen."""
-    out: dict[str, list[int]] = {}
+def player_profile(db: Session, competitor_id: int, last: int | None = None) -> dict | None:
+    """Average und Doppelquote eines Spielers (alle oder die letzten `last` beendeten X01-Spiele) - Vorlage für
+    einen Bot. Ohne Dart-für-Dart-Daten wird die Doppelquote aus dem Average geschätzt."""
+    from .bot import estimated_double_pct
+    game_ids = select(models.DartsGamePlayer.game_id).where(models.DartsGamePlayer.competitor_id == competitor_id)
+    games = db.scalars(select(models.DartsGame.id).where(
+        models.DartsGame.id.in_(game_ids), models.DartsGame.status == "finished", models.DartsGame.mode == "x01")
+        .order_by(models.DartsGame.finished_at.desc(), models.DartsGame.id.desc()).limit(last)).all()
+    if not games:
+        return None
+    s = compute_stats(db, [competitor_id], game_ids=list(games)).get(competitor_id)
+    if s is None or s.average is None:
+        return None
+    measured = s.double_pct is not None and s.double_darts >= 10
+    return {"average": s.average, "double": s.double_pct if measured else estimated_double_pct(s.average),
+            "estimated": not measured, "games": len(games)}
+
+
+def bot_records(db: Session, competitor_id: int) -> list[tuple[models.Competitor, int, int]]:
+    """Bilanz gegen Bots: [(Bot, Siege, Spiele), ...] aus beendeten Spielen, stärkste Stufe zuletzt."""
+    out: dict[int, list] = {}
     game_ids = select(models.DartsGamePlayer.game_id).where(models.DartsGamePlayer.competitor_id == competitor_id)
     for g in db.scalars(select(models.DartsGame).where(models.DartsGame.id.in_(game_ids),
                                                        models.DartsGame.status == "finished")):
         me = next(p for p in g.players if p.competitor_id == competitor_id)
-        bots = {p.competitor.bot_level for p in g.players
+        bots = {p.competitor.id: p.competitor for p in g.players
                 if p.competitor.is_bot and g.side_of(p.position) != g.side_of(me.position)}
-        for level in bots:
-            rec = out.setdefault(level, [0, 0])
-            rec[1] += 1
-            rec[0] += g.won_by(competitor_id)
-    return {k: (w, n) for k, (w, n) in out.items()}
+        for bid, bot in bots.items():
+            rec = out.setdefault(bid, [bot, 0, 0])
+            rec[2] += 1
+            rec[1] += g.won_by(competitor_id)
+    order = {"easy": 0, "medium": 1, "hard": 2, "pro": 3}
+    return sorted((tuple(r) for r in out.values()), key=lambda r: (order.get(r[0].bot_level, 4), r[0].name))

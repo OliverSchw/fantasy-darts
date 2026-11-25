@@ -38,6 +38,38 @@ def all_competitors(db: Session) -> list[models.Competitor]:
     return sorted(rows, key=lambda c: (c.is_guest, c.display_name.lower()))
 
 
+def custom_bot(db: Session, average, double_pct, like: models.Competitor | None = None,
+               basis: str = "all") -> models.Competitor:
+    """Eigenen Bot holen oder anlegen. Gleicher Name = gleicher Bot (die Bilanz gegen ihn läuft weiter);
+    ein Bot nach einem Spieler übernimmt jedes Mal dessen aktuelle Werte."""
+    from .darts.bot import calibrate, check_custom
+    try:
+        a, d = check_custom(average, double_pct)
+    except ValueError as e:
+        raise CompetitorError(str(e)) from None
+    if like is not None:
+        name = f"Bot {like.display_name[:24]}" + (" (last 10)" if basis == "last10" else "")
+    else:
+        name = f"Bot {a} avg · {d}%"
+    cfg = {"average": a, "double": d, "x": calibrate(a, d)}
+    if like is not None:
+        cfg.update(like=like.id, basis=basis)
+    c = db.scalar(select(models.Competitor).where(models.Competitor.bot_level == "custom",
+                                                  models.Competitor.name == name))
+    if c is None:
+        c = models.Competitor(name=name, bot_level="custom")
+        db.add(c)
+    c.bot_config = cfg
+    db.flush()
+    return c
+
+
+def saved_bots(db: Session, limit: int = 8) -> list[models.Competitor]:
+    """Zuletzt angelegte eigene Bots (zum erneuten Auswählen)."""
+    return list(db.scalars(select(models.Competitor).where(models.Competitor.bot_level == "custom")
+                           .order_by(models.Competitor.id.desc()).limit(limit)))
+
+
 def bot(db: Session, level: str) -> models.Competitor:
     """Den Bot dieser Stärke holen (wird beim ersten Mal angelegt)."""
     from .darts.bot import LEVELS
@@ -55,8 +87,8 @@ def name_taken(db: Session, name: str) -> bool:
     low = name.strip().lower()
     if db.scalar(select(models.User.id).where(func.lower(models.User.username) == low)):
         return True
-    if low in {lv.name.lower() for lv in _bot_levels().values()}:
-        return True  # "Pro Bot" & Co. sind reserviert
+    if low in {lv.name.lower() for lv in _bot_levels().values()} or low.startswith("bot "):
+        return True  # "Pro Bot", "Bot olli" & Co. sind für Bots reserviert
     return db.scalar(select(models.Competitor.id).where(
         models.Competitor.user_id.is_(None), func.lower(models.Competitor.name) == low)) is not None
 

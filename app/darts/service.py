@@ -11,7 +11,7 @@ from .. import models
 from .. import tournaments as tour
 from .engine import DartsError, GameState, Visit, advance, make_visit, new_state, replay
 from .modes import apply_visit, new_mode_state, replay_mode
-from .bot import LEVELS, bot_visit
+from .bot import bot_visit, level_for
 from .throws import x01_visit
 
 
@@ -73,8 +73,7 @@ def _bot_to_throw(game: models.DartsGame, state: GameState):
     """Der Bot, der gerade dran ist (sonst None)."""
     if game.status != "live" or state.finished:
         return None
-    c = game.players[state.turn].competitor
-    return LEVELS.get(c.bot_level) if c.bot_level else None
+    return level_for(game.players[state.turn].competitor, game.id)
 
 
 def play_bots(db: Session, game: models.DartsGame) -> list[models.DartsVisit]:
