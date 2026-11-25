@@ -198,6 +198,8 @@ class DartsGame(Base):
     start_score: Mapped[int] = mapped_column(Integer, default=501)
     legs_to_win: Mapped[int] = mapped_column(Integer, default=1)
     team_size: Mapped[int] = mapped_column(Integer, default=1)  # 2 = Doppel (A1, B1, A2, B2)
+    mode: Mapped[str] = mapped_column(String(12), default="x01")  # x01 | cricket | atc | shanghai | killer
+    options: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # z. B. Killer: Zahlen und Leben
     status: Mapped[str] = mapped_column(String(12), default="live")  # live | finished | abandoned
     winner_id: Mapped[int | None] = mapped_column(ForeignKey("competitors.id"), nullable=True)  # bei Doppel: 1. Spieler
     winner_side: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 0, 1 ... (Seite = Position % Seiten)
@@ -266,6 +268,7 @@ class DartsVisit(Base):
     bust: Mapped[bool] = mapped_column(Boolean, default=False)
     checkout: Mapped[bool] = mapped_column(Boolean, default=False)
     remaining_before: Mapped[int] = mapped_column(Integer)
+    throws: Mapped[list | None] = mapped_column(JSON, nullable=True)  # Partyspiele: Dart-Codes, z. B. ["T20", "S5", "M"]
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 

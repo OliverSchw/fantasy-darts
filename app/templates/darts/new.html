@@ -6,11 +6,27 @@
 {% set chosen = form.players %}
 <form method="post" action="/darts/new" class="dnew"
       x-data='{ "n": {{ [chosen|length, 2]|max if form.team_size == 1 else 4 }}, "legs": {{ form.legs }}, "doubles": {{ "true" if form.team_size == 2 else "false" }},
+                "mode": {{ form.mode | tojson }},
                 "sel": {{ (chosen + ["", "", "", ""])[:4] | map("string") | list | tojson }},
                 "labels": ["Team 1 · Player 1", "Team 2 · Player 1", "Team 1 · Player 2", "Team 2 · Player 2"] }'
-      x-effect="if (doubles) n = 4">
+      x-effect="if (doubles && mode === 'x01') n = 4">
   <fieldset>
     <legend>Game</legend>
+    <select name="mode" x-model="mode" aria-label="Game">
+      <option value="x01">X01 – 301 / 501 / 701</option>
+      {% for key, m in modes.items() %}<option value="{{ key }}">{{ m.name }}</option>{% endfor %}
+    </select>
+    {% for key, m in modes.items() %}<small class="muted dm-modehelp" x-show="mode === '{{ key }}'" x-cloak>{{ m.help }} ({{ m.min }}–{{ m.max }} players)</small>{% endfor %}
+    <div x-show="mode === 'killer'" x-cloak class="stepper">
+      <span>Lives</span>
+      <select name="lives" aria-label="Lives">{% for l in (1, 2, 3, 4, 5) %}<option value="{{ l }}" {% if l == form.lives %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+      <small class="muted">numbers are drawn at random</small>
+    </div>
+    <div x-show="mode === 'shanghai'" x-cloak class="stepper">
+      <span>Rounds</span>
+      <select name="rounds" aria-label="Rounds">{% for r in (7, 10, 20) %}<option value="{{ r }}" {% if r == form.rounds %}selected{% endif %}>{{ r }}</option>{% endfor %}</select>
+    </div>
+    <div x-show="mode === 'x01'">
     <div class="seg" role="radiogroup" aria-label="Start score">
       {% for s in starts %}
         <label><input type="radio" name="start" value="{{ s }}" {% if s == form.start %}checked{% endif %}><span>{{ s }}</span></label>
@@ -30,14 +46,15 @@
     </div>
     <small class="muted">Double out. The throw alternates every leg.
       <span x-show="doubles" x-cloak>Doubles: the teams take turns (T1 · P1, T2 · P1, T1 · P2, T2 · P2) and share one score.</span></small>
+    </div>
   </fieldset>
 
   <fieldset>
     <legend>Players <small class="muted">(in throwing order)</small></legend>
     {% for i in range(4) %}
       <div class="prow" x-show="n > {{ i }}" {% if i >= [chosen|length, 2]|max %}x-cloak{% endif %}>
-        <span class="pnum" x-text="doubles ? 'T' + ({{ i }} % 2 + 1) : '{{ i + 1 }}'">{{ i + 1 }}</span>
-        <select name="p{{ i }}" x-model="sel[{{ i }}]" :aria-label="doubles ? labels[{{ i }}] : 'Player {{ i + 1 }}'" aria-label="Player {{ i + 1 }}" :disabled="n <= {{ i }}">
+        <span class="pnum" x-text="(doubles && mode === 'x01') ? 'T' + ({{ i }} % 2 + 1) : '{{ i + 1 }}'">{{ i + 1 }}</span>
+        <select name="p{{ i }}" x-model="sel[{{ i }}]" :aria-label="(doubles && mode === 'x01') ? labels[{{ i }}] : 'Player {{ i + 1 }}'" aria-label="Player {{ i + 1 }}" :disabled="n <= {{ i }}">
           <option value="">– choose –</option>
           <optgroup label="Members">
             {% for c in competitors if not c.is_guest %}<option value="{{ c.id }}">{{ c.display_name }}</option>{% endfor %}
@@ -54,10 +71,10 @@
       </div>
     {% endfor %}
     <div class="btn-row left">
-      <button type="button" class="outline small" x-show="n < 4 && !doubles" @click="n++">＋ Player</button>
-      <button type="button" class="outline secondary small" x-show="n > 1 && !doubles" @click="n--; sel[n] = ''">− Player</button>
+      <button type="button" class="outline small" x-show="n < 4 && !(doubles && mode === 'x01')" @click="n++">＋ Player</button>
+      <button type="button" class="outline secondary small" x-show="n > 1 && !(doubles && mode === 'x01')" @click="n--; sel[n] = ''">− Player</button>
     </div>
-    <small class="muted" x-show="!doubles">1 player = practice.</small>
+    <small class="muted" x-show="!doubles || mode !== 'x01'">1 player = practice (X01, Around the Clock, Shanghai).</small>
     <small class="muted">Guests don't need an account – an admin can link them to one later.</small>
   </fieldset>
 

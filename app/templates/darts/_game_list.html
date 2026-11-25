@@ -6,7 +6,7 @@
     {% set g = row.game %}
     <li>
       <a href="/darts/games/{{ g.id }}" class="dgame {{ g.status }}">
-        <span class="dgame-meta">{{ g.start_score }}{% if (g.team_size or 1) > 1 %} doubles{% endif %} · first to {{ g.legs_to_win }}
+        <span class="dgame-meta">{% if g.mode and g.mode != "x01" %}{{ darts_modes[g.mode].name }}{% else %}{{ g.start_score }}{% if (g.team_size or 1) > 1 %} doubles{% endif %} · first to {{ g.legs_to_win }}{% endif %}
           {% if g.status == "live" %}<mark class="live-badge">LIVE</mark>{% else %}· {{ (g.finished_at or g.created_at) | when }}{% endif %}</span>
         {% for s in row.sides %}
           <span class="dgame-side {% if s.win %}win{% endif %}">

@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% from "_macros.html" import cavatar %}
+{% block title %}{{ info.name }} · {{ rows | map(attribute="c.display_name") | join(" vs ") }}{% endblock %}
+{% block content %}
+<div class="dg-head">
+  <span><strong>{{ info.name }}</strong>{% if game.mode == "shanghai" and not s.finished %} · round {{ s.shanghai_round }} of {{ s.rounds }} – target <strong>{{ s.shanghai_number() }}</strong>{% endif %}
+    {% if game.mode == "killer" %} · {{ game.options.lives }} lives{% endif %}</span>
+  {% if game.status == "live" %}<mark class="live-badge">LIVE</mark>{% elif game.status == "abandoned" %}<mark class="role ch">abandoned</mark>{% endif %}
+</div>
+<details class="dm-help"><summary class="small-link">How it works</summary><p class="muted">{{ info.help }}</p></details>
+
+{% if game.mode == "cricket" %}
+  {# Cricket-Tafel: Ziele in der Mitte, Spieler in Spalten #}
+  <div class="table-wrap">
+    <table class="dm-cricket n{{ rows | length }}">
+      <thead><tr><th></th>{% for r in rows %}<th class="{% if r.turn %}turn{% endif %} {% if r.won %}won{% endif %}">{{ cavatar(r.c, user, "xs") }}<br>{{ r.c.display_name }}</th>{% endfor %}</tr></thead>
+      <tbody>
+        {% for tgt in (20, 19, 18, 17, 16, 15, 25) %}
+          {% set closed_all = rows | selectattr("marks") | map(attribute="marks") | map(attribute=tgt) | select("ge", 3) | list | length == rows | length %}
+          <tr class="{% if closed_all %}dead{% endif %}">
+            <th>{{ "Bull" if tgt == 25 else tgt }}</th>
+            {% for r in rows %}{% set m = r.marks[tgt] %}<td class="mk m{{ m }}">{{ ["", "/", "X", "Ⓧ"][m] }}</td>{% endfor %}
+          </tr>
+        {% endfor %}
+        <tr class="dm-pts"><th>Pts</th>{% for r in rows %}<td>{{ r.points }}</td>{% endfor %}</tr>
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="dg-board n{{ rows | length }}">
+    {% for r in rows %}
+      <div class="dg-player {% if r.turn %}turn{% endif %} {% if r.won %}won{% endif %} {% if not r.alive %}dm-out{% endif %}">
+        <div class="dg-name">{{ cavatar(r.c, user, "xs") }} <a href="/darts/players/{{ r.c.id }}">{{ r.c.display_name }}</a>
+          {% if game.mode == "killer" %}<span class="dg-legs" title="number">{{ r.number }}</span>{% endif %}</div>
+        <div class="dg-rest">
+          {% if r.won %}🏆
+          {% elif game.mode == "atc" %}{{ "Bull" if r.target == 25 else r.target }}
+          {% elif game.mode == "shanghai" %}{{ r.points }}
+          {% elif game.mode == "killer" %}<span class="dm-lives">{% if r.alive %}{{ "❤️" * r.lives }}{% else %}💀{% endif %}</span>{% endif %}
+        </div>
+        <div class="dg-sub">
+          {% if game.mode == "atc" %}<span>target</span>{% elif game.mode == "shanghai" %}<span>points</span>
+          {% elif game.mode == "killer" %}<span>{% if not r.alive %}out{% elif r.killer %}🔪 killer{% else %}hit D{{ r.number }}{% endif %}</span>{% endif %}
+          {% if r.last %}<span>last {% for t in r.last.throws or [] %}{{ dart_label(t) }}{{ " " if not loop.last }}{% endfor %}</span>{% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+{% if s.finished %}
+  <article class="dg-winner">
+    <p>🏆 <strong>{{ rows[s.winner].c.display_name }}</strong> wins {{ info.name }}!</p>
+    <a href="/darts/new" role="button" class="small">New game</a>
+  </article>
+{% endif %}
+
+{% if can_score %}
+  {% set cur = rows[s.turn] %}
+  <p class="dg-hint"><strong>{{ cur.c.display_name }}</strong> to throw
+    {% if game.mode == "atc" %}– target <strong>{{ "Bull" if cur.target == 25 else cur.target }}</strong>
+    {% elif game.mode == "shanghai" %}– only the <strong>{{ s.shanghai_number() }}</strong> counts
+    {% elif game.mode == "killer" %}– {% if cur.killer %}hunt the others' doubles{% else %}hit <strong>D{{ cur.number }}</strong> to become a killer{% endif %}{% endif %}</p>
+  <form method="post" action="/darts/games/{{ game.id }}/throws" class="dm-pad" x-ref="form" x-data="dartPad()" @submit.prevent="send()">
+    <input type="hidden" name="seq" value="{{ n_visits }}">
+    <input type="hidden" name="throws" x-ref="throws">
+    <div class="dm-chips" aria-live="polite">
+      <template x-for="i in 3" :key="i"><span class="dm-chip" :class="{ on: darts[i-1] }" x-text="darts[i-1] ? label(darts[i-1]) : 'Dart ' + i"></span></template>
+    </div>
+    <div class="seg dm-mult" role="radiogroup" aria-label="Multiplier">
+      {% for k, lbl in (("S", "Single"), ("D", "Double"), ("T", "Triple")) %}
+        <label><input type="radio" value="{{ k }}" x-model="mult"><span>{{ lbl }}</span></label>
+      {% endfor %}
+    </div>
+    <div class="dm-nums">
+      {% for n in range(1, 21) %}<button type="button" class="outline secondary" @click="add('{{ n }}')" :disabled="darts.length >= 3">{{ n }}</button>{% endfor %}
+      <button type="button" class="outline secondary" @click="addBull(false)" :disabled="darts.length >= 3">25</button>
+      <button type="button" class="outline secondary" @click="addBull(true)" :disabled="darts.length >= 3">Bull</button>
+      <button type="button" class="outline secondary dm-miss" @click="push('M')" :disabled="darts.length >= 3">Miss</button>
+      <button type="button" class="outline secondary" @click="darts.pop()" :disabled="!darts.length" aria-label="Remove last dart">⌫</button>
+    </div>
+    <button type="submit" class="dm-send" :disabled="!darts.length || busy" x-text="darts.length === 3 ? '✓ Save visit' : '✓ Save (' + darts.length + ' dart' + (darts.length === 1 ? '' : 's') + ')'">✓ Save visit</button>
+    <noscript><input name="throws" placeholder="e.g. T20,S19,M"><button>Save</button></noscript>
+  </form>
+{% elif game.status == "live" %}
+  <p class="muted dg-hint">Live – the score updates automatically.</p>
+{% endif %}
+
+{% if history %}
+  <h3 class="dg-legtitle">Last visits</h3>
+  <ul class="dm-history">
+    {% for v in history %}
+      <li><strong>{{ game.players[v.position].competitor.display_name }}</strong>
+        <span>{% for t in v.throws or [] %}<code>{{ dart_label(t) }}</code>{% endfor %}</span>
+        {% if v.score %}<span class="muted">+{{ v.score }}</span>{% endif %}{% if v.checkout %} 🏆{% endif %}</li>
+    {% endfor %}
+  </ul>
+{% endif %}
+
+{% if can_manage %}
+  <div class="dg-actions">
+    {% if n_visits %}<form method="post" action="/darts/games/{{ game.id }}/undo"><button class="outline small">↶ Undo last visit</button></form>{% endif %}
+    {% if game.status == "live" %}
+      <details class="dg-more"><summary class="small-link">More…</summary>
+        <form method="post" action="/darts/games/{{ game.id }}/abandon" onsubmit="return confirm('Abandon this game?')"><button class="danger small">Abandon game</button></form>
+      </details>
+    {% endif %}
+  </div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>window.DARTS_LIVE = {{ {"id": game.id, "v": n_visits, "live": game.status == "live"} | tojson }};</script>
+<script defer src="/static/darts.js"></script>
+<script defer src="/static/vendor/alpine.min.js"></script>
+{% endblock %}

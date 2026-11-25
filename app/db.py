@@ -44,6 +44,9 @@ ADDED_COLUMNS = [
     ("tournament_matches", "board", {"sqlite": "INTEGER", "postgresql": "INTEGER"}),
     ("darts_games", "team_size", {"sqlite": "INTEGER DEFAULT 1", "postgresql": "INTEGER DEFAULT 1"}),
     ("darts_games", "winner_side", {"sqlite": "INTEGER", "postgresql": "INTEGER"}),
+    ("darts_games", "mode", {"sqlite": "VARCHAR(12) DEFAULT 'x01'", "postgresql": "VARCHAR(12) DEFAULT 'x01'"}),
+    ("darts_games", "options", {"sqlite": "JSON", "postgresql": "JSON"}),
+    ("darts_visits", "throws", {"sqlite": "JSON", "postgresql": "JSON"}),
 ]
 
 
