@@ -149,8 +149,12 @@ mit VAPID, selbst umgesetzt in `app/push.py` (nur `cryptography`). Die Schlüsse
 Gebrauch selbst und speichert sie in der Datenbank, es muss nichts eingerichtet werden. Abgelaufene Geräte
 werden automatisch entfernt.
 
-**🔊 Ansager** (Knopf im Darts-Spiel): sagt jede Aufnahme an („One hundred and eighty!“, „Game shot!“) –
-über die Sprachausgabe des Handys, an/aus wird pro Gerät gemerkt.
+**🔊 Ansager** (Knopf im Darts-Spiel): sagt wie ein Caller jede Aufnahme an („one hundred and forty“,
+„One hundred and eighty!“, „No score!“), dem, der auschecken kann, „Dana, you require eighty-one.“ und beim
+Checkout „Game shot, and the second leg!“ bzw. „… and the match!“. Bei Bots und Spielen über eigene Handys
+werden auch die Aufnahmen der anderen angesagt. Über die Sprachausgabe des Handys: Die App nimmt automatisch
+die beste britische Stimme (Natural/Enhanced zuerst); unter ⚙ lässt sich die Stimme wählen und einstellen, ob
+jede Aufnahme oder nur 100+ angesagt wird. An/aus und Einstellungen merkt sich jedes Gerät.
 
 **Turnier-Historie & Stats:** Die Turnierliste zeigt alle (auch beendeten) Turniere mit Champion und oben
 eine **Hall of Fame** (Turniersiege pro Spieler). Auf jeder Turnierseite steht unten **„Standings & stats“**:

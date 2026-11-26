@@ -43,8 +43,32 @@
 
 {% if can_score %}
   {% set cur = throwers[gs.turn] %}
-  <button type="button" class="dg-caller outline secondary small" x-data="{ on: window.fdCaller ? window.fdCaller.on() : true }"
-          @click="on = window.fdCaller.toggle()" :aria-pressed="on" x-text="on ? '🔊 Caller' : '🔇 Caller'" title="Announce 180s, ton-plus scores, busts and game shots">🔊 Caller</button>
+  <div class="dg-caller" x-data="callerSettings">
+    <button type="button" class="outline secondary small" x-data="{ on: window.fdCaller ? window.fdCaller.on() : true }"
+            @click="on = window.fdCaller.toggle()" :aria-pressed="on" x-text="on ? '🔊 Caller' : '🔇 Caller'"
+            title="Announce every score, busts, “you require …” and game shots">🔊 Caller</button>
+    <button type="button" class="outline secondary small" @click="show()" aria-label="Caller settings" title="Caller voice">⚙</button>
+    <div class="dg-dialog" x-show="open" x-cloak @keydown.escape.window="open = false">
+      <div class="caller-set">
+        <p><strong>🔊 Caller</strong></p>
+        <label>Voice
+          <select x-model="voice" @change="store()">
+            <template x-for="v in list" :key="v.name"><option :value="v.name" x-text="v.name + ' (' + v.lang + ')'"></option></template>
+          </select>
+        </label>
+        <small class="muted" x-show="!list.length">This device has no English voice – install one in the phone's
+          language/speech settings (e.g. “English (UK)”).</small>
+        <label><input type="checkbox" role="switch" x-model="every" @change="store()"> Call every score (otherwise only 100+)</label>
+        <small class="muted">Tip: “Natural”, “Enhanced” or “Premium” voices sound best.<br>
+          iPhone: Settings → Accessibility → Spoken Content → Voices → English (UK) → download e.g. “Arthur (Enhanced)”.<br>
+          Android: Settings → Text-to-speech → Google → install “English (United Kingdom)”.</small>
+        <div class="btn-row">
+          <button type="button" class="outline small" @click="test()">▶ Test</button>
+          <button type="button" class="small" @click="open = false">Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
   <p class="dg-hint"><strong>{{ cur.competitor.display_name }}</strong> to throw – {{ rest }} left
     {% if route %}· <span class="dg-route">{{ route | join(" · ") }}</span>{% endif %}</p>
   <div x-data="x01Input()">
@@ -177,7 +201,7 @@
 {% endblock %}
 {% block scripts %}
 <script>window.DARTS_LIVE = {{ {"id": game.id, "v": n_visits, "live": game.status == "live", "own": game.own_scoring,
-                                 "call": opponent_call} | tojson }};</script>
+                                 "call": opponent_call, "req": require, "leg": leg_no, "match": match_shot} | tojson }};</script>
 <script defer src="/static/darts.js"></script>
 <script defer src="/static/vendor/alpine.min.js"></script>
 {% endblock %}

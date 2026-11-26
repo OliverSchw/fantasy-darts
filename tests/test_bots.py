@@ -239,3 +239,17 @@ def test_web_custom_and_player_bots(olli2, db, seeded):
     page = olli2.get(f"/darts/players/{mine.id}").text
     assert "copied from the last 10 games" in page and f"bot_id={mine.id}" in page
     assert f'"{mine.id}"' in olli2.get(f"/darts/new?bot_id={mine.id}").text  # vorausgewählt
+
+
+def test_caller_data_on_page(olli2, db, seeded):
+    me = competitors.competitor_for_user(db, db.scalar(select(models.User))).id
+    r = olli2.post("/darts/new", data={"mode": "x01", "start": 301, "legs": 2, "p0": str(me), "p1": "bot:easy"},
+                   follow_redirects=False)
+    gid = int(r.headers["location"].rsplit("/", 1)[1])
+    page = olli2.get(f"/darts/games/{gid}").text
+    assert '"leg": 1' in page and '"match": false' in page and '"req": null' in page and '"call": null' in page
+    olli2.post(f"/darts/games/{gid}/visit", data={"seq": 0, "score": 180})
+    page = olli2.get(f"/darts/games/{gid}").text
+    # Bot hat geworfen -> wird angesagt; ich stehe auf 121 -> "olli, you require 121"
+    assert '"name": "Easy Bot"' in page and '"req": {"name": "olli", "rest": 121}' in page
+    assert 'x-data="callerSettings"' in page and "Caller settings" in page

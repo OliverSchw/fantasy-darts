@@ -815,7 +815,11 @@ a.t-board:hover { border-color: var(--pico-primary); }
 .dm-history code { font-size: 0.78rem; padding: 0.05rem 0.35rem; }
 .dm-modehelp { display: block; margin: -0.4rem 0 0.7rem; }
 .dm-lives { font-size: 1.35rem; letter-spacing: -0.1em; white-space: nowrap; }
-.dg-caller { float: right; margin: -0.2rem 0 0 0.5rem; padding: 0.2rem 0.6rem; width: auto; font-size: 0.78rem; }
+.dg-caller { float: right; display: flex; gap: 0.25rem; margin: -0.2rem 0 0 0.5rem; }
+.dg-caller > button { padding: 0.2rem 0.6rem; width: auto; font-size: 0.78rem; margin: 0; }
+.dg-dialog > .caller-set { text-align: left; display: grid; gap: 0.5rem; max-width: 22rem; }
+.caller-set label { margin: 0; font-size: 0.9rem; }
+.caller-set select { margin: 0.2rem 0 0; font-size: 0.85rem; }
 
 /* Push-Benachrichtigungen */
 .push-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; padding: 0.6rem 0.8rem;
@@ -893,3 +897,4 @@ a.t-board:hover { border-color: var(--pico-primary); }
 .scoring-pick { margin: 0.6rem 0; }
 .scoring-pick .seg { margin-bottom: 0.3rem; }
 .dg-more button, .dg-more form { margin-bottom: 0.4rem; }
+.caller-set .btn-row button { font-size: 0.9rem; font-weight: 600; }
