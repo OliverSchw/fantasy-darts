@@ -263,7 +263,8 @@ window.fdShareGame = function () {
     else if (c.bust || !c.score) text = "No score!";
     else if (c.score === 180) text = "One hundred and eighty!";
     else text = window.fdCaller.words(c.score);
-    parts.push(c.name + ", " + text + (/[!.]$/.test(text) ? "" : "."));  // Punkt = kurze Pause vor "you require"
+    // wie ein Caller nur die Punktzahl, ohne Namen (der kommt nur bei "…, you require 81")
+    parts.push(text.charAt(0).toUpperCase() + text.slice(1) + (/[!.]$/.test(text) ? "" : "."));  // Punkt = Pause
   }
   if (cfg.req) parts.push(window.fdCaller.require(cfg.req.name, cfg.req.rest));
   if (parts.length) document.addEventListener("DOMContentLoaded", function () { window.fdCaller.say(parts.join(" ")); });
