@@ -219,7 +219,10 @@ def game_page(game_id: int, request: Request, db: Session = Depends(get_db), use
         request, "darts/game.html", user=user, game=game, gs=state, cards=cards, throwers=game.players,
         can_score=service.can_score(user, game), can_manage=service.can_manage(user, game),
         can_undo=service.can_undo(user, game), waiting_for=_waiting_for(game, user),
-        opponent_call=_opponent_call(game, user),
+        opponent_call=_opponent_call(game, user), leg_no=state.leg_no,
+        match_shot=not state.finished and state.legs_won[state.side(state.turn)] + 1 >= game.legs_to_win,
+        require={"name": game.players[state.turn].competitor.display_name, "rest": rest}
+        if rest and is_finishable(rest) and game.status == "live" else None,
         rest=rest, route=checkout_route(rest) if rest else None,
         finishable=bool(rest and is_finishable(rest)), min_darts=min_darts(rest) if rest else None,
         max_dbl=max_double_darts(rest) if rest else 0,
@@ -227,22 +230,26 @@ def game_page(game_id: int, request: Request, db: Session = Depends(get_db), use
     )
 
 
-def _opponent_call(game: models.DartsGame, user: models.User) -> str | None:
-    """Jeder zählt selbst: was der Ansager auf meinem Handy über die letzte Aufnahme eines anderen sagt."""
-    if not game.own_scoring or not game.visits:
+ORDINALS = ("", "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth",
+            "eleventh", "twelfth", "thirteenth", "fourteenth", "fifteenth", "sixteenth", "seventeenth", "eighteenth",
+            "nineteenth", "twentieth", "twenty-first")
+
+
+def _opponent_call(game: models.DartsGame, user: models.User) -> dict | None:
+    """Was der Ansager auf meinem Handy über die letzte Aufnahme sagt, wenn sie nicht von hier kam:
+    Gegner aus der Ferne ("Own phones") oder ein Bot. Text baut darts.js (Zahlen auf Britisch)."""
+    if not game.visits:
         return None
     v = game.visits[-1]
     c = game.players[v.position].competitor
-    if c.user_id == user.id:
+    if not (c.is_bot or (game.own_scoring and c.user_id != user.id)):
         return None
-    name = c.display_name
     if game.mode != "x01":
-        return f"{name}, " + ("game shot!" if game.status == "finished" else f"{v.score} points" if v.score else "no score")
-    if v.checkout:
-        return f"{name}, game shot!"
-    if v.bust:
-        return f"{name}, no score"
-    return f"{name}, " + ("one hundred and eighty!" if v.score == 180 else str(v.score))
+        text = "game shot!" if game.status == "finished" else (f"{v.score} points" if v.score else "no score")
+        return {"name": c.display_name, "text": text}
+    return {"name": c.display_name, "score": v.score, "bust": v.bust, "checkout": v.checkout,
+            "match": v.checkout and game.status == "finished",
+            "ordinal": ORDINALS[v.leg_no] if v.leg_no < len(ORDINALS) else ""}
 
 
 def _waiting_for(game: models.DartsGame, user: models.User) -> str | None:

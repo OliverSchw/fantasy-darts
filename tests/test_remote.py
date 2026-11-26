@@ -68,7 +68,7 @@ def test_web_remote_game(db, two):
     assert cb.post(f"/darts/games/{gid}/visit", data={"seq": 0, "score": 60}).status_code == 403
     ca.post(f"/darts/games/{gid}/visit", data={"seq": 0, "score": 100})
     page_b = cb.get(f"/darts/games/{gid}").text
-    assert 'class="dg-pad"' in page_b and '"call": "anna, 100"' in page_b  # Ansager sagt Annas 100 an
+    assert 'class="dg-pad"' in page_b and '"name": "anna"' in page_b and '"score": 100' in page_b  # Ansage
     assert "Undo my last visit" in ca.get(f"/darts/games/{gid}").text
     assert "Undo" not in page_b  # Ben hat noch nichts geworfen
     assert cb.post(f"/darts/games/{gid}/undo").status_code == 403  # Annas Aufnahme darf Ben nicht zurücknehmen
