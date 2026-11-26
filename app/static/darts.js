@@ -20,7 +20,7 @@
     return out;
   }
   // Bessere Stimmen zuerst: britisch, "Natural/Neural/Enhanced/Premium", bekannte Männerstimmen
-  var GOOD = /natural|neural|online|enhanced|premium|siri/i;
+  var GOOD = /natural|neural|online|enhanced|premium|siri|network/i;  // "network" = Android-Onlinestimmen (Google)
   var MALE = /daniel|arthur|george|ryan|oliver|thomas|harry|male|uk english male/i;
   function rank(v) {
     var r = 0;
@@ -48,6 +48,29 @@
     save: function (c) { try { localStorage.setItem("fd-caller-cfg", JSON.stringify(c)); } catch (e) {} },
     voices: function () {
       return voices().filter(function (v) { return /^en/i.test(v.lang); }).sort(function (a, b) { return rank(b) - rank(a); });
+    },
+    // Lesbarer Name, z. B. Android "en-gb-x-gbd-network" -> "English (UK) · voice D · online"
+    label: function (v) {
+      var m = /^([a-z]{2})-([a-z]{2})-x-([a-z]{3})-(network|local)$/i.exec(v.name);
+      var region = { GB: "UK", US: "US", AU: "Australia", IN: "India", IE: "Ireland", NZ: "New Zealand", ZA: "South Africa",
+                     NG: "Nigeria", CA: "Canada" };
+      if (m) {
+        var r = m[2].toUpperCase();
+        return "English (" + (region[r] || r) + ") · voice " + m[3].slice(-1).toUpperCase() + " · " +
+               (m[4].toLowerCase() === "network" ? "online" : "offline");
+      }
+      return v.name + " (" + v.lang + ")";
+    },
+    // Manche Handys (Chrome auf Android) liefern die Stimmen erst später - bis zu 3 s darauf warten
+    ready: function (cb) {
+      if (!("speechSynthesis" in window)) { cb(); return; }
+      if (voices().length) { cb(); return; }
+      var done = false, finish = function () { if (!done && (voices().length || Date.now() - t0 > 3000)) { done = true; clearInterval(iv); cb(); } };
+      var t0 = Date.now(), iv = setInterval(finish, 250);
+      try { window.speechSynthesis.addEventListener("voiceschanged", finish); } catch (e) {}
+      try {  // leere, stumme Ansage weckt die Sprachausgabe auf (sonst bleibt die Liste auf manchen Geräten leer)
+        var u = new SpeechSynthesisUtterance(" "); u.volume = 0; window.speechSynthesis.speak(u);
+      } catch (e) {}
     },
     voice: function () {
       var c = cfg(), all = voices();
@@ -86,8 +109,8 @@
       } catch (e) { finish(); }
     },
   };
-  // Manche Browser laden die Stimmen erst später
-  if ("speechSynthesis" in window) window.speechSynthesis.onvoiceschanged = function () {};
+  // Manche Browser laden die Stimmen erst später (ready() wartet darauf)
+  if ("speechSynthesis" in window) { try { window.speechSynthesis.getVoices(); } catch (e) {} }
 })();
 
 document.addEventListener("alpine:init", function () {
@@ -251,13 +274,23 @@ document.addEventListener("alpine:init", function () {
   Alpine.data("callerSettings", function () {
     return {
       open: false, list: [], voice: "", every: true,
+      loading: false,
       load() {
-        var c = window.fdCaller.settings(), cur = window.fdCaller.voice();
-        this.list = window.fdCaller.voices().map(function (v) { return { name: v.name, lang: v.lang }; });
-        this.voice = c.voice || (cur ? cur.name : "");
+        var c = window.fdCaller.settings();
+        this.list = window.fdCaller.voices().map(function (v) { return { name: v.name, label: window.fdCaller.label(v) }; });
+        var known = this.list.some(function (v) { return v.name === c.voice; });
+        this.voice = known ? c.voice : "";  // "" = Handy-Standard bzw. automatisch die beste Stimme
         this.every = c.every;
       },
-      show() { this.load(); this.open = true; },
+      show() {
+        var self = this;
+        this.load();
+        this.open = true;
+        if (!this.list.length) {
+          this.loading = true;
+          window.fdCaller.ready(function () { self.loading = false; self.load(); });
+        }
+      },
       store() { window.fdCaller.save({ voice: this.voice, every: this.every }); },
       test() { this.store(); window.fdCaller.say("One hundred and eighty! Chris, you require eighty-one."); },
     };
