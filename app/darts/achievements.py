@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .. import models
+from ..confirmations import pending_pairs, pending_tournament_pairs
 from .modes import TRAINING, parse_dart
 from .rating import aware, cached
 
@@ -73,7 +74,12 @@ def compute_achievements(db: Session) -> dict[int, list[Earned]]:
 def _compute(db: Session) -> dict[int, list[Earned]]:
     out: dict[int, dict[str, Earned]] = {}
 
+    pend = pending_pairs(db)
+    pend_t = pending_tournament_pairs(db)
+
     def earn(cid, key, at, game_id=None, tournament_id=None):
+        if (game_id is not None and (game_id, cid) in pend) or (tournament_id is not None and (tournament_id, cid) in pend_t):
+            return  # noch nicht bestätigt
         got = out.setdefault(cid, {})
         if key not in got:
             got[key] = Earned(key, cid, at, game_id, tournament_id)
@@ -96,8 +102,9 @@ def _compute(db: Session) -> dict[int, list[Earned]]:
                     earn(v.competitor_id, "ton", v_at, g.id)
                 if v.score == 180:
                     earn(v.competitor_id, "ton80", v_at, g.id)
-                    max180[v.competitor_id] = max180.get(v.competitor_id, 0) + 1
-                    if max180[v.competitor_id] == 10:
+                    if (g.id, v.competitor_id) not in pend:
+                        max180[v.competitor_id] = max180.get(v.competitor_id, 0) + 1
+                    if max180.get(v.competitor_id) == 10:
                         earn(v.competitor_id, "club180", v_at, g.id)
                 if v.checkout:
                     if v.score >= 100:
@@ -117,6 +124,8 @@ def _compute(db: Session) -> dict[int, list[Earned]]:
                    if g.n_sides > 1 and g.mode not in TRAINING and not g.has_bot else set())
         for p in g.players:
             cid = p.competitor_id
+            if (g.id, cid) in pend:
+                continue
             played[cid] = played.get(cid, 0) + 1
             if played[cid] == 25:
                 earn(cid, "regular", at, g.id)

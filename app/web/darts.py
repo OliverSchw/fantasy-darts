@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from .. import models
 from .. import tournaments as tour
 from ..auth import require_admin, require_user
-from .. import competitors, feed
+from .. import competitors, confirmations, feed
 from ..charts import line_chart
 from ..competitors import CompetitorError
 from ..darts import service
@@ -252,6 +252,13 @@ def _opponent_call(game: models.DartsGame, user: models.User) -> dict | None:
             "ordinal": ORDINALS[v.leg_no] if v.leg_no < len(ORDINALS) else ""}
 
 
+def _confirm_by_scoring(db: Session, user: models.User, game: models.DartsGame, seq: int) -> None:
+    """Wer seine eigene Aufnahme einträgt, war dabei - offene Bestätigung erledigt sich."""
+    v = game.visits[seq] if seq < len(game.visits) else None
+    if v is not None and game.players[v.position].competitor.user_id == user.id:
+        confirmations.auto_accept(db, user, "darts", game.id)
+
+
 def _waiting_for(game: models.DartsGame, user: models.User) -> str | None:
     """Jeder zählt selbst, ich spiele mit, bin aber nicht dran: auf wen warten wir?"""
     if not game.own_scoring or game.status != "live" or service.can_score(user, game):
@@ -304,6 +311,7 @@ async def post_throws(game_id: int, request: Request, db: Session = Depends(get_
     try:
         seq = int(str(form.get("seq", "-1")))
         result = service.add_mode_visit(db, game, throws, seq)
+        _confirm_by_scoring(db, user, game, seq)
         for msg in result["log"]:
             if msg in ("Shanghai!", "Killer!", "Checkout!"):
                 flash(request, f"🎯 {msg}")
@@ -351,6 +359,7 @@ async def post_visit(game_id: int, request: Request, db: Session = Depends(get_d
         n_before = seq + 1
         visit = service.add_visit(db, game, score, darts, seq, throws=throws or None, double_darts=double_darts,
                                   require_double=True)
+        _confirm_by_scoring(db, user, game, seq)
         for bv in game.visits[n_before:]:
             c = game.players[bv.position].competitor
             darts_txt = " · ".join(dart_label(t) for t in bv.throws or [])

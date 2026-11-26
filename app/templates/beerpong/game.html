@@ -2,6 +2,8 @@
 {% from "_macros.html" import cavatar %}
 {% block title %}{{ g.team_name(1) }} vs {{ g.team_name(2) }}{% endblock %}
 {% block content %}
+{% from "_confirm.html" import confirm_banner %}
+{{ confirm_banner(pending_here(user, "beerpong", g.id), "beerpong", g.id, path, "game") }}
 {% if tinfo %}<p class="dg-tour"><a href="/beerpong/tournaments/{{ tinfo.t.id }}">🏆 {{ tinfo.t.name }}</a> · {{ tinfo.title }}{% if tinfo.tm.board %} · <strong>Table {{ tinfo.tm.board }}</strong>{% endif %}</p>{% endif %}
 <div class="dg-head">
   <span>{{ g.cups }} cups · first to hit them all</span>

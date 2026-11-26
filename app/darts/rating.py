@@ -13,6 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .. import models
+from ..confirmations import pending_pairs
 
 START = 1000.0
 K = 32.0
@@ -39,7 +40,8 @@ def data_version(db: Session) -> tuple:
     p = db.scalar(select(func.coalesce(func.sum(models.DartsGamePlayer.competitor_id), 0)))
     t = db.execute(select(func.count(models.Tournament.id), func.coalesce(func.sum(models.Tournament.winner_entry_id), 0))
                    .where(models.Tournament.winner_entry_id.is_not(None))).one()
-    return (db.get_bind().url.render_as_string(), *v, *g, p, *t)
+    c = db.execute(select(func.count(models.Confirmation.id), func.coalesce(func.sum(models.Confirmation.id), 0))).one()
+    return (db.get_bind().url.render_as_string(), *v, *g, p, *t, *c)
 
 
 _cache: dict[str, tuple] = {}
@@ -98,11 +100,11 @@ def expected(ra: float, rb: float) -> float:
 def compute_elo(db: Session, games: list[models.DartsGame] | None = None) -> Elo:
     """Elo aller Spieler (ohne games: aus dem Zwischenspeicher, falls sich nichts geändert hat)."""
     if games is None:
-        return cached(db, "elo", lambda: _compute_elo(finished_games(db)))
-    return _compute_elo(games)
+        return cached(db, "elo", lambda: _compute_elo(finished_games(db), pending_pairs(db)))
+    return _compute_elo(games, pending_pairs(db))
 
 
-def _compute_elo(games: list[models.DartsGame]) -> Elo:
+def _compute_elo(games: list[models.DartsGame], pend: set = frozenset()) -> Elo:
     elo = Elo()
     from .modes import TRAINING
     for g in games:
@@ -110,6 +112,8 @@ def _compute_elo(games: list[models.DartsGame]) -> Elo:
         win = g.winning_side
         if n < 2 or win is None or g.mode in TRAINING or g.has_bot:
             continue  # Solo-Spiele, Training und Spiele gegen Bots zählen nicht
+        if any((g.id, p.competitor_id) in pend for p in g.players):
+            continue  # noch nicht von allen bestätigt
         sides = [[p.competitor_id for p in g.side_players(s)] for s in range(n)]
         side_rating = [sum(elo.rating(c) for c in side) / len(side) for side in sides]
         change = [0.0] * n
@@ -144,7 +148,9 @@ def form_curve(db: Session, competitor_id: int, limit: int = 30) -> list[FormPoi
     game_ids = select(models.DartsGamePlayer.game_id).where(models.DartsGamePlayer.competitor_id == competitor_id)
     games = db.scalars(select(models.DartsGame).where(
         models.DartsGame.id.in_(game_ids), models.DartsGame.status == "finished", models.DartsGame.mode == "x01")).all()
-    games = sorted(games, key=lambda g: (aware(g.finished_at or g.created_at), g.id))[-limit:]
+    pend = pending_pairs(db)
+    games = sorted((g for g in games if (g.id, competitor_id) not in pend),
+                   key=lambda g: (aware(g.finished_at or g.created_at), g.id))[-limit:]
     out = []
     for g in games:
         vs = [v for v in g.visits if v.competitor_id == competitor_id]

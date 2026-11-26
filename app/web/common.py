@@ -220,11 +220,35 @@ def get_state(
     return State(db=db, season=season, rules=season_rules(db, season), user=user)
 
 
+def _pending_count(user) -> int:
+    """Offene Bestätigungen für den Hinweis oben (Session des Users = Session der Anfrage)."""
+    from sqlalchemy.orm import object_session
+    from .. import confirmations
+    sess = object_session(user) if user is not None else None
+    return confirmations.count_for(sess, user) if sess is not None and user.confirm_games else 0
+
+
+def pending_here(user, kind: str, ref_id: int):
+    """Offene Bestätigung des Users für dieses Spiel/Turnier (für das Banner auf der Seite) oder None."""
+    from sqlalchemy.orm import object_session
+    from .. import confirmations
+    sess = object_session(user) if user is not None else None
+    if sess is None or not user.confirm_games:
+        return None
+    rows = confirmations.pending_for(sess, user, kind, ref_id)
+    return rows[0] if rows else None
+
+
+templates.env.globals["pending_here"] = pending_here
+
+
 def render(request: Request, template: str, state: State | None = None, status_code: int = 200, **ctx):
     flashes = request.session.pop("flash", [])
+    who = state.user if state else ctx.pop("user", None)
     base = {
         "flashes": flashes,
-        "user": state.user if state else ctx.pop("user", None),
+        "pending_confirmations": _pending_count(who),
+        "user": who,
         "rules": state.rules if state else current_rules(),
         "state": state,
         "path": request.url.path,

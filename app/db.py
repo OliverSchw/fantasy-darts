@@ -46,6 +46,7 @@ ADDED_COLUMNS = [
     ("competitors", "bot_config", {"sqlite": "JSON", "postgresql": "JSON"}),
     ("darts_visits", "double_darts", {"sqlite": "INTEGER", "postgresql": "INTEGER"}),
     ("darts_games", "scoring", {"sqlite": "VARCHAR(8)", "postgresql": "VARCHAR(8)"}),
+    ("users", "confirm_games", {"sqlite": "BOOLEAN DEFAULT 0", "postgresql": "BOOLEAN DEFAULT FALSE"}),
     ("tournament_matches", "board", {"sqlite": "INTEGER", "postgresql": "INTEGER"}),
     ("darts_games", "team_size", {"sqlite": "INTEGER DEFAULT 1", "postgresql": "INTEGER DEFAULT 1"}),
     ("darts_games", "winner_side", {"sqlite": "INTEGER", "postgresql": "INTEGER"}),

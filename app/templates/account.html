@@ -45,6 +45,16 @@
     <p class="small-note" x-show="msg" x-text="msg" x-cloak></p>
   </div>
 
+  <h3>Games others add you to</h3>
+  <form method="post" action="/account/confirm-games" class="confirm-setting">
+    <label><input type="checkbox" role="switch" name="on" value="1" {% if user.confirm_games %}checked{% endif %}
+                  onchange="this.form.submit()"> Confirm games, tournaments and leagues others add me to</label>
+    <small class="muted">When this is on, a game someone else adds you to only counts for your stats, Elo and titles
+      after you tap “✓ That's me” (you get a notification – it works any time, also right at the start). Games you
+      start yourself or score yourself count right away. “✗ Not me” replaces you by a guest.</small>
+    <noscript><button class="small">Save</button></noscript>
+  </form>
+
   <h3>Change password</h3>
   <form method="post" action="/account/password">
     <label>Current password <input name="current" type="password" autocomplete="current-password" required></label>

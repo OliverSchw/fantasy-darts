@@ -14,7 +14,7 @@ from .auth import AdminRequired, LoginRequired
 from .db import create_tables
 from .season import SeasonNotImported
 from .settings import get_settings
-from .web import account, admin, admin_players, admin_rules, admin_schedule, beerpong, darts, hub, members, my_teams, pages
+from .web import account, admin, admin_players, admin_rules, admin_schedule, beerpong, confirm, darts, hub, members, my_teams, pages
 from .web.common import redirect, render
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -89,6 +89,7 @@ def healthz():
 app.include_router(hub.router)
 app.include_router(pages.router)
 app.include_router(account.router)
+app.include_router(confirm.router)
 app.include_router(members.router)
 app.include_router(darts.router)
 app.include_router(beerpong.router)

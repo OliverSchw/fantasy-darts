@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .. import beerpong as bp
-from .. import competitors
+from .. import competitors, confirmations
 from .. import models
 from .. import tournaments as tour
 from ..auth import require_user
@@ -100,6 +100,8 @@ async def bp_hit(game_id: int, request: Request, db: Session = Depends(get_db), 
     form = await request.form()
     try:
         bp.add_hit(db, g, int(form.get("side", 0)), int(form.get("delta", 0)), int(form.get("v", -1)))
+        if any(p.competitor.user_id == user.id for p in g.players):  # wer selbst zählt, war dabei
+            confirmations.auto_accept(db, user, "beerpong", g.id)
         if g.status == "finished":
             flash(request, f"🍺 Winner: {g.team_name(g.winner_side)} ({max(g.hits1, g.hits2)}:{min(g.hits1, g.hits2)})")
     except ValueError as e:

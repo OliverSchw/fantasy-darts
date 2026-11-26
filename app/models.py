@@ -24,12 +24,16 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(100))
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    # Wer das einschaltet, muss Spiele/Turniere bestätigen, zu denen ihn andere hinzufügen (siehe app/confirmations.py)
+    confirm_games: Mapped[bool | None] = mapped_column(Boolean, default=False, nullable=True)
     # Gesetzt, sobald ein Profilbild existiert. Steht in der Bild-URL, damit Browser-Caches bei
     # einem neuen Bild sofort das neue laden (das Bild selbst liegt in "avatars").
     avatar_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     teams: Mapped[list["Team"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     push_subscriptions: Mapped[list["PushSubscription"]] = relationship(cascade="all, delete-orphan")
+    confirmations: Mapped[list["Confirmation"]] = relationship(
+        cascade="all, delete-orphan", foreign_keys="Confirmation.user_id")
 
 
 class Season(Base):
@@ -163,6 +167,23 @@ class Avatar(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     image: Mapped[bytes] = mapped_column(LargeBinary)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class Confirmation(Base):
+    """Offene Bestätigung: user wurde von jemand anderem zu einem Spiel/Turnier hinzugefügt und hat es noch
+    nicht bestätigt. Solange die Zeile existiert, zählt das Spiel für ihn nicht (Stats, Elo, Erfolge ...)."""
+
+    __tablename__ = "confirmations"
+    __table_args__ = (UniqueConstraint("user_id", "kind", "ref_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(String(12))  # "darts" | "beerpong" | "tournament"
+    ref_id: Mapped[int] = mapped_column(Integer, index=True)  # ID des Spiels bzw. Turniers
+    added_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+    added_by: Mapped["User | None"] = relationship(foreign_keys=[added_by_id], lazy="joined")
 
 
 class PushSubscription(Base):

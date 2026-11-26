@@ -2,6 +2,8 @@
 {% from "_macros.html" import cavatar, avg %}
 {% block title %}{{ game.start_score }} · {{ cards | map(attribute="name") | join(" vs ") }}{% endblock %}
 {% block content %}
+{% from "_confirm.html" import confirm_banner %}
+{{ confirm_banner(pending_here(user, "darts", game.id), "darts", game.id, path, "game") }}
 {% if tinfo %}<p class="dg-tour"><a href="/darts/tournaments/{{ tinfo.t.id }}">🏆 {{ tinfo.t.name }}</a> · {{ tinfo.title }}{% if tinfo.tm.board %} · <strong>Board {{ tinfo.tm.board }}</strong>{% endif %}</p>{% endif %}
 <div class="dg-head">
   <span>{{ game.start_score }} · first to {{ game.legs_to_win }} leg{{ "s" if game.legs_to_win != 1 }}

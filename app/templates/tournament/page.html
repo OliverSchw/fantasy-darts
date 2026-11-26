@@ -4,6 +4,8 @@
 {% import "_compare.html" as cmp %}
 {% block title %}{{ t.name }}{% endblock %}
 {% block content %}
+{% from "_confirm.html" import confirm_banner %}
+{{ confirm_banner(pending_here(user, "tournament", t.id), "tournament", t.id, path, "league" if t.is_league else "tournament") }}
 <div class="title-row">
   <hgroup>
     <h1>🏆 {{ t.name }}</h1>
