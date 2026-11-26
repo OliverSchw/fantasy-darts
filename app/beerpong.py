@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session, object_session
 
-from . import models
+from . import confirmations, models
 from . import tournaments as tour
 
 CUP_OPTIONS = (6, 10)
@@ -35,6 +35,9 @@ def create_game(db: Session, cups: int, team1: list[int], team2: list[int], crea
     db.add(game)
     if commit:
         db.commit()
+        if tournament_match_id is None:  # Turnierspiele: da gilt die Bestätigung des Turniers
+            confirmations.request(db, "beerpong", game.id, team1 + team2, created_by, "Beer pong",
+                                  f"/beerpong/games/{game.id}")
     else:
         db.flush()
     return game
@@ -198,9 +201,12 @@ class BeerpongStats:
 def compute_stats(db: Session, competitor_ids: list[int] | None = None) -> dict[int, BeerpongStats]:
     """Nur beendete Spiele. Getroffene Becher zählen für jedes Teammitglied."""
     stats: dict[int, BeerpongStats] = {}
+    pend = confirmations.pending_pairs(db, "beerpong")  # noch nicht bestätigte Spiele zählen nicht
     for g in db.scalars(select(models.BeerpongGame).where(models.BeerpongGame.status == "finished")):
         for p in g.players:
             if competitor_ids is not None and p.competitor_id not in competitor_ids:
+                continue
+            if (g.id, p.competitor_id) in pend:
                 continue
             s = stats.setdefault(p.competitor_id, BeerpongStats(p.competitor_id))
             s.games += 1
@@ -248,9 +254,10 @@ def rivalry(db: Session, a: int, b: int) -> Rivalry:
     games = db.scalars(select(models.BeerpongGame).where(models.BeerpongGame.status == "finished")
                        .order_by(models.BeerpongGame.created_at.desc(), models.BeerpongGame.id.desc())).all()
     r = Rivalry(against=[], together=[])
+    pend = confirmations.pending_pairs(db, "beerpong")
     for g in games:
         side = {p.competitor_id: p.side for p in g.players}
-        if a not in side or b not in side:
+        if a not in side or b not in side or (g.id, a) in pend or (g.id, b) in pend:
             continue
         if side[a] == side[b]:
             r.together.append(g)

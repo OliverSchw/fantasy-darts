@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, object_session
 
-from .. import models
+from .. import confirmations, models
 from .. import tournaments as tour
 from .engine import DartsError, GameState, Visit, advance, make_visit, new_state, replay
 from .modes import apply_visit, new_mode_state, replay_mode
@@ -19,7 +19,8 @@ from .throws import ask_double_darts, x01_visit
 
 
 def create_game(db: Session, start: int, legs_to_win: int, competitor_ids: list[int],
-                created_by: models.User | None, team_size: int = 1, scoring: str | None = None) -> models.DartsGame:
+                created_by: models.User | None, team_size: int = 1, scoring: str | None = None,
+                notify: bool = True) -> models.DartsGame:
     """competitor_ids in Wurfreihenfolge; Doppel (team_size 2): Team 1 = Positionen 0 und 2, Team 2 = 1 und 3.
     Bots dürfen mitspielen (mindestens ein Mensch) - sie werfen automatisch, sobald sie dran sind."""
     if len(set(competitor_ids)) != len(competitor_ids):
@@ -36,6 +37,8 @@ def create_game(db: Session, start: int, legs_to_win: int, competitor_ids: list[
     game.players = [models.DartsGamePlayer(position=i, competitor_id=cid) for i, cid in enumerate(competitor_ids)]
     db.add(game)
     db.commit()
+    if notify:  # Turnierspiele nicht - da gilt die Bestätigung des Turniers
+        confirmations.request(db, "darts", game.id, competitor_ids, created_by, f"Darts {start}", f"/darts/games/{game.id}")
     play_bots(db, game)  # wirft ein Bot zuerst?
     return game
 
@@ -277,13 +280,13 @@ def start_tournament_game(db: Session, t: models.Tournament, tm: models.Tourname
     if s["mode"] != "x01":
         opts = {"lives": s.get("lives", 3)} if s["mode"] == "killer" else (
             {"rounds": s.get("rounds", 7)} if s["mode"] == "shanghai" else {})
-        game = create_mode_game(db, s["mode"], [a[0], b[0]], user, opts)
+        game = create_mode_game(db, s["mode"], [a[0], b[0]], user, opts, notify=False)
     elif s["team_size"] == 2:
         if len(a) != 2 or len(b) != 2:
             raise DartsError("Doubles need two players per team.")
-        game = create_game(db, s["start"], legs_for(t, tm), [a[0], b[0], a[1], b[1]], user, team_size=2)
+        game = create_game(db, s["start"], legs_for(t, tm), [a[0], b[0], a[1], b[1]], user, team_size=2, notify=False)
     else:
-        game = create_game(db, s["start"], legs_for(t, tm), [a[0], b[0]], user)
+        game = create_game(db, s["start"], legs_for(t, tm), [a[0], b[0]], user, notify=False)
     game.tournament_match_id = tm.id
     db.commit()
     return game
@@ -307,7 +310,7 @@ def _report_to_tournament(db: Session, game: models.DartsGame, side_scores: tupl
 
 
 def create_mode_game(db: Session, mode: str, competitor_ids: list[int], created_by: models.User | None,
-                     options: dict | None = None, scoring: str | None = None) -> models.DartsGame:
+                     options: dict | None = None, scoring: str | None = None, notify: bool = True) -> models.DartsGame:
     if len(set(competitor_ids)) != len(competitor_ids):
         raise DartsError("Each player can only take part once.")
     options = dict(options or {})
@@ -324,6 +327,10 @@ def create_mode_game(db: Session, mode: str, competitor_ids: list[int], created_
     game.players = [models.DartsGamePlayer(position=i, competitor_id=cid) for i, cid in enumerate(competitor_ids)]
     db.add(game)
     db.commit()
+    if notify:
+        from .modes import MODES
+        confirmations.request(db, "darts", game.id, competitor_ids, created_by, MODES[mode]["name"],
+                              f"/darts/games/{game.id}")
     return game
 
 

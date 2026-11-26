@@ -143,6 +143,14 @@ auslosen (*🎲 Doubles*) oder feste Teams eintippen (*✍️ Teams*, eine Zeile
 **📺 TV-Ansicht** (Link oben im Turnier): Vollbild für Fernseher/Beamer mit allen Scheiben und Live-Ständen,
 Warteschlange, letzten Ergebnissen und Gruppen/Baum. Aktualisiert sich alle 5 Sekunden selbst.
 
+**📥 Spiele bestätigen** (*Account → Games others add you to*): Wer das einschaltet, muss Spiele, Turniere und
+Ligen bestätigen, zu denen ihn jemand anderes hinzufügt. Man bekommt eine Push-Nachricht, oben steht „📥 You were
+added …“, und im Spiel „✓ Yes, that's me / ✗ Not me“. Bestätigen geht jederzeit, auch direkt am Anfang. Bis
+dahin zählt das Spiel für einen nicht (Stats, Elo, Erfolge, Neuigkeiten, Titel). Automatisch bestätigt ist, wer
+das Spiel selbst anlegt oder eigene Würfe einträgt. Bei Turnieren/Ligen gilt eine Bestätigung für alle Spiele.
+*Not me* ersetzt einen durch einen Gast „<Name> (guest)“, das Ergebnis bleibt für die anderen erhalten.
+Ausschalten macht alles Offene sofort gültig. Logik in `app/confirmations.py`.
+
 **🔔 Push-Benachrichtigung „Du bist dran“:** Unter *Account → Notifications* (oder über den Hinweis im
 Turnier, wenn man mitspielt) einschalten. Sobald ein eigenes Match eine Scheibe/einen Tisch bekommt, kommt
 eine Nachricht aufs Handy („🎯 You're up – Board 2“); antippen öffnet das Match. Klappt auf Android/Desktop

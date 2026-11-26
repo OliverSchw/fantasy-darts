@@ -1,0 +1,15 @@
+{# Banner im Spiel/Turnier: "Du wurdest hinzugefügt - zählt es für dich?" #}
+{% macro confirm_banner(pc, kind, ref_id, here, what="game") -%}
+{% if pc %}
+  <div class="confirm-here">
+    <p>📥 <strong>{{ pc.added_by.username if pc.added_by else "Someone" }}</strong> added you to this {{ what }}.
+      Does it count for you?</p>
+    <div class="btn-row left">
+      <form method="post" action="/confirm/{{ kind }}/{{ ref_id }}/accept?next={{ here | urlencode }}"><button class="small">✓ Yes, that's me</button></form>
+      <form method="post" action="/confirm/{{ kind }}/{{ ref_id }}/decline?next={{ here | urlencode }}"
+            onsubmit="return confirm('Remove you from this {{ what }}? You will be replaced by a guest and nothing counts for you.')">
+        <button class="small outline secondary">✗ Not me</button></form>
+    </div>
+  </div>
+{% endif %}
+{%- endmacro %}

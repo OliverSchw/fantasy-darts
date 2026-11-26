@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Confirm{% endblock %}
+{% block content %}
+<h1>📥 Confirm</h1>
+<p class="muted">Someone added you to these. Until you confirm, they don't count for your stats, Elo, achievements
+  and titles. You can confirm any time – also before the game is over.</p>
+{% if items %}
+  <ul class="confirm-list">
+    {% for i in items %}
+      <li>
+        <a href="{{ i.url }}" class="confirm-what"><span class="ico">{{ i.icon }}</span>
+          <span><strong>{{ i.title }}</strong><small class="muted">{{ i.sub }}</small>
+            <small class="muted">added by {{ i.c.added_by.username if i.c.added_by else "someone" }} · {{ i.c.created_at | when }}
+              {% if i.status == "live" or i.status == "running" %}· <mark class="live-badge">LIVE</mark>{% endif %}</small></span></a>
+        <div class="btn-row left">
+          <form method="post" action="/confirm/{{ i.c.kind }}/{{ i.c.ref_id }}/accept"><button class="small">✓ That's me</button></form>
+          <form method="post" action="/confirm/{{ i.c.kind }}/{{ i.c.ref_id }}/decline"
+                onsubmit="return confirm('Remove you? You will be replaced by a guest and nothing counts for you.')">
+            <button class="small outline secondary">✗ Not me</button></form>
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <article class="cta"><p>Nothing to confirm – all good. ✓</p><a href="/" role="button" class="outline">Home</a></article>
+{% endif %}
+{% endblock %}

@@ -125,6 +125,9 @@ def create_tournament(db: Session, sport: str, name: str, entries: list[list[int
     assign_boards(t)
     db.commit()
     db.refresh(t)
+    from . import confirmations  # hier, um einen Import-Kreis zu vermeiden
+    confirmations.request(db, "tournament", t.id, flat, created_by, ("League" if t.is_league else "Tournament")
+                          + f" “{t.name}”", f"/{'beerpong' if sport == 'beerpong' else 'darts'}/tournaments/{t.id}")
     return t
 
 
@@ -513,12 +516,18 @@ def hall_of_fame(db: Session, sport: str, leagues: bool | None = None) -> list[t
     leagues=True nur Ligen, False nur Turniere, None beides."""
     titles: dict[int, int] = {}
     people: dict[int, models.Competitor] = {}
+    pending = None
     for t in db.scalars(select(models.Tournament).where(models.Tournament.sport == sport,
                                                         models.Tournament.status == "finished")):
         if leagues is not None and t.is_league != leagues:
             continue
+        if pending is None:
+            from .confirmations import pending_tournament_pairs
+            pending = pending_tournament_pairs(db)
         champ = entry_by_id(t, t.winner_entry_id)
         for c in champ.competitors if champ else []:
+            if (t.id, c.id) in pending:
+                continue  # noch nicht bestätigt
             titles[c.id] = titles.get(c.id, 0) + 1
             people[c.id] = c
     return sorted(((people[cid], n) for cid, n in titles.items()), key=lambda x: (-x[1], x[0].display_name.lower()))

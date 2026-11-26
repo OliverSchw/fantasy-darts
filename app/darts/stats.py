@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .. import models
+from ..confirmations import pending_pairs
 from .checkouts import is_finishable
 from .modes import TRAINING, replay_mode
 from .throws import double_attempts
@@ -74,7 +75,10 @@ def compute_stats(db: Session, competitor_ids: list[int] | None = None,
     stats: dict[int, PlayerStats] = {}
     leg_darts: dict[tuple, int] = defaultdict(int)  # (game, leg, competitor) -> Darts
     leg_visits: dict[tuple, int] = defaultdict(int)
+    pend = pending_pairs(db)  # noch nicht bestätigte Spiele zählen nicht
     for v in db.scalars(q):
+        if (v.game_id, v.competitor_id) in pend:
+            continue
         s = stats.setdefault(v.competitor_id, PlayerStats(v.competitor_id))
         key = (v.game_id, v.leg_no, v.competitor_id)
         if leg_visits[key] == 0:
@@ -115,6 +119,8 @@ def compute_stats(db: Session, competitor_ids: list[int] | None = None,
             continue  # gegen Bots: Würfe zählen, Siege nicht (Training)
         for p in g.players:
             if competitor_ids is not None and p.competitor_id not in competitor_ids:
+                continue
+            if (g.id, p.competitor_id) in pend:
                 continue
             s = stats.setdefault(p.competitor_id, PlayerStats(p.competitor_id))
             s.games += 1
@@ -209,9 +215,10 @@ def mode_records(db: Session, competitor_ids: list[int]) -> dict[int, dict[str, 
     out: dict[int, dict[str, list[int]]] = {}
     games = db.scalars(select(models.DartsGame).where(models.DartsGame.status == "finished",
                                                       models.DartsGame.mode.not_in(["x01", *TRAINING])))
+    pend = pending_pairs(db)
     for g in games:
         for p in g.players:
-            if p.competitor_id not in competitor_ids:
+            if p.competitor_id not in competitor_ids or (g.id, p.competitor_id) in pend:
                 continue
             rec = out.setdefault(p.competitor_id, {}).setdefault(g.mode, [0, 0])
             rec[1] += 1
@@ -230,7 +237,10 @@ def training_records(db: Session, competitor_id: int) -> dict[str, dict]:
     games = db.scalars(select(models.DartsGame).where(models.DartsGame.id.in_(game_ids),
                                                       models.DartsGame.status == "finished",
                                                       models.DartsGame.mode.in_(TRAINING)))
+    pend = pending_pairs(db)
     for g in games:
+        if (g.id, competitor_id) in pend:
+            continue
         pos = next(p.position for p in g.players if p.competitor_id == competitor_id)
         s = replay_mode(g.mode, len(g.players), g.options or {}, [v.throws or [] for v in g.visits])
         r = out.setdefault(g.mode, {"games": 0})
@@ -268,9 +278,12 @@ def player_profile(db: Session, competitor_id: int, last: int | None = None) -> 
 def bot_records(db: Session, competitor_id: int) -> list[tuple[models.Competitor, int, int]]:
     """Bilanz gegen Bots: [(Bot, Siege, Spiele), ...] aus beendeten Spielen, stärkste Stufe zuletzt."""
     out: dict[int, list] = {}
+    pend = pending_pairs(db)
     game_ids = select(models.DartsGamePlayer.game_id).where(models.DartsGamePlayer.competitor_id == competitor_id)
     for g in db.scalars(select(models.DartsGame).where(models.DartsGame.id.in_(game_ids),
                                                        models.DartsGame.status == "finished")):
+        if (g.id, competitor_id) in pend:
+            continue
         me = next(p for p in g.players if p.competitor_id == competitor_id)
         bots = {p.competitor.id: p.competitor for p in g.players
                 if p.competitor.is_bot and g.side_of(p.position) != g.side_of(me.position)}

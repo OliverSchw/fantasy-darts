@@ -898,3 +898,17 @@ a.t-board:hover { border-color: var(--pico-primary); }
 .scoring-pick .seg { margin-bottom: 0.3rem; }
 .dg-more button, .dg-more form { margin-bottom: 0.4rem; }
 .caller-set .btn-row button { font-size: 0.9rem; font-weight: 600; }
+
+/* Spiele bestätigen */
+.confirm-banner { display: block; text-decoration: none; }
+.confirm-here { padding: 0.7rem 0.9rem; margin: 0 0 1rem; border: 1px solid var(--pico-primary);
+  border-radius: var(--pico-border-radius); background: var(--pico-card-background-color); }
+.confirm-here p { margin: 0 0 0.5rem; }
+.confirm-here form, .confirm-list form { margin: 0; }
+.confirm-list { list-style: none; padding: 0; }
+.confirm-list li { padding: 0.7rem 0; border-bottom: 1px solid var(--pico-muted-border-color); list-style: none; }
+.confirm-what { display: flex; gap: 0.6rem; align-items: center; text-decoration: none; color: inherit; margin-bottom: 0.4rem; }
+.confirm-what .ico { font-size: 1.5rem; }
+.confirm-what > span:last-child { display: flex; flex-direction: column; }
+.confirm-setting label { margin-bottom: 0.3rem; }
+main:has(.confirm-here) .confirm-banner { display: none; }  /* Seite hat ihr eigenes Bestätigen-Feld */

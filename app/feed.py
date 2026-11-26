@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from . import models
+from .confirmations import pending_pairs, pending_tournament_pairs
 from .darts.achievements import compute_achievements
 from .darts.modes import TRAINING
 from .darts.rating import aware, compute_elo
@@ -42,10 +43,13 @@ def darts_items(db: Session, since: datetime) -> list[Item]:
     elo = compute_elo(db)
     games = db.scalars(select(models.DartsGame).where(models.DartsGame.status == "finished",
                                                       models.DartsGame.finished_at >= since)).all()
+    pend = pending_pairs(db)
     for g in games:
         at = aware(g.finished_at or g.created_at)
         if at < since or g.n_sides < 2 or g.winning_side is None or g.mode in TRAINING or g.has_bot:
             continue
+        if any((g.id, p.competitor_id) in pend for p in g.players):
+            continue  # noch nicht von allen bestätigt
         win = g.winning_side
         losers = [g.side_name(s) for s in range(g.n_sides) if s != win]
         score = ""
@@ -67,7 +71,7 @@ def darts_items(db: Session, since: datetime) -> list[Item]:
         if at < since:
             continue
         who = next(p.competitor for p in g.players if p.competitor_id == v.competitor_id)
-        if who.is_bot:
+        if who.is_bot or (g.id, v.competitor_id) in pend:
             continue  # die Würfe der Bots sind keine Neuigkeit
         name = names.get(v.competitor_id) or who.display_name
         names[v.competitor_id] = name
@@ -88,10 +92,11 @@ def darts_items(db: Session, since: datetime) -> list[Item]:
 
 def tournament_items(db: Session, since: datetime) -> list[Item]:
     items = []
+    pend_t = pending_tournament_pairs(db)
     for t in db.scalars(select(models.Tournament).where(models.Tournament.winner_entry_id.is_not(None))):
         at = aware(t.finished_at or t.created_at)
         entry = next((e for e in t.entries if e.id == t.winner_entry_id), None)
-        if at < since or entry is None:
+        if at < since or entry is None or any((t.id, c.id) in pend_t for c in entry.competitors):
             continue
         base = "/beerpong" if t.sport == "beerpong" else "/darts"
         items.append(Item(at, "🏆", f"{entry.display_name} won {t.name}", f"{base}/tournaments/{t.id}", t.sport))
@@ -100,10 +105,11 @@ def tournament_items(db: Session, since: datetime) -> list[Item]:
 
 def beerpong_items(db: Session, since: datetime) -> list[Item]:
     items = []
+    pend = pending_pairs(db, "beerpong")
     for g in db.scalars(select(models.BeerpongGame).where(models.BeerpongGame.status == "finished",
                                                           models.BeerpongGame.winner_side.is_not(None))):
         at = aware(g.finished_at or g.created_at)
-        if at < since:
+        if at < since or any((g.id, p.competitor_id) in pend for p in g.players):
             continue
         w = g.winner_side
         hits = (g.hits1, g.hits2) if w == 1 else (g.hits2, g.hits1)

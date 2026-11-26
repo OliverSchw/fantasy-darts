@@ -61,6 +61,9 @@
     {% elif state and rules.lock_at %}
       <p class="banner">⏰ Teams lock on {{ rules.lock_at.strftime("%d.%m.%Y at %H:%M") }}.</p>
     {% endif %}
+    {% if pending_confirmations and path != "/confirm" %}
+      <a href="/confirm" class="banner confirm-banner">📥 You were added to {{ pending_confirmations }} game{{ "s" if pending_confirmations != 1 }} or tournament{{ "s" if pending_confirmations != 1 }} – <strong>confirm →</strong></a>
+    {% endif %}
     {% for cat, msg in flashes %}
       <p class="flash {{ cat }}" role="status">{{ msg }}</p>
     {% endfor %}

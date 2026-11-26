@@ -2,6 +2,8 @@
 {% from "_macros.html" import cavatar %}
 {% block title %}{{ info.name }} · {{ rows | map(attribute="c.display_name") | join(" vs ") }}{% endblock %}
 {% block content %}
+{% from "_confirm.html" import confirm_banner %}
+{{ confirm_banner(pending_here(user, "darts", game.id), "darts", game.id, path, "game") }}
 <div class="dg-head">
   <span><strong>{{ info.name }}</strong>{% if game.mode == "shanghai" and not s.finished %} · round {{ s.shanghai_round }} of {{ s.rounds }} – target <strong>{{ s.shanghai_number() }}</strong>{% endif %}
     {% if game.mode == "killer" %} · {{ game.options.lives }} lives{% endif %}
