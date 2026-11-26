@@ -508,13 +508,23 @@ def _tournament_info(db: Session, game: models.DartsGame) -> dict | None:
     return {"t": t, "tm": tm, "title": tour.match_title(t, tm)}
 
 
+def _tournament_form(request: Request, db: Session, user: models.User, league: bool):
+    return render(request, "darts/tournament_new.html", user=user, competitors=competitors.all_competitors(db),
+                  starts=START_SCORES, modes=PARTY_MODES, active_tab="/darts/leagues" if league else "/darts/tournaments",
+                  form={"start": 501, "legs": 2, "final_legs": 3, "players": [], "shuffle": True,
+                        "name": "", "guests": "", "format": "league" if league else "knockout", "groups": "",
+                        "advance": "2", "league_rounds": "1",
+                        "boards": 0, "mode": "x01", "teams": "singles", "team_text": "", "lives": 3, "rounds": 7})
+
+
 @router.get("/tournaments/new")
 def new_tournament_form(request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_user)):
-    return render(request, "darts/tournament_new.html", user=user, competitors=competitors.all_competitors(db),
-                  starts=START_SCORES, modes=PARTY_MODES,
-                  form={"start": 501, "legs": 2, "final_legs": 3, "players": [], "shuffle": True,
-                        "name": "", "guests": "", "format": "knockout", "groups": "", "advance": "2", "league_rounds": "1",
-                        "boards": 0, "mode": "x01", "teams": "singles", "team_text": "", "lives": 3, "rounds": 7})
+    return _tournament_form(request, db, user, league=False)
+
+
+@router.get("/leagues/new")
+def new_league_form(request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_user)):
+    return _tournament_form(request, db, user, league=True)
 
 
 @router.post("/tournaments/new")
@@ -569,7 +579,8 @@ async def new_tournament(request: Request, db: Session = Depends(get_db), user: 
         db.rollback()
         return render(request, "darts/tournament_new.html", status_code=400, user=user, error=str(e),
                       competitors=competitors.all_competitors(db), starts=START_SCORES, modes=PARTY_MODES, form=keep)
-    flash(request, f"Tournament “{t.name}” is on – {len(t.entries)} {'teams' if keep['teams'] != 'singles' else 'players'}.")
+    flash(request, f"{'League' if t.is_league else 'Tournament'} “{t.name}” is on – "
+                   f"{len(t.entries)} {'teams' if keep['teams'] != 'singles' else 'players'}.")
     return redirect(f"/darts/tournaments/{t.id}")
 
 

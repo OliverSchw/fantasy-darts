@@ -32,7 +32,7 @@
       <nav class="topnav">
         {% if section %}
           {% for href, icon, label in section.tabs + section.desktop_tabs %}
-            <a href="{{ href }}" {% if tab_active(href, path, section) %}aria-current="page"{% endif %}>{{ label }}</a>
+            <a href="{{ href }}" {% if tab_active(href, path, section, active_tab | default(None)) %}aria-current="page"{% endif %}>{{ label }}</a>
           {% endfor %}
         {% else %}
           {% for s in sections if s.ready %}<a href="{{ s.href }}">{{ s.icon }} {{ s.name }}</a>{% endfor %}
@@ -69,7 +69,7 @@
 
   <nav class="tabbar" aria-label="Main">
     {% for href, icon, label in (section.tabs if section else home_tabs) %}
-      <a href="{{ href }}" {% if tab_active(href, path, section) %}aria-current="page"{% endif %}>
+      <a href="{{ href }}" {% if tab_active(href, path, section, active_tab | default(None)) %}aria-current="page"{% endif %}>
         <span class="ico">{{ icon }}</span><span>{{ label }}</span>
       </a>
     {% endfor %}

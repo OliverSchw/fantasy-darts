@@ -1,12 +1,16 @@
 {# Turnierformat: K.-o., Gruppenphase + K.-o. oder Liga (gemeinsam für alle Sportarten) #}
 {% macro format_fields(form, unit, board_label="Board") -%}
+{% set league_only = form.format == "league" %}
 <fieldset x-data='{ "fmt": {{ form.format | tojson }}, "groups": {{ (form.groups or 2) | int }}, "adv": {{ (form.advance or 2) | int }}, "lr": {{ (form.league_rounds or "1") | tojson }} }'>
-  <legend>Format</legend>
+  <legend>{{ "League" if league_only else "Format" }}</legend>
+  {% if league_only %}
+    <input type="hidden" name="format" value="league">
+  {% else %}
   <div class="seg" role="radiogroup" aria-label="Format">
     <label><input type="radio" name="format" value="knockout" x-model="fmt"><span>Knockout</span></label>
     <label><input type="radio" name="format" value="groups" x-model="fmt"><span>Groups + KO</span></label>
-    <label><input type="radio" name="format" value="league" x-model="fmt"><span>League</span></label>
   </div>
+  {% endif %}
   <div x-show="fmt === 'league'" x-cloak>
     <div class="seg" role="radiogroup" aria-label="League rounds">
       <label><input type="radio" name="league_rounds" value="1" x-model="lr"><span>Single round</span></label>

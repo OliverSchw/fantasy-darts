@@ -61,23 +61,36 @@ def add_tournament_routes(router: APIRouter, sp: Sport) -> None:
             raise HTTPException(404)
         return tm
 
+    def _tab(t):
+        return f"{sp.base}/leagues" if t.is_league else f"{sp.base}/tournaments"
+
     def _organizer_only(user, t):
         if not tour.can_organize(user, t):
             raise HTTPException(403, "Only the organizer of this tournament can do that.")
 
+    def _all(db):
+        return db.scalars(select(models.Tournament).where(models.Tournament.sport == sp.key)
+                          .order_by(models.Tournament.created_at.desc(), models.Tournament.id.desc())).all()
+
     @router.get("/tournaments", name=f"{sp.key}_tournaments")
     def tournaments_list(request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_user)):
-        ts = db.scalars(select(models.Tournament).where(models.Tournament.sport == sp.key)
-                        .order_by(models.Tournament.created_at.desc(), models.Tournament.id.desc())).all()
+        ts = [t for t in _all(db) if not t.is_league]
         return render(request, "tournament/list.html", user=user, sp=sp, tournaments=ts, entry_by_id=tour.entry_by_id,
-                      format_label=tour.format_label,
-                      fame=tour.hall_of_fame(db, sp.key))
+                      format_label=tour.format_label, leagues=False,
+                      fame=tour.hall_of_fame(db, sp.key, leagues=False))
+
+    @router.get("/leagues", name=f"{sp.key}_leagues")
+    def leagues_list(request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_user)):
+        ls = [t for t in _all(db) if t.is_league]
+        return render(request, "tournament/list.html", user=user, sp=sp, tournaments=ls, entry_by_id=tour.entry_by_id,
+                      format_label=tour.format_label, leagues=True, summary=tour.league_summary,
+                      fame=tour.hall_of_fame(db, sp.key, leagues=True))
 
     @router.get("/tournaments/{tid:int}", name=f"{sp.key}_tournament")
     def tournament_page(tid: int, request: Request, db: Session = Depends(get_db),
                         user: models.User = Depends(require_user)):
         t = _tournament(db, tid)
-        return render(request, "tournament/page.html", user=user, sp=sp, t=t, cols=tour.columns(t),
+        return render(request, "tournament/page.html", user=user, sp=sp, t=t, active_tab=_tab(t), cols=tour.columns(t),
                       groups=tour.group_view(t) if t.has_groups else [],
                       live=sp.live_match_ids(db, [m.id for m in t.matches]),
                       winner=tour.entry_by_id(t, t.winner_entry_id), organizer=tour.can_organize(user, t),
@@ -92,7 +105,7 @@ def add_tournament_routes(router: APIRouter, sp: Sport) -> None:
         t = _tournament(db, tid)
         tm = _tmatch(t, mid)
         game = sp.find_game(db, tm)
-        return render(request, "tournament/match.html", user=user, sp=sp, t=t, tm=tm, title=tour.match_title(t, tm),
+        return render(request, "tournament/match.html", user=user, sp=sp, t=t, active_tab=_tab(t), tm=tm, title=tour.match_title(t, tm),
                       game=game, game_url=sp.game_url(game) if game else None,
                       organizer=tour.can_organize(user, t), changeable=tour.can_change(t, tm),
                       max_score=sp.max_score(t, tm), locked_reason=tour._locked_reason(t, tm))
@@ -198,11 +211,11 @@ def add_tournament_routes(router: APIRouter, sp: Sport) -> None:
                           user: models.User = Depends(require_user)):
         t = _tournament(db, tid)
         _organizer_only(user, t)
-        name = t.name
+        name, kind, back = t.name, "League" if t.is_league else "Tournament", _tab(t)
         db.delete(t)
         db.commit()
-        flash(request, f"Tournament “{name}” deleted. Its games stay in the history.")
-        return redirect(f"{sp.base}/tournaments")
+        flash(request, f"{kind} “{name}” deleted. Its games stay in the history.")
+        return redirect(back)
 
 
 def read_format(form) -> tuple[int | None, int]:

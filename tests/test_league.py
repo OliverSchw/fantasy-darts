@@ -117,7 +117,10 @@ def test_league_pages(olli, db):
     page = olli.get(f"/darts/tournaments/{tid}").text
     assert "League table" in page and "Matchday 6" in page and "home &amp; away" in page
     assert "knockout bracket appears" not in page and "Group stage" not in page
-    assert "league · home &amp; away" in olli.get("/darts/tournaments").text
+    lst = olli.get("/darts/leagues").text
+    assert "league · home &amp; away" in lst and "Winter League" in lst and "Matchday 1 of 6" in lst
+    assert "Winter League" not in olli.get("/darts/tournaments").text  # Ligen stehen nicht bei den Turnieren
+    assert '<a href="/darts/leagues" aria-current="page">' in page  # Liga-Seite: Reiter "Leagues" aktiv
     m = t.group_matches[0]
     assert "Matchday 1" in olli.get(f"/darts/tournaments/{tid}/matches/{m.id}").text
     assert olli.get(f"/darts/tournaments/{tid}/tv").status_code == 200
@@ -130,5 +133,16 @@ def test_league_pages(olli, db):
     bp = db.get(models.Tournament, int(r.headers["location"].rsplit("/", 1)[1]))
     assert bp.is_league and len(bp.group_matches) == 3
     assert "League table" in olli.get(f"/beerpong/tournaments/{bp.id}").text
-    # Formular zeigt die Option
-    assert 'value="league"' in olli.get("/darts/tournaments/new").text
+    # Eigenes Formular für Ligen, das Turnier-Formular bietet keine Liga mehr an
+    lf = olli.get("/darts/leagues/new").text
+    assert "New league" in lf and 'name="format" value="league"' in lf and "Create league" in lf
+    assert "Final: first to" not in lf
+    tf = olli.get("/darts/tournaments/new").text
+    assert 'value="league"' not in tf and "Groups + KO" in tf
+    assert "New league" in olli.get("/beerpong/leagues/new").text
+    assert "Pong League" in olli.get("/beerpong/leagues").text and "Pong League" not in olli.get("/beerpong/tournaments").text
+    # Hall of Fame getrennt: Ligatitel zählen nur bei den Ligen
+    for m in bp.group_matches:
+        tour.set_result(db, bp, m, 6, 2)
+    assert "League champions" in olli.get("/beerpong/leagues").text
+    assert "Hall of fame" not in olli.get("/beerpong/tournaments").text
