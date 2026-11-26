@@ -1,13 +1,15 @@
 {% extends "base.html" %}
-{% block title %}Tournaments{% endblock %}
+{% block title %}{{ "Leagues" if leagues else "Tournaments" }}{% endblock %}
 {% block content %}
 <div class="title-row">
-  <h1>Tournaments</h1>
-  <a href="{{ sp.base }}/tournaments/new" role="button" class="small">＋ New tournament</a>
+  <h1>{{ "📋 Leagues" if leagues else "🏆 Tournaments" }}</h1>
+  {% if leagues %}<a href="{{ sp.base }}/leagues/new" role="button" class="small">＋ New league</a>
+  {% else %}<a href="{{ sp.base }}/tournaments/new" role="button" class="small">＋ New tournament</a>{% endif %}
 </div>
+{% if leagues %}<p class="muted">Everyone plays everyone – spread over matchdays, days or weeks. 2 points per win, the table leader is champion.</p>{% endif %}
 {% if fame %}
   <article class="t-fame">
-    <h3>🏆 Hall of fame</h3>
+    <h3>{{ "🥇 League champions" if leagues else "🏆 Hall of fame" }}</h3>
     <ol>
       {% for c, n in fame[:8] %}<li><strong>{{ c.display_name }}</strong> <span class="muted">{{ n }} title{{ "s" if n != 1 }}</span></li>{% endfor %}
     </ol>
@@ -21,12 +23,17 @@
         <a href="{{ sp.base }}/tournaments/{{ t.id }}" class="dgame {{ 'live' if t.status == 'running' }}">
           <span class="dgame-meta">{{ t.entries | length }} {{ sp.label(t) }} · {{ format_label(t) }} · {{ t.created_at | when }}
             {% if t.status == "running" %}<mark class="live-badge">RUNNING</mark>{% endif %}</span>
-          <span class="dgame-side"><strong class="nm">🏆 {{ t.name }}</strong></span>
-          {% if w %}<span class="dgame-side win"><span class="nm">Champion: {{ w.display_name }}</span></span>{% endif %}
+          <span class="dgame-side"><strong class="nm">{{ "📋" if leagues else "🏆" }} {{ t.name }}</strong></span>
+          {% if w %}<span class="dgame-side win"><span class="nm">Champion: {{ w.display_name }}</span></span>
+          {% elif leagues %}{% set ls = summary(t) %}
+            <span class="dgame-side"><span class="nm muted">Matchday {{ ls.current or ls.days }} of {{ ls.days }} · {{ ls.played }}/{{ ls.total }} played{% if ls.leader %} · top: {{ ls.leader.display_name }}{% endif %}</span></span>{% endif %}
         </a>
       </li>
     {% endfor %}
   </ul>
+{% elif leagues %}
+  <article class="cta"><p>No leagues yet. Pick the players, single round or home &amp; away – the matchdays are drawn for you.</p>
+    <a href="{{ sp.base }}/leagues/new" role="button">Create a league</a></article>
 {% else %}
   <article class="cta"><p>No tournaments yet. Knockout or group stage – set one up in a minute.</p>
     <a href="{{ sp.base }}/tournaments/new" role="button">Create a tournament</a></article>

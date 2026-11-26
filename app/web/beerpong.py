@@ -147,12 +147,22 @@ def bp_compare(request: Request, a: str | None = None, b: str | None = None, db:
 # ---------------------------------------------------------------- Turniere
 
 
+def _bp_form(request: Request, db: Session, user: models.User, league: bool):
+    return render(request, "beerpong/tournament_new.html", user=user, competitors=competitors.all_competitors(db),
+                  cup_options=bp.CUP_OPTIONS, active_tab="/beerpong/leagues" if league else "/beerpong/tournaments",
+                  form={"name": "", "cups": 10, "mode": "random", "players": [], "guests": "", "teams": "", "shuffle": True,
+                        "format": "league" if league else "knockout", "groups": "", "advance": "2",
+                        "league_rounds": "1", "boards": 0})
+
+
 @router.get("/tournaments/new")
 def bp_tournament_form(request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_user)):
-    return render(request, "beerpong/tournament_new.html", user=user, competitors=competitors.all_competitors(db),
-                  cup_options=bp.CUP_OPTIONS,
-                  form={"name": "", "cups": 10, "mode": "random", "players": [], "guests": "", "teams": "", "shuffle": True,
-                        "format": "knockout", "groups": "", "advance": "2", "league_rounds": "1", "boards": 0})
+    return _bp_form(request, db, user, league=False)
+
+
+@router.get("/leagues/new")
+def bp_league_form(request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_user)):
+    return _bp_form(request, db, user, league=True)
 
 
 @router.post("/tournaments/new")
@@ -182,7 +192,7 @@ async def bp_tournament_new(request: Request, db: Session = Depends(get_db), use
         db.rollback()
         return render(request, "beerpong/tournament_new.html", status_code=400, user=user, error=str(e),
                       competitors=competitors.all_competitors(db), cup_options=bp.CUP_OPTIONS, form=keep)
-    flash(request, f"Tournament “{t.name}” is on – {len(t.entries)} teams.")
+    flash(request, f"{'League' if t.is_league else 'Tournament'} “{t.name}” is on – {len(t.entries)} teams.")
     return redirect(f"/beerpong/tournaments/{t.id}")
 
 

@@ -1,16 +1,16 @@
 {% extends "base.html" %}
 {% from "_macros.html" import cavatar %}
 {% from "tournament/_format.html" import format_fields %}
-{% block title %}New tournament{% endblock %}
+{% block title %}{{ "New league" if form.format == "league" else "New tournament" }}{% endblock %}
 {% block content %}
-<h1>New tournament</h1>
+<h1>{{ "📋 New league" if form.format == "league" else "🏆 New tournament" }}</h1>
 {% if error %}<p class="flash error">{{ error }}</p>{% endif %}
 <form method="post" action="/darts/tournaments/new" class="dnew"
       x-data='{ "legs": {{ form.legs }}, "final": {{ form.final_legs }}, "mode": {{ form.mode | tojson }}, "teams": {{ form.teams | tojson }} }'
       x-effect="if (mode !== 'x01') teams = 'singles'">
   <fieldset>
-    <legend>Tournament</legend>
-    <input name="name" value="{{ form.name }}" placeholder="Name, e.g. Christmas Cup 2026" maxlength="80" required aria-label="Name">
+    <legend>{{ "Name" if form.format == "league" else "Tournament" }}</legend>
+    <input name="name" value="{{ form.name }}" placeholder="Name, e.g. {{ 'Winter League 2026' if form.format == 'league' else 'Christmas Cup 2026' }}" maxlength="80" required aria-label="Name">
     <select name="mode" x-model="mode" aria-label="Game">
       <option value="x01">X01 – 301 / 501 / 701</option>
       {% for key, m in modes.items() %}<option value="{{ key }}">{{ m.name }}</option>{% endfor %}
@@ -33,6 +33,10 @@
       <button type="button" class="outline small" @click="legs = Math.min(11, legs + 1); final = Math.max(final, legs)" aria-label="More legs per match">＋</button>
       <input type="hidden" name="legs" :value="legs" value="{{ form.legs }}">
     </div>
+    {% if form.format == "league" %}
+    <input type="hidden" name="final_legs" :value="legs" value="{{ form.legs }}">
+    <small class="muted">Double out.</small>
+    {% else %}
     <div class="stepper">
       <span>Final: first to</span>
       <button type="button" class="outline small" @click="final = Math.max(1, final - 1)" aria-label="Fewer legs in the final">−</button>
@@ -41,6 +45,7 @@
       <input type="hidden" name="final_legs" :value="final" value="{{ form.final_legs }}">
     </div>
     <small class="muted">Double out. The final setting applies to the knockout final only.</small>
+    {% endif %}
     </div>
   </fieldset>
 
@@ -73,10 +78,10 @@
     </label>
     </div>
     <label><input type="checkbox" name="shuffle" value="1" {% if form.shuffle %}checked{% endif %}> Random draw
-      <small class="muted">– otherwise the list order is the seeding</small></label>
+      <small class="muted">{{ "– mixes up the order of the matchdays" if form.format == "league" else "– otherwise the list order is the seeding" }}</small></label>
   </fieldset>
 
-  <button type="submit">🏆 Create tournament</button>
+  <button type="submit">{{ "📋 Create league" if form.format == "league" else "🏆 Create tournament" }}</button>
 </form>
 {% endblock %}
 {% block scripts %}<script defer src="/static/vendor/alpine.min.js"></script>{% endblock %}

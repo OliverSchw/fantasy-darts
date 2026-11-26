@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 {% from "_macros.html" import cavatar %}
 {% from "tournament/_format.html" import format_fields %}
-{% block title %}New tournament{% endblock %}
+{% block title %}{{ "New league" if form.format == "league" else "New tournament" }}{% endblock %}
 {% block content %}
-<h1>New tournament</h1>
+<h1>{{ "📋 New league" if form.format == "league" else "🏆 New tournament" }}</h1>
 {% if error %}<p class="flash error">{{ error }}</p>{% endif %}
 <form method="post" action="/beerpong/tournaments/new" class="dnew" x-data='{ "mode": {{ form.mode | tojson }} }'>
   <fieldset>
-    <legend>Tournament</legend>
-    <input name="name" value="{{ form.name }}" placeholder="Name, e.g. Summer Pong 2027" maxlength="80" required aria-label="Name">
+    <legend>{{ "Name" if form.format == "league" else "Tournament" }}</legend>
+    <input name="name" value="{{ form.name }}" placeholder="Name, e.g. {{ 'Winter League 2026' if form.format == 'league' else 'Summer Pong 2027' }}" maxlength="80" required aria-label="Name">
     <div class="seg" role="radiogroup" aria-label="Cups">
       {% for c in cup_options %}<label><input type="radio" name="cups" value="{{ c }}" {% if c == form.cups %}checked{% endif %}><span>{{ c }} cups</span></label>{% endfor %}
     </div>
@@ -39,9 +39,9 @@
       <small class="muted">“Name: player, player” – the name is optional. Members and guests are recognised by name, new names become guests.</small>
     </div>
     <label><input type="checkbox" name="shuffle" value="1" {% if form.shuffle %}checked{% endif %}> Random draw
-      <small class="muted">– otherwise the order is the seeding</small></label>
+      <small class="muted">{{ "– mixes up the order of the matchdays" if form.format == "league" else "– otherwise the order is the seeding" }}</small></label>
   </fieldset>
-  <button type="submit">🏆 Create tournament</button>
+  <button type="submit">{{ "📋 Create league" if form.format == "league" else "🏆 Create tournament" }}</button>
 </form>
 {% endblock %}
 {% block scripts %}<script defer src="/static/vendor/alpine.min.js"></script>{% endblock %}

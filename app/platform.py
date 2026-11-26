@@ -39,12 +39,13 @@ SECTIONS: tuple[Section, ...] = (
         key="darts", name="Darts", icon="🎯", href="/darts",
         tagline="Play 501 against each other, score on your phone and track your stats.",
         tabs=(("/darts", "🎯", "Play"), ("/darts/games", "🕒", "Games"), ("/darts/tournaments", "🏆", "Tournaments"),
-              ("/darts/players", "📈", "Stats")),
+              ("/darts/leagues", "📋", "Leagues"), ("/darts/players", "📈", "Stats")),
     ),
     Section(
         key="beerpong", name="Beer Pong", icon="🍺", href="/beerpong",
         tagline="Count cups live, run tournaments with teams and a bracket.",
-        tabs=(("/beerpong", "🍺", "Play"), ("/beerpong/tournaments", "🏆", "Tournaments"), ("/beerpong/stats", "📈", "Stats")),
+        tabs=(("/beerpong", "🍺", "Play"), ("/beerpong/tournaments", "🏆", "Tournaments"),
+              ("/beerpong/leagues", "📋", "Leagues"), ("/beerpong/stats", "📈", "Stats")),
     ),
 )
 
@@ -56,8 +57,11 @@ def section_for_path(path: str) -> Section | None:
     return next((s for s in SECTIONS if s.ready and s.owns(path)), None)
 
 
-def tab_active(href: str, path: str, section: Section | None) -> bool:
-    """Startseite eines Bereichs nur exakt, andere Tabs auch für Unterseiten (z. B. /fantasy/my/new)."""
+def tab_active(href: str, path: str, section: Section | None, active: str | None = None) -> bool:
+    """Startseite eines Bereichs nur exakt, andere Tabs auch für Unterseiten (z. B. /fantasy/my/new).
+    active: eine Seite legt ihren Reiter selbst fest (z. B. Ligen, die unter /tournaments/<id> liegen)."""
+    if active:
+        return href == active
     if href == "/" or (section and href == section.href):
         return path == href
     return path == href or path.startswith(href + "/") or path.startswith(href + "?")

@@ -414,6 +414,15 @@ def league_view(t: models.Tournament) -> dict:
                      for d, ms in days.items()]}
 
 
+def league_summary(t: models.Tournament) -> dict:
+    """Für die Ligaliste: aktueller Spieltag und Tabellenführer."""
+    view = league_view(t)
+    rows = view["rows"]
+    return {"current": view["current"], "days": len(view["days"]),
+            "leader": rows[0].entry if rows and rows[0].played else None,
+            "played": sum(1 for m in t.group_matches if m.is_played), "total": len(t.group_matches)}
+
+
 def format_label(t: models.Tournament) -> str:
     if t.is_league:
         return "league" + (" · home & away" if int(t.settings.get("rounds", 1)) == 2 else "")
@@ -499,12 +508,15 @@ def organizes_match(db: Session, match_id: int | None, user: models.User | None)
     return tm is not None and can_organize(user, db.get(models.Tournament, tm.tournament_id))
 
 
-def hall_of_fame(db: Session, sport: str) -> list[tuple[models.Competitor, int]]:
-    """Turniersiege pro Teilnehmer (bei Teams zählt der Titel für jedes Mitglied)."""
+def hall_of_fame(db: Session, sport: str, leagues: bool | None = None) -> list[tuple[models.Competitor, int]]:
+    """Titel pro Teilnehmer (bei Teams zählt der Titel für jedes Mitglied).
+    leagues=True nur Ligen, False nur Turniere, None beides."""
     titles: dict[int, int] = {}
     people: dict[int, models.Competitor] = {}
     for t in db.scalars(select(models.Tournament).where(models.Tournament.sport == sport,
                                                         models.Tournament.status == "finished")):
+        if leagues is not None and t.is_league != leagues:
+            continue
         champ = entry_by_id(t, t.winner_entry_id)
         for c in champ.competitors if champ else []:
             titles[c.id] = titles.get(c.id, 0) + 1
